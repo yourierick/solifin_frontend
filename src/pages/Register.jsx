@@ -1,0 +1,430 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
+import { CheckIcon } from '@heroicons/react/24/outline';
+import Notification from '../components/Notification';
+import {
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  FormHelperText,
+} from '@mui/material';
+import axios from '../utils/axios';
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
+
+export default function Register() {
+  const { isDarkMode } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const selectedPackId = location.state?.selectedPackId;
+
+  const [loading, setLoading] = useState(false);
+  const [packs, setPacks] = useState([]);
+  const [loadingPacks, setLoadingPacks] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    phone: '',
+    address: '',
+    sponsor_code: '',
+    pack_id: '',
+    acceptTerms: false,
+  });
+  const [formErrors, setFormErrors] = useState({});
+
+  useEffect(() => {
+    const fetchPacks = async () => {
+      try {
+        setLoadingPacks(true);
+        const response = await axios.get('/api/packs');
+        if (response.data.success) {
+          const activePacks = response.data.data.filter((pack) => pack.status);
+          setPacks(activePacks.map((pack) => ({ id: pack.id, name: pack.name, price: pack.price })));
+
+          if (selectedPackId) {
+            const selectedPack = activePacks.find((p) => p.id === selectedPackId);
+            if (selectedPack) {
+              setFormData((prev) => ({
+                ...prev,
+                pack_id: selectedPack.id,
+              }));
+            }
+          }
+        }
+      } catch (error) {
+
+        Notification.error('Impossible de charger les packs disponible')
+      } finally {
+        setLoadingPacks(false);
+      }
+    };
+
+    fetchPacks();
+  }, [selectedPackId]);
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.name.trim()) errors.name = 'Le nom est obligatoire';
+    if (!formData.email.trim()) errors.email = 'L\'email est obligatoire';
+    if (!formData.phone.trim()) errors.phone = 'Le téléphone est obligatoire';
+    if (!formData.address.trim()) errors.address = 'L\'adresse est obligatoire';
+    if (!formData.password) errors.password = 'Le mot de passe est obligatoire';
+    if (!formData.password_confirmation) errors.password_confirmation = 'La confirmation du mot de passe est obligatoire';
+    if (formData.password !== formData.password_confirmation) errors.password_confirmation = 'Les mots de passe ne correspondent pas';
+    if (!formData.sponsor_code.trim()) errors.sponsor_code = 'Le code parrain est obligatoire';
+    if (!formData.pack_id) errors.pack_id = 'La sélection d\'un pack est obligatoire';
+    if (!formData.acceptTerms) errors.acceptTerms = 'Vous devez accepter les conditions d\'utilisation';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Valider les données
+      if (!validateForm()) {
+        return;
+      }
+
+      // Stocker les données d'inscription dans le localStorage ou sessionStorage
+      sessionStorage.setItem('registrationData', JSON.stringify(formData));
+
+      // Rediriger vers la page d'achat du pack
+      navigate(`/purchase-pack/${formData.sponsor_code}`, {
+        state: { 
+          fromRegistration: true,
+          registrationData: formData // Passer aussi les données via state
+        }
+      });
+
+    } catch (error) {
+      Notification.error("Erreur lors de l'inscription")
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className={`min-h-screen py-12 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto">
+          <motion.div
+            className={`${
+              isDarkMode ? 'bg-gray-800' : 'bg-white'
+            } shadow-xl rounded-lg overflow-hidden`}
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="px-6 py-8 sm:p-10">
+              <div className="text-center">
+                <h2 className={`text-3xl font-extrabold ${
+                  isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Créer un compte
+                </h2>
+                <p className={`mt-2 text-base ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  Commencez votre aventure avec nous
+                </p>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+                <motion.div variants={itemVariants} className="space-y-4">
+                  <TextField
+                    fullWidth
+                    label="Nom complet"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.name}
+                    helperText={formErrors.name}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    type="email"
+                    label="Adresse email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.email}
+                    helperText={formErrors.email}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    type="tel"
+                    label="Téléphone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.phone}
+                    helperText={formErrors.phone}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Adresse"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.address}
+                    helperText={formErrors.address}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Mot de passe"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.password}
+                    helperText={formErrors.password}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Confirmer le mot de passe"
+                    name="password_confirmation"
+                    value={formData.password_confirmation}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.password_confirmation}
+                    helperText={formErrors.password_confirmation}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Code parrain"
+                    name="sponsor_code"
+                    value={formData.sponsor_code}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.sponsor_code}
+                    helperText={formErrors.sponsor_code || 'Code parrain obligatoire'}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <FormControl 
+                    fullWidth 
+                    error={!!formErrors.pack_id}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  >
+                    <InputLabel>Pack d'investissement</InputLabel>
+                    <Select
+                      name="pack_id"
+                      value={formData.pack_id}
+                      onChange={handleChange}
+                      required
+                      disabled={loadingPacks || selectedPackId}
+                    >
+                      <MenuItem value="">Sélectionnez un pack</MenuItem>
+                      {loadingPacks ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} style={{ color: '#2E7D32' }} /> Chargement...
+                        </MenuItem>
+                      ) : (
+                        packs.map((pack) => (
+                          <MenuItem key={pack.id} value={pack.id}>
+                            {pack.name} - {pack.price}€/mois
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                    {formErrors.pack_id && (
+                      <FormHelperText>{formErrors.pack_id}</FormHelperText>
+                    )}
+                  </FormControl>
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="acceptTerms"
+                        checked={formData.acceptTerms}
+                        onChange={handleChange}
+                        required
+                        sx={{
+                          color: '#2E7D32',
+                          '&.Mui-checked': {
+                            color: '#2E7D32',
+                          },
+                        }}
+                      />
+                    }
+                    label="J'accepte les conditions d'utilisation"
+                  />
+                  {formErrors.acceptTerms && (
+                    <FormHelperText error>{formErrors.acceptTerms}</FormHelperText>
+                  )}
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    disabled={loading || !formData.acceptTerms}
+                    sx={{
+                      mt: 3,
+                      bgcolor: '#2E7D32',
+                      '&:hover': {
+                        bgcolor: '#1B5E20',
+                      },
+                      '&:disabled': {
+                        bgcolor: '#81C784',
+                      },
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} style={{ color: 'white' }} /> : 'Continuer vers le paiement'}
+                  </Button>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="text-center mt-4">
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Déjà un compte ?{' '}
+                    <Link
+                      to="/login"
+                      className={`font-medium ${
+                        isDarkMode ? 'text-primary-400' : 'text-primary-600'
+                      } hover:text-primary-500`}
+                    >
+                      Connectez-vous
+                    </Link>
+                  </p>
+                </motion.div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}

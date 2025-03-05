@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 text-white px-6 py-3 rounded-lg hover:bg-primary-600 transition-all duration-300;
+  }
+  .section-padding {
+    @apply py-20 px-4 md:px-8 lg:px-16;
+  }
+  .heading-primary {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900;
+  }
+  .heading-secondary {
+    @apply text-3xl md:text-4xl font-semibold text-gray-800;
+  }
+}
+
+/* Styles pour les icônes de notification */
+.heroicon-outline-check::before {
+    content: '✓';
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.heroicon-outline-x::before {
+    content: '×';
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.heroicon-outline-exclamation::before {
+    content: '!';
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.heroicon-outline-bell::before {
+    content: '🔔';
+    font-size: 14px;
+} 

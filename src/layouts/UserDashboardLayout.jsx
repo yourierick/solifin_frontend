@@ -1,0 +1,363 @@
+/**
+ * UserDashboardLayout.jsx - Layout du tableau de bord utilisateur
+ * 
+ * Layout spécifique pour l'interface utilisateur standard.
+ * Hérite du DashboardLayout avec des fonctionnalités spécifiques aux utilisateurs.
+ * 
+ * Navigation :
+ * - Tableau de bord
+ * - Mes investissements
+ * - Mon réseau
+ * - Profil
+ * - Portefeuille
+ * - Support
+ * 
+ * Widgets :
+ * - Résumé du compte
+ * - Notifications
+ * - Activité récente
+ * - Performance
+ * - Statistiques
+ * 
+ * Fonctionnalités spécifiques :
+ * - Suivi des investissements
+ * - Gestion du réseau
+ * - Transactions
+ * - Profil et paramètres
+ * 
+ * Intégrations :
+ * - Système de parrainage
+ * - Notifications en temps réel
+ * - Chat support
+ * - Alertes personnalisées
+ * 
+ * Sécurité :
+ * - Vérification des permissions
+ * - Protection des routes
+ * - Validation des actions
+ */
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  HomeIcon,
+  UserIcon,
+  BanknotesIcon,
+  UsersIcon,
+  ChartBarIcon,
+  ArrowLeftOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  SunIcon,
+  MoonIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  LightBulbIcon,
+  MegaphoneIcon,
+  BriefcaseIcon,
+  WalletIcon,
+  CubeIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline';
+import NotificationsDropdown from '../components/NotificationsDropdown';
+
+const navigation = [
+  { name: 'Tableau de bord', href: '/dashboard', icon: HomeIcon },
+  { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
+  { name: 'Mon portefeuille', href: '/dashboard/wallet', icon: WalletIcon },
+  { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
+  { name: 'Mes transactions', href: '/dashboard/transactions', icon: BanknotesIcon },
+  { name: 'Mes parrainages', href: '/dashboard/referrals', icon: UsersIcon },
+  { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
+  {
+    name: 'Opportunités',
+    href: '/dashboard/opportunities',
+    icon: LightBulbIcon,
+    children: [
+      { name: 'Ajouter une opportunité', href: '/dashboard/opportunities/create' },
+      { name: 'Mes opportunités', href: '/dashboard/opportunities/list' },
+    ]
+  },
+  {
+    name: 'Publicités',
+    href: '/dashboard/ads',
+    icon: MegaphoneIcon,
+    children: [
+      { name: 'Créer une publicité', href: '/dashboard/ads/create' },
+      { name: 'Mes publicités', href: '/dashboard/ads/list' },
+    ]
+  },
+  {
+    name: 'Offres d\'emploi',
+    href: '/dashboard/jobs',
+    icon: BriefcaseIcon,
+    children: [
+      { name: 'Publier une offre', href: '/dashboard/jobs/create' },
+      { name: 'Mes offres', href: '/dashboard/jobs/list' },
+    ]
+  },
+];
+
+export default function UserDashboardLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isDarkMode, toggleTheme, isSidebarCollapsed, toggleSidebar } = useTheme();
+  const location = useLocation();
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  return (
+    <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Sidebar mobile */}
+      <motion.div
+        initial={{ x: -280 }}
+        animate={{ x: sidebarOpen ? 0 : -280 }}
+        transition={{ duration: 0.3 }}
+        className={`fixed inset-y-0 z-50 flex w-72 flex-col ${
+          isDarkMode ? 'bg-gray-800' : 'bg-white'
+        } lg:hidden`}
+      >
+        <div className={`flex h-16 shrink-0 items-center justify-between px-6 ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xl font-bold">S</span>
+            </div>
+            {!isSidebarCollapsed && (
+              <span className={`text-2xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-primary-600'
+              }`}>
+                SOLIFIN
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className={`${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-600'}`}
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? isDarkMode
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-primary-50 text-primary-600'
+                    : isDarkMode
+                    ? 'text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {!isSidebarCollapsed && <span className="ml-3">{item.name}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className={`mt-auto border-t p-4 ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <button
+            onClick={handleLogout}
+            className={`flex w-full items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium ${
+              isDarkMode
+                ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+            {!isSidebarCollapsed && <span>Déconnexion</span>}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Sidebar desktop */}
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
+        isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
+      } transition-all duration-300`}>
+        <div className={`flex grow flex-col gap-y-5 overflow-y-auto border-r px-6 pb-4 ${
+          isDarkMode
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex h-16 shrink-0 items-center justify-between">
+            <Link to="/dashboard" className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl font-bold">S</span>
+              </div>
+              {!isSidebarCollapsed && (
+                <span className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-white' : 'text-primary-600'
+                }`}>
+                  SOLIFIN
+                </span>
+              )}
+            </Link>
+          </div>
+          <nav className="flex flex-1 flex-col">
+            <ul role="list" className="flex flex-1 flex-col gap-y-7">
+              <li>
+                <ul role="list" className="-mx-2 space-y-1">
+                  {navigation.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          className={`flex items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                            isActive
+                              ? isDarkMode
+                                ? 'bg-gray-700 text-white'
+                                : 'bg-primary-50 text-primary-600'
+                              : isDarkMode
+                              ? 'text-gray-300 hover:bg-gray-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {!isSidebarCollapsed && <span>{item.name}</span>}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+              <li className="mt-auto">
+                <button
+                  onClick={handleLogout}
+                  className={`flex w-full items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium ${
+                    isDarkMode
+                      ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+                  {!isSidebarCollapsed && <span>Déconnexion</span>}
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+
+      {/* Contenu principal */}
+      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} transition-all duration-300`}>
+        <div className={`sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${
+          isDarkMode
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className={`${
+              isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-600'
+            } lg:hidden`}
+          >
+            <Bars3Icon className="h-6 w-6" />
+          </button>
+
+          {/* Bouton pour rétracter/déployer la sidebar (desktop) */}
+          <button
+            onClick={toggleSidebar}
+            className={`hidden lg:flex items-center justify-center h-8 w-8 rounded-full ${
+              isDarkMode
+                ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRightIcon className="h-5 w-5" />
+            ) : (
+              <ChevronLeftIcon className="h-5 w-5" />
+            )}
+          </button>
+
+          <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Bouton retour accueil */}
+              <Link
+                to="/"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <HomeIcon className="h-5 w-5" />
+                <span className="hidden sm:block">Accueil</span>
+              </Link>
+
+              {/* Notifications */}
+              <NotificationsDropdown />
+
+              {/* Bouton thème */}
+              <button
+                onClick={toggleTheme}
+                className={`flex items-center justify-center h-8 w-8 rounded-full ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {isDarkMode ? (
+                  <SunIcon className="h-5 w-5" />
+                ) : (
+                  <MoonIcon className="h-5 w-5" />
+                )}
+              </button>
+
+              <button
+                onClick={logout}
+                className={`p-2 rounded-lg flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
+                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
+                title="Déconnexion"
+              >
+                <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+              </button>
+
+              <span className={`text-sm ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                Bonjour { JSON.parse(localStorage.user).name } !
+              </span>
+              {user?.picture ? (
+                <img
+                  className="h-8 w-8 rounded-full object-cover"
+                  src={user.picture}
+                  alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
+                />
+              ) : (
+                <UserCircleIcon 
+                  className={`h-8 w-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <main className={`py-10 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+          <div className="px-4 sm:px-6 lg:px-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+} 
