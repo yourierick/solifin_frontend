@@ -70,7 +70,6 @@ const navigation = [
   { name: 'Mon portefeuille', href: '/dashboard/wallet', icon: WalletIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
   { name: 'Mes transactions', href: '/dashboard/transactions', icon: BanknotesIcon },
-  { name: 'Mes parrainages', href: '/dashboard/referrals', icon: UsersIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
   {
     name: 'Opportunités',

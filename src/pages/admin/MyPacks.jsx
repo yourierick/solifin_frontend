@@ -511,7 +511,7 @@ const MyPacks = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container sx={{ py: 0}}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography 
           variant="h4" 
@@ -540,7 +540,7 @@ const MyPacks = () => {
       {userPacks.length === 0 ? (
         <Card 
           sx={{ 
-            p: 4, 
+            p: 4,
             textAlign: 'center',
             bgcolor: isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'background.paper',
             border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
@@ -689,10 +689,10 @@ const MyPacks = () => {
                       title={
                         <Box sx={{ p: 0.5 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            Statistiques et performances
+                            Statistiques des commissions
                           </Typography>
                           <Typography variant="caption" sx={{ display: 'block', color: 'grey.200' }}>
-                            Consultez vos statistiques et performances
+                            Consultez vos gains et performances
                           </Typography>
                         </Box>
                       }

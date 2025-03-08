@@ -32,7 +32,6 @@ import Homepage from './pages/Homepage';
 import { useAuth } from './contexts/AuthContext';
 import AdminDashboard from './pages/admin/Dashboard';
 import UserDashboard from './pages/user/Dashboard';
-import ReferralTree from './components/ReferralTree';
 import Wallet from './pages/user/Wallet';
 import Wallets from './pages/admin/Wallets';
 import AddPack from './pages/admin/AddPack';
@@ -46,6 +45,7 @@ import OpportunityValidation from './pages/admin/OpportunityValidation';
 import ToastContainer from './components/Toast';
 import EditPack from './pages/admin/EditPack';
 import MyPacks from './pages/user/MyPacks';
+import MesPacks from './pages/admin/MyPacks';
 import Profile from './pages/Profile';
 import DashboardLayout from './layouts/DashboardLayout';
 import PurchasePack from './pages/PurchasePack';
@@ -100,6 +100,7 @@ function App() {
           <Route path="wallets" element={<Wallets />} />
           {/* <Route path="withdrawal-requests" element={<WithdrawalRequests />} /> */}
           <Route path="packs" element={<Packs />} />
+          <Route path="mespacks" element={<MesPacks />} />
           <Route path="packs/add" element={<AddPack />} />
           <Route path="packs/edit/:id" element={<EditPack />} />
           <Route path="commissions" element={<div>Gestion des commissions (à venir)</div>} />
@@ -123,7 +124,6 @@ function App() {
         <Route path="profile" element={<Profile />} />
         <Route path="wallet" element={<Wallet />} />
         <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
-        <Route path="referrals" element={<ReferralTree />} />
         <Route path="stats" element={<div>Mes statistiques (à venir)</div>} />
         <Route path="opportunities">
           <Route path="create" element={<div>Ajouter une opportunité (à venir)</div>} />

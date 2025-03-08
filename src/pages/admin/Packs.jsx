@@ -89,7 +89,7 @@ export default function Packs() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <ArrowPathIcon className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }

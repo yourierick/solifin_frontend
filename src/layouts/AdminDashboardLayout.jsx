@@ -64,6 +64,7 @@ const navigation = [
   { name: 'Portefeuilles', href: '/admin/wallets', icon: WalletIcon },
   { name: 'Packs', href: '/admin/packs', icon: CubeIcon },
   { name: 'Commissions', href: '/admin/commissions', icon: CurrencyEuroIcon },
+  { name: 'Mes packs', href: '/admin/mespacks', icon: CubeIcon },
   { 
     name: 'Validations', 
     href: '/admin/validations',

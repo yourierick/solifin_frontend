@@ -180,7 +180,7 @@ export default function Wallets() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <ArrowPathIcon className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -375,8 +375,9 @@ export default function Wallets() {
               }`}
             >
               <option value="all">Tous les types</option>
-              <option value="credit">Crédit</option>
-              <option value="debit">Débit</option>
+              <option value="sales">Vente</option>
+              <option value="withdrawal">Retrait</option>
+              <option value="paiement">Paiement</option>
             </select>
 
             {/* Filtres de date */}
@@ -455,11 +456,11 @@ export default function Wallets() {
                   className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
                 >
                   <td className={`px-6 py-4 whitespace-nowrap ${
-                    transaction.type === 'credit' 
+                    transaction.type === 'sales' 
                       ? 'text-green-500' 
-                      : 'text-red-500'
+                      : 'text-red-200'
                   }`}>
-                    {transaction.type === 'credit' ? '+' : '-'}{transaction.amount}
+                    {transaction.type === 'sales' ? '+' : '-'}{transaction.amount}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-500'
