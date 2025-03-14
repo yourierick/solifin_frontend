@@ -114,11 +114,29 @@ const Packs = () => {
         ))}
       </Grid>
 
-      <PurchasePackForm
-        open={purchaseDialogOpen}
-        onClose={handlePurchaseClose}
-        pack={selectedPack}
-      />
+      {/* Modal de paiement */}
+      {purchaseDialogOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            minHeight: '100vh',
+            height: '100%'
+          }}
+        >
+          <div className="max-w-md w-full relative z-[51]">
+            <PurchasePackForm
+              open={purchaseDialogOpen}
+              onClose={handlePurchaseClose}
+              pack={selectedPack}
+            />
+          </div>
+        </div>
+      )}
     </Container>
   );
 };

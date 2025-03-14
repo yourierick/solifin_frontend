@@ -47,6 +47,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [packs, setPacks] = useState([]);
   const [loadingPacks, setLoadingPacks] = useState(false);
+  const [countries, setCountries] = useState([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,6 +56,10 @@ export default function Register() {
     password_confirmation: '',
     phone: '',
     address: '',
+    gender: '',
+    country: '',
+    province: '',
+    city: '',
     sponsor_code: '',
     pack_id: '',
     acceptTerms: false,
@@ -87,8 +93,34 @@ export default function Register() {
       }
     };
 
+    const fetchCountries = async () => {
+      try {
+        setLoadingCountries(true);
+        const response = await axios.get('https://restcountries.com/v3.1/all');
+        const sortedCountries = response.data
+          .map(country => ({
+            code: country.cca2,
+            name: country.translations.fra?.common || country.name.common
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setCountries(sortedCountries);
+      } catch (err) {
+        Notification.error('Erreur lors du chargement des pays');
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+
     fetchPacks();
-  }, [selectedPackId]);
+    fetchCountries();
+
+    // Extract referral code from URL if present
+    const queryParams = new URLSearchParams(location.search);
+    const referralCode = queryParams.get('referral_code');
+    if (referralCode) {
+      setFormData((prev) => ({ ...prev, sponsor_code: referralCode }));
+    }
+  }, [selectedPackId, location.search]);
 
   const validateForm = () => {
     const errors = {};
@@ -96,6 +128,10 @@ export default function Register() {
     if (!formData.email.trim()) errors.email = 'L\'email est obligatoire';
     if (!formData.phone.trim()) errors.phone = 'Le téléphone est obligatoire';
     if (!formData.address.trim()) errors.address = 'L\'adresse est obligatoire';
+    if (!formData.gender) errors.gender = 'Le sexe est obligatoire';
+    if (!formData.country) errors.country = 'Le pays est obligatoire';
+    if (!formData.province.trim()) errors.province = 'La province est obligatoire';
+    if (!formData.city.trim()) errors.city = 'La ville est obligatoire';
     if (!formData.password) errors.password = 'Le mot de passe est obligatoire';
     if (!formData.password_confirmation) errors.password_confirmation = 'La confirmation du mot de passe est obligatoire';
     if (formData.password !== formData.password_confirmation) errors.password_confirmation = 'Les mots de passe ne correspondent pas';
@@ -190,6 +226,66 @@ export default function Register() {
                         color: '#2E7D32',
                       },
                     }}
+                  />
+
+                  <FormControl fullWidth error={!!formErrors.gender}>
+                    <InputLabel>Sexe</InputLabel>
+                    <Select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleChange}
+                      required
+                    >
+                      <MenuItem value="">Sélectionner</MenuItem>
+                      <MenuItem value="homme">Masculin</MenuItem>
+                      <MenuItem value="femme">Féminin</MenuItem>
+                    </Select>
+                    {formErrors.gender && (
+                      <FormHelperText>{formErrors.gender}</FormHelperText>
+                    )}
+                  </FormControl>
+
+                  <FormControl fullWidth error={!!formErrors.country}>
+                    <InputLabel>Pays</InputLabel>
+                    <Select
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      required
+                      disabled={loadingCountries}
+                    >
+                      <MenuItem value="">Sélectionner un pays</MenuItem>
+                      {countries.map(country => (
+                        <MenuItem key={country.code} value={country.code}>
+                          {country.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {formErrors.country && (
+                      <FormHelperText>{formErrors.country}</FormHelperText>
+                    )}
+                  </FormControl>
+
+                  <TextField
+                    fullWidth
+                    label="Province"
+                    name="province"
+                    value={formData.province}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.province}
+                    helperText={formErrors.province}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Ville"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    error={!!formErrors.city}
+                    helperText={formErrors.city}
                   />
 
                   <TextField

@@ -123,7 +123,7 @@ export default function Wallets() {
   const fetchWalletData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/userwallet/data');
+      const response = await axios.get('/api/userwallet/data');
       if (response.data.success) {
         setuserWallet(response.data.userWallet);
         setTransactions(response.data.transactions);

@@ -180,7 +180,7 @@ export default function Navbar() {
                   className={`inline-flex bg-primary-600 hover:bg-primary-700 items-center px-4 py-2 text-base font-medium rounded-md transition-colors duration-200 ${
                     isDarkMode
                       ? 'text-gray-200 hover:text-white'
-                      : 'text-gray-900 hover:text-gray-700'
+                      : 'text-white hover:text-white-700'
                   }`}
                 >
                   Tableau de bord
@@ -190,7 +190,7 @@ export default function Navbar() {
                   className={`inline-flex bg-gray-600 hover:bg-gray-700 items-center px-4 py-2 text-base font-medium rounded-md transition-colors duration-200 ${
                     isDarkMode
                       ? 'text-gray-200 hover:text-white'
-                      : 'text-gray-900 hover:text-gray-700'
+                      : 'text-white hover:text-white-700'
                   }`}
                 >
                   Mes Packs

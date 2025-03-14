@@ -52,47 +52,66 @@ import PurchasePack from './pages/PurchasePack';
 import VerificationSuccess from './pages/VerificationSuccess';
 import VerificationError from './pages/VerificationError';
 import BuyPack from './pages/user/Packs';
+import Stats from './pages/user/Stats';
 
 function App() {
-  const { user } = useAuth();
-
   return (
     <div>
       <ToastContainer />
       <Routes>
         {/* Routes publiques */}
-        <Route path="/" element={<Homepage />} />
+        <Route path="/" element={
+          <PublicRoute>
+            <Homepage />
+          </PublicRoute>
+        } />
         <Route path="/login" element={
-          user ? (
-            <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
-          ) : (
+          <PublicRoute>
             <Login />
-          )
+          </PublicRoute>
         } />
-        <Route path="/register" element={
-          user ? (
-            <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
-          ) : (
+        <Route path="/register/:referral_code?" element={
+          <PublicRoute>
             <Register />
-          )
+          </PublicRoute>
         } />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/email/verify/:id/:hash" element={<EmailVerification />} />
-        
-        {/* Ajouter la route pour l'achat de pack après inscription */}
-        <Route 
-          path="/purchase-pack/:sponsor_code" 
-          element={
+        <Route path="/forgot-password" element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        } />
+        <Route path="/reset-password/:token" element={
+          <PublicRoute>
+            <ResetPassword />
+          </PublicRoute>
+        } />
+        <Route path="/email/verify/:id/:hash" element={
+          <PublicRoute>
+            <EmailVerification />
+          </PublicRoute>
+        } />
+        <Route path="/verification-success" element={
+          <PublicRoute>
+            <VerificationSuccess />
+          </PublicRoute>
+        } />
+        <Route path="/verification-error" element={
+          <PublicRoute>
+            <VerificationError />
+          </PublicRoute>
+        } />
+        <Route path="/purchase-pack/:sponsor_code" element={
+          <PublicRoute>
             <PurchasePack />
-          } 
-        />
-  
+          </PublicRoute>
+        } />
+        
+        {/* Routes protégées */}
         <Route path="/admin/*"
           element={
-            <RequireAuth role="admin">
+            <PrivateRoute>
               <AdminDashboardLayout />
-            </RequireAuth>
+            </PrivateRoute>
           }>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<Users />} />
@@ -111,43 +130,66 @@ function App() {
           </Route>
           <Route path="settings" element={<div>Paramètres (à venir)</div>} />
         </Route>
-        {/* Routes protégées - Utilisateur */}
         
-        <Route 
-          path="/dashboard/*"
+        <Route path="/dashboard/*"
           element={
-            <RequireAuth role="user">
+            <PrivateRoute>
               <UserDashboardLayout />
-            </RequireAuth>
+            </PrivateRoute>
           }>
-        <Route index element={<UserDashboard />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="wallet" element={<Wallet />} />
-        <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
-        <Route path="stats" element={<div>Mes statistiques (à venir)</div>} />
-        <Route path="opportunities">
-          <Route path="create" element={<div>Ajouter une opportunité (à venir)</div>} />
-          <Route path="list" element={<div>Mes opportunités (à venir)</div>} />
+          <Route index element={<UserDashboard />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="wallet" element={<Wallet />} />
+          <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
+          <Route path="stats" element={<Stats />} />
+          <Route path="opportunities">
+            <Route path="create" element={<div>Ajouter une opportunité (à venir)</div>} />
+            <Route path="list" element={<div>Mes opportunités (à venir)</div>} />
+          </Route>
+          <Route path="ads">
+            <Route path="create" element={<div>Créer une publicité (à venir)</div>} />
+            <Route path="list" element={<div>Mes publicités (à venir)</div>} />
+          </Route>
+          <Route path="jobs">
+            <Route path="create" element={<div>Publier une offre d'emploi (à venir)</div>} />
+            <Route path="list" element={<div>Mes offres d'emploi (à venir)</div>} />
+          </Route>
+          <Route path="packs" element={<MyPacks />} />
+          <Route path="buypacks" element={<BuyPack />} />
         </Route>
-        <Route path="ads">
-          <Route path="create" element={<div>Créer une publicité (à venir)</div>} />
-          <Route path="list" element={<div>Mes publicités (à venir)</div>} />
-        </Route>
-        <Route path="jobs">
-          <Route path="create" element={<div>Publier une offre d'emploi (à venir)</div>} />
-          <Route path="list" element={<div>Mes offres d'emploi (à venir)</div>} />
-        </Route>
-        <Route path="packs" element={<MyPacks />} />
-        <Route path="buypacks" element={<BuyPack />} />
-      </Route>
 
         {/* Redirection pour les routes inconnues */}
         <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/verification-success" element={<VerificationSuccess />} />
-        <Route path="/verification-error" element={<VerificationError />} />
       </Routes>
     </div>
   );
 }
+
+// Composant pour les routes publiques
+const PublicRoute = ({ children }) => {
+  const { user } = useAuth();
+  
+  // Si l'utilisateur est connecté, rediriger vers le dashboard approprié
+  if (user) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  }
+  
+  return children;
+};
+
+// Composant pour les routes protégées
+const PrivateRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return null; // ou un composant de chargement
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
 
 export default App;

@@ -37,90 +37,101 @@
  */
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate, useLocation } from 'react-router-dom';
+import axios from '../utils/axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const AuthContext = createContext(null);
 
-axios.defaults.withCredentials = true;
-
-const AuthContext = createContext({
-  user: null,
-  login: async () => {},
-  logout: async () => {},
-  register: async () => {},
-  isAuthenticated: false,
-  loading: true,
-  requestPasswordReset: async () => {},
-  resetPassword: async () => {},
-  resendVerificationEmail: async () => {},
-  verifyEmail: async () => {},
-});
+// Routes publiques qui ne nécessitent pas d'authentification
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/verification-success', '/verification-error'];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Vérifier si la route actuelle est publique
+  const isPublicRoute = (path) => {
+    return PUBLIC_ROUTES.some(route => 
+      path === route || path.startsWith(`${route}/`)
+    );
+  };
+
+  // Vérifier l'authentification périodiquement
   useEffect(() => {
     checkAuth();
+
+    // Vérifier toutes les 5 minutes
+    const interval = setInterval(checkAuth, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const checkAuth = () => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (storedUser && token) {
-      const userData = JSON.parse(storedUser);
-      userData.role = Number(userData.is_admin) === 1 ? 'admin' : 'user';
-      setUser(userData);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  const checkAuth = async () => {
+    try {
+      // Ne pas vérifier l'auth sur les routes publiques
+      if (isPublicRoute(location.pathname)) {
+        setLoading(false);
+        return;
+      }
+
+      // Obtenir un cookie CSRF
+      await axios.get('/sanctum/csrf-cookie');
+      
+      // Vérifier l'authentification
+      const response = await axios.get('/api/user');
+      setUser(response.data);
+
+      // Si on est sur la page login et qu'on est authentifié,
+      // vérifier s'il y a une redirection en attente
+      if (location.pathname === '/login') {
+        const params = new URLSearchParams(location.search);
+        const returnTo = params.get('returnTo');
+        if (returnTo && !isPublicRoute(returnTo)) {
+          navigate(returnTo, { replace: true });
+          return;
+        }
+        // Redirection par défaut si pas de returnTo
+        navigate(response.data.is_admin === 1 ? '/admin' : '/dashboard', { replace: true });
+      }
+    } catch (error) {
+      setUser(null);
+      // Rediriger vers login avec le returnTo si on n'est pas sur une route publique
+      if (!isPublicRoute(location.pathname)) {
+        const returnTo = encodeURIComponent(location.pathname);
+        navigate(`/login?returnTo=${returnTo}`, { replace: true });
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
-      const { user: userData, token } = response.data;
+      // Obtenir un cookie CSRF avant la connexion
+      await axios.get('/sanctum/csrf-cookie');
       
-      if (!userData || !token) {
-        return {
-          success: false,
-          error: 'Réponse invalide du serveur'
-        };
+      const response = await axios.post('/api/login', { email, password });
+      
+      if (response.data.user) {
+        setUser(response.data.user);
+        
+        // Vérifier s'il y a une redirection en attente
+        const params = new URLSearchParams(location.search);
+        const returnTo = params.get('returnTo');
+        
+        if (returnTo && !isPublicRoute(returnTo)) {
+          navigate(returnTo, { replace: true });
+        } else {
+          // Redirection par défaut
+          const redirectPath = response.data.user.is_admin === 1 ? '/admin' : '/dashboard';
+          navigate(redirectPath, { replace: true });
+        }
+        
+        return { success: true };
       }
-
-      if (!userData.email_verified_at) {
-        return {
-          success: false,
-          error: 'Veuillez vérifier votre email avant de vous connecter',
-          needsVerification: true,
-          email: userData.email
-        };
-      }
-      
-      const isAdmin = Number(userData.is_admin);
-      const processedUserData = {
-        ...userData,
-        is_admin: isAdmin,
-        role: isAdmin === 1 ? 'admin' : 'user'
-      };
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(processedUserData));
-      
-      setUser(processedUserData);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Redirection basée sur le rôle
-      const redirectPath = isAdmin === 1 ? '/admin' : '/dashboard';
-      navigate(redirectPath, { replace: true });
-      
-      return { success: true };
     } catch (error) {
-      console.error('Erreur de connexion:', error);
       let errorMessage = 'Email ou mot de passe incorrect';
       
       if (error.response?.status === 422) {
@@ -138,19 +149,46 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      await axios.post('/api/logout');
       setUser(null);
-      delete axios.defaults.headers.common['Authorization'];
-      navigate('/', { replace: true });
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     }
   };
 
+  const register = async (userData) => {
+    try {
+      // Obtenir un cookie CSRF avant l'inscription
+      await axios.get('/sanctum/csrf-cookie');
+      
+      const response = await axios.post('/api/register', userData);
+      
+      if (response.data.user) {
+        setUser(response.data.user);
+        navigate('/dashboard', { replace: true });
+        return { success: true };
+      }
+    } catch (error) {
+      let errorMessage = 'Erreur lors de l\'inscription';
+      
+      if (error.response?.status === 422) {
+        return {
+          success: false,
+          errors: error.response.data.errors
+        };
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  };
+
   const requestPasswordReset = async (email) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
+      const response = await axios.post('/api/auth/forgot-password', { email });
       return {
         success: true,
         message: response.data.message
@@ -165,7 +203,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (token, email, password, password_confirmation) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/reset-password`, {
+      const response = await axios.post('/api/auth/reset-password', {
         token,
         email,
         password,
@@ -206,29 +244,29 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Erreur lors de la vérification:', error);
-      setVerificationStatus({ 
-        success: false, 
-        error: 'Le lien de vérification est invalide'
-      });
       return { success: false };
     }
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    loading,
-    verificationStatus,
-    requestPasswordReset,
-    resetPassword,
-    resendVerificationEmail,
-    verifyEmail
-  };
+  if (loading) {
+    return null; // ou un composant de chargement
+  }
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      register,
+      loading,
+      requestPasswordReset,
+      resetPassword,
+      resendVerificationEmail,
+      verifyEmail,
+      checkAuth,
+      isAuthenticated: !!user
+    }}>
+      {children}
     </AuthContext.Provider>
   );
 };
@@ -236,7 +274,7 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth doit être utilisé à l\'intérieur d\'un AuthProvider');
+    throw new Error('useAuth doit être utilisé dans un AuthProvider');
   }
   return context;
 };

@@ -37,11 +37,12 @@
  * - Validation des actions
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import GlobalStatsModal from '../components/GlobalStatsModal';
 import {
   HomeIcon,
   UserIcon,
@@ -69,7 +70,6 @@ const navigation = [
   { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
   { name: 'Mon portefeuille', href: '/dashboard/wallet', icon: WalletIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
-  { name: 'Mes transactions', href: '/dashboard/transactions', icon: BanknotesIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
   {
     name: 'Opportunités',
@@ -82,32 +82,53 @@ const navigation = [
   },
   {
     name: 'Publicités',
-    href: '/dashboard/ads',
+    href: '/user/ads',
     icon: MegaphoneIcon,
     children: [
-      { name: 'Créer une publicité', href: '/dashboard/ads/create' },
-      { name: 'Mes publicités', href: '/dashboard/ads/list' },
+      { name: 'Créer une publicité', href: '/user/ads/create' },
+      { name: 'Mes publicités', href: '/user/ads/list' },
     ]
   },
   {
     name: 'Offres d\'emploi',
-    href: '/dashboard/jobs',
+    href: '/user/jobs',
     icon: BriefcaseIcon,
     children: [
-      { name: 'Publier une offre', href: '/dashboard/jobs/create' },
-      { name: 'Mes offres', href: '/dashboard/jobs/list' },
+      { name: 'Publier une offre', href: '/user/jobs/create' },
+      { name: 'Mes offres', href: '/user/jobs/list' },
     ]
   },
 ];
 
 export default function UserDashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const dropdownRef = useRef(null);
   const { isDarkMode, toggleTheme, isSidebarCollapsed, toggleSidebar } = useTheme();
   const location = useLocation();
   const { logout, user } = useAuth();
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = () => {
     logout();
+  };
+
+  const handleStatsClick = (e) => {
+    e.preventDefault();
+    setStatsModalOpen(true);
   };
 
   return (
@@ -318,45 +339,91 @@ export default function UserDashboardLayout() {
                 )}
               </button>
 
-              <button
-                onClick={logout}
-                className={`p-2 rounded-lg flex items-center gap-2 ${
-                  isDarkMode
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}
-                title="Déconnexion"
-              >
-                <ArrowLeftOnRectangleIcon className="h-6 w-6" />
-              </button>
+              {/* Profile dropdown */}
+              <div className="relative ml-3" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-2 focus:outline-none"
+                >
+                  {user?.picture ? (
+                    <img
+                      className="h-8 w-8 rounded-full object-cover"
+                      src={user.picture}
+                      alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
+                    />
+                  ) : (
+                    <UserCircleIcon 
+                      className={`h-8 w-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
 
-              <span className={`text-sm ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                Bonjour { JSON.parse(localStorage.user).name } !
-              </span>
-              {user?.picture ? (
-                <img
-                  className="h-8 w-8 rounded-full object-cover"
-                  src={user.picture}
-                  alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
-                />
-              ) : (
-                <UserCircleIcon 
-                  className={`h-8 w-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
-                  aria-hidden="true"
-                />
-              )}
+                {/* Dropdown menu */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-64 rounded-lg shadow-lg py-2 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+                    <div className="px-4 py-3 flex flex-col items-center border-b border-gray-200 dark:border-gray-700">
+                      {user?.picture ? (
+                        <img
+                          className="h-16 w-16 rounded-full object-cover mb-3"
+                          src={user.picture}
+                          alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
+                        />
+                      ) : (
+                        <UserCircleIcon 
+                          className={`h-16 w-16 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-3`}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                          {user.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="py-1">
+                      <Link
+                        to="/dashboard/profile"
+                        className="flex items-center justify-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <UserCircleIcon className="h-5 w-5" />
+                        Mon profil
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setShowProfileMenu(false);
+                        }}
+                        className="flex items-center justify-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+                      >
+                        <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+                        Se déconnecter
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <main className={`py-10 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <main className={`py-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="px-4 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>
       </div>
+
+      <GlobalStatsModal 
+        open={statsModalOpen}
+        onClose={() => setStatsModalOpen(false)}
+      />
     </div>
   );
 } 

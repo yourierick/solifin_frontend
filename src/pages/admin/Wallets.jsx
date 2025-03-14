@@ -470,7 +470,21 @@ export default function Wallets() {
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    {JSON.stringify(transaction.metadata)}
+                    {transaction.metadata ? (
+                      <div className="max-w-xs overflow-hidden">
+                        {transaction.metadata.source && (
+                          <div>{transaction.metadata.source}</div>
+                        )}
+                        {transaction.metadata.pack_name && (
+                          <div>{transaction.metadata.pack_name}</div>
+                        )}
+                        {!transaction.metadata.source && !transaction.metadata.pack_name && (
+                          <span className="text-gray-400">Détails non disponibles</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Aucun détail</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

@@ -31,6 +31,8 @@ import Tree from 'react-d3-tree';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
+import PackStatsModal from '../../components/PackStatsModal';
+import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 
 const CustomNode = ({ nodeDatum, isDarkMode, toggleNode }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -165,6 +167,8 @@ const MyPacks = () => {
   const [viewMode, setViewMode] = useState('table');
   const treeRef = useRef(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [selectedPackId, setSelectedPackId] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     fetchUserPacks();
@@ -266,25 +270,18 @@ const MyPacks = () => {
     }
   };
 
-  const handleStatsClick = async (packId) => {
-    try {
-      const response = await axios.get(`/api/packs/${packId}/stats`);
-      setCurrentPackStats(response.data.data);
-      setStatsDialog(true);
-    } catch (error) {
-      Notification.error('Erreur lors du chargement des statistiques');
-    }
+  const handleStatsClick = (packId) => {
+    setSelectedPackId(packId);
+    setStatsDialog(true);
   };
 
   const handleReferralsClick = async (packId) => {
     try {
       const response = await axios.get(`/api/packs/${packId}/referrals`);
-      //console.log('Données reçues du backend:', JSON.stringify(response.data.data, null, 2));
       
       // Vérification des données
       if (response.data.data && Array.isArray(response.data.data)) {
         response.data.data.forEach((generation, index) => {
-          //console.log(`Génération ${index + 1}:`, generation);
         });
       }
       
@@ -502,6 +499,13 @@ const MyPacks = () => {
     saveAs(dataBlob, `${fileName}.xlsx`);
   };
 
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -511,7 +515,7 @@ const MyPacks = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 0 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography 
           variant="h4" 
@@ -617,6 +621,42 @@ const MyPacks = () => {
                     sx={{ color: isDarkMode ? 'grey.300' : 'text.primary' }}
                   >
                     Code de parrainage: <strong>{userPack.referral_code}</strong>
+                  </Typography>
+
+                  <Typography 
+                    variant="body2" 
+                    gutterBottom
+                    sx={{ color: isDarkMode ? 'grey.300' : 'text.primary', display: 'flex', alignItems: 'center' }}
+                  >
+                    Lien de parrainage: 
+                    <Box 
+                      component="span" 
+                      sx={{ 
+                        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', 
+                        px: 1, 
+                        py: 0.5, 
+                        borderRadius: 1, 
+                        fontFamily: 'monospace', 
+                        fontSize: '0.875rem', 
+                        marginRight: '8px', 
+                        cursor: 'text' 
+                      }}
+                    >
+                      {userPack.link_referral}
+                    </Box>
+                    <Tooltip title={copySuccess ? 'Copié !' : 'Copier'} placement="top" arrow>
+                      <ContentCopyIcon 
+                        onClick={() => handleCopy(userPack.link_referral)}
+                        sx={{ 
+                          ml: 1, 
+                          cursor: 'pointer', 
+                          color: isDarkMode ? 'grey.500' : 'grey.700',
+                          '&:hover': {
+                            color: isDarkMode ? 'grey.300' : 'grey.900',
+                          }
+                        }}
+                      />
+                    </Tooltip>
                   </Typography>
 
                   {userPack.sponsor_info && (
@@ -840,77 +880,14 @@ const MyPacks = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialogs for Stats and Referrals */}
-      <Dialog 
-        open={statsDialog} 
-        onClose={() => setStatsDialog(false)}
-        maxWidth="md" 
-        fullWidth
-      >
-        <DialogTitle sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper',
-          color: isDarkMode ? 'grey.100' : 'text.primary'
-        }}>
-          Statistiques des commissions
-        </DialogTitle>
-        <DialogContent sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper',
-          color: isDarkMode ? 'grey.100' : 'text.primary'
-        }}>
-          {currentPackStats && (
-            <Box sx={{ py: 2 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Commission totale
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.total_commission}$
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Nombre de filleuls
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.referral_count}
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Commission ce mois
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.monthly_commission}$
-                    </Typography>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper'
-        }}>
-          <Button onClick={() => setStatsDialog(false)}>
-            Fermer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <PackStatsModal
+        open={statsDialog}
+        onClose={() => {
+          setStatsDialog(false);
+          setSelectedPackId(null);
+        }}
+        packId={selectedPackId}
+      />
 
       <Dialog 
         open={referralsDialog} 
