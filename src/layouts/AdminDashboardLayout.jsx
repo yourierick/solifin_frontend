@@ -31,7 +31,7 @@
  * - ToastContext : Notifications
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
@@ -83,7 +83,20 @@ export default function AdminDashboardLayout() {
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const location = useLocation();
   const { isDarkMode, isSidebarCollapsed, toggleSidebar, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      try {
+        const parsedUser = typeof user === 'string' ? JSON.parse(user) : user;
+        setUserData(parsedUser);
+      } catch (error) {
+        console.error('Erreur lors du parsing des données utilisateur:', error);
+        setUserData(null);
+      }
+    }
+  }, [user]);
 
   const handleSubmenuClick = (itemName) => {
     setOpenSubmenu(openSubmenu === itemName ? null : itemName);
@@ -344,7 +357,7 @@ export default function AdminDashboardLayout() {
               <span className={`text-sm ${
                 isDarkMode ? 'text-gray-300' : 'text-gray-700'
               }`}>
-                Bonjour { JSON.parse(localStorage.user).name } !
+                Bonjour { userData?.name } !
               </span>
             </div>
           </div>

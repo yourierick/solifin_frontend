@@ -167,11 +167,33 @@ function App() {
 
 // Composant pour les routes publiques
 const PublicRoute = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading, lastVisitedUrl } = useAuth();
+  
+  // Attendre que la vérification de l'authentification soit terminée
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
   
   // Si l'utilisateur est connecté, rediriger vers le dashboard approprié
   if (user) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+    // Vérifier si l'utilisateur est admin de plusieurs façons possibles
+    const isAdmin = user.is_admin === 1 || user.is_admin === true || user.role === 'admin';
+    
+    // Si une dernière URL visitée existe et que c'est une route valide, y rediriger
+    if (lastVisitedUrl) {
+      // Vérifier que l'URL est valide (commence par /admin ou /dashboard selon le rôle)
+      if ((isAdmin && lastVisitedUrl.startsWith('/admin')) || 
+          (!isAdmin && lastVisitedUrl.startsWith('/dashboard'))) {
+        return <Navigate to={lastVisitedUrl} replace />;
+      }
+    }
+    
+    // Sinon, rediriger vers le dashboard par défaut selon le rôle
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
   }
   
   return children;
@@ -181,11 +203,17 @@ const PublicRoute = ({ children }) => {
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
+  // Afficher le loader pendant le chargement initial
   if (loading) {
-    return null; // ou un composant de chargement
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
   
-  if (!user) {
+  // Rediriger vers login uniquement si on n'est pas en train de charger et qu'il n'y a pas d'utilisateur
+  if (!loading && !user) {
     return <Navigate to="/login" replace />;
   }
   
