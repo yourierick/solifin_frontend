@@ -15,10 +15,10 @@ export default function Profile() {
     email: '',
     phone: '',
     address: '',
-    gender: '',
-    country: '',
+    sexe: '',
+    pays: '',
     province: '',
-    city: '',
+    ville: '',
     picture: null,
     password: '',
     password_confirmation: ''
@@ -36,9 +36,9 @@ export default function Profile() {
       setLoadingCountries(true);
       const response = await axios.get('https://restcountries.com/v3.1/all');
       const sortedCountries = response.data
-        .map(country => ({
-          code: country.cca2,
-          name: country.translations.fra?.common || country.name.common
+        .map(pays => ({
+          code: pays.cca2,
+          name: pays.translations.fra?.common || pays.name.common
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
       setCountries(sortedCountries);
@@ -58,10 +58,10 @@ export default function Profile() {
         email: response.data.data.email,
         phone: response.data.data.phone || '',
         address: response.data.data.address || '',
-        gender: response.data.data.gender || '',
-        country: response.data.data.country || '',
+        sexe: response.data.data.sexe || '',
+        pays: response.data.data.pays || '',
         province: response.data.data.province || '',
-        city: response.data.data.city || '',
+        ville: response.data.data.ville || '',
         picture: null,
         password: '',
         password_confirmation: ''
@@ -195,7 +195,7 @@ export default function Profile() {
         <div className="px-6 pt-20 pb-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Mon Profil
+              Mon Profile
             </h2>
             <button
               onClick={() => setIsEditing(!isEditing)}
@@ -268,19 +268,18 @@ export default function Profile() {
                       Sexe
                     </label>
                     <select
-                      name="gender"
-                      value={formData.gender}
+                      name="sexe"
+                      value={formData.sexe}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-2.5 rounded-lg border ${
-                        validationErrors.gender ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-4 py-2.5 rounded-lg border ${ validationErrors.sexe ? 'border-red-500' : 'border-gray-300'
                       } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
                     >
                       <option value="">Sélectionner</option>
                       <option value="homme">Masculin</option>
                       <option value="femme">Féminin</option>
                     </select>
-                    {validationErrors.gender && (
-                      <p className="mt-1 text-sm text-red-500">{validationErrors.gender[0]}</p>
+                    {validationErrors.sexe && (
+                      <p className="mt-1 text-sm text-red-500">{validationErrors.sexe[0]}</p>
                     )}
                   </div>
                   <div>
@@ -289,23 +288,23 @@ export default function Profile() {
                     </label>
                     <div className="relative">
                       <select
-                        name="country"
-                        value={formData.country}
+                        name="pays"
+                        value={formData.pays}
                         onChange={handleInputChange}
                         disabled={loadingCountries}
                         className={`w-full px-4 py-2.5 rounded-lg border ${
-                          validationErrors.country ? 'border-red-500' : 'border-gray-300'
+                          validationErrors.pays ? 'border-red-500' : 'border-gray-300'
                         } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
                       >
                         <option value="">Sélectionner un pays</option>
-                        {countries.map(country => (
-                          <option key={country.code} value={country.name}>
-                            {country.name}
+                        {countries.map(pays => (
+                          <option key={pays.code} value={pays.name}>
+                            {pays.name}
                           </option>
                         ))}
                       </select>
-                      {validationErrors.country && (
-                        <p className="mt-1 text-sm text-red-500">{validationErrors.country[0]}</p>
+                      {validationErrors.pays && (
+                        <p className="mt-1 text-sm text-red-500">{validationErrors.pays[0]}</p>
                       )}
                     </div>
                   </div>
@@ -335,15 +334,15 @@ export default function Profile() {
                     </label>
                     <input
                       type="text"
-                      name="city"
-                      value={formData.city}
+                      name="ville"
+                      value={formData.ville}
                       onChange={handleInputChange}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
-                        validationErrors.city ? 'border-red-500' : 'border-gray-300'
+                        validationErrors.ville ? 'border-red-500' : 'border-gray-300'
                       } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
                     />
-                    {validationErrors.city && (
-                      <p className="mt-1 text-sm text-red-500">{validationErrors.city[0]}</p>
+                    {validationErrors.ville && (
+                      <p className="mt-1 text-sm text-red-500">{validationErrors.ville[0]}</p>
                     )}
                   </div>
                   <div>
@@ -432,7 +431,7 @@ export default function Profile() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Sexe</dt>
                     <dd className="mt-1 text-base text-gray-900 dark:text-white">
-                      {user.gender === 'homme' ? 'Masculin' : user.gender === 'femme' ? 'Féminin' : '-'}
+                      {user.sexe === 'homme' ? 'Masculin' : user.sexe === 'femme' ? 'Féminin' : '-'}
                     </dd>
                   </div>
                 </dl>
@@ -443,7 +442,7 @@ export default function Profile() {
                 <dl className="space-y-4">
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Pays</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.country || '-'}</dd>
+                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.pays || '-'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Province</dt>
@@ -451,7 +450,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Ville</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.city || '-'}</dd>
+                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.ville || '-'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Adresse</dt>
