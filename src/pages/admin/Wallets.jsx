@@ -124,11 +124,12 @@ export default function Wallets() {
   const fetchWalletData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/wallets/data');
+      const response = await axios.get('/api/admin/wallets/data');
       if (response.data.success) {
         setAdminWallet(response.data.adminWallet);
         setSystemWallet(response.data.systemWallet);
         setTransactions(response.data.transactions);
+        console.log(response.data);
       }
     } catch (error) {
       Notification.error('Erreur lors du chargement des données');

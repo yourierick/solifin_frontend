@@ -31,9 +31,10 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../../utils/axios';
 import { PlusIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../../contexts/ToastContext';
+import Notification from '../../components/Notification';
 
 export default function AddPack() {
   const navigate = useNavigate();
@@ -72,11 +73,11 @@ export default function AddPack() {
       const validExtensions = ['zip', 'rar', '7z'];
       
       if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        showToast('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
         return;
       }
       setFormations(file);
-      showToast('Fichier ajouté avec succès', 'success');
+      Notification.success('Fichier ajouté avec succès', 'success');
     }
   };
 
@@ -109,11 +110,11 @@ export default function AddPack() {
       const validExtensions = ['zip', 'rar', '7z'];
       
       if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        showToast('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)');
         return;
       }
       setFormations(file);
-      showToast('Fichier ajouté avec succès', 'success');
+      Notification.success('Fichier ajouté avec succès');
     }
   };
 
@@ -139,26 +140,26 @@ export default function AddPack() {
     try {
       // Valider les données avant l'envoi
       if (!formData.name.trim()) {
-        showToast('Le nom du pack est requis', 'error');
+        Notification.warning('Le nom du pack est requis');
         return;
       }
       if (!formData.description.trim()) {
-        showToast('La description du pack est requise', 'error');
+        Notification.warning('La description du pack est requise');
         return;
       }
       if (!formData.price || formData.price <= 0) {
-        showToast('Le prix doit être supérieur à 0', 'error');
+        Notification.warning('Le prix doit être supérieur à 0');
         return;
       }
       if (!formations) {
-        showToast('Le fichier des formations est requis', 'error');
+        Notification.warning('Le fichier des formations est requis');
         return;
       }
       
       // Filtrer les avantages vides
       const filteredAvantages = avantages.filter(avantage => avantage.trim() !== '');
       if (filteredAvantages.length === 0) {
-        showToast('Au moins un avantage est requis', 'error');
+        Notification.warning('Au moins un avantage est requis');
         return;
       }
 
@@ -170,15 +171,15 @@ export default function AddPack() {
       formDataToSend.append('formations', formations);
       formDataToSend.append('avantages', JSON.stringify(filteredAvantages));
 
-      const response = await axios.post('/admin/packs/add', formDataToSend, {
+      const response = await axios.post('/api/admin/packs', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
-        withCredentials: true
+          'X-Requested-With': 'XMLHttpRequest'
+        }
       });
 
       if (response.data.success) {
-        showToast('Pack créé avec succès', 'success');
+        Notification.success('Pack créé avec succès', 'success');
         navigate('/admin/packs');
       }
     } catch (err) {
@@ -186,9 +187,9 @@ export default function AddPack() {
       
       if (err.response?.data?.errors) {
         const firstError = Object.values(err.response.data.errors)[0][0];
-        showToast(firstError, 'error');
+        Notification.error(firstError, 'error');
       } else {
-        showToast(
+        Notification.error(
           err.response?.data?.message || 'Une erreur est survenue lors de la création du pack',
           'error'
         );

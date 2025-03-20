@@ -62,13 +62,25 @@ export const AuthProvider = ({ children }) => {
 
   // Vérifier l'authentification au chargement
   useEffect(() => {
-    checkAuth();
+    const initializeAuth = async () => {
+      setLoading(true);
+      try {
+        await checkAuth();
+      } catch (error) {
+        console.log('Non authentifié');
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   // Vérifier périodiquement l'état de la session
   useEffect(() => {
     if (user) {
-      const interval = setInterval(checkAuth, 5 * 60 * 1000); // Vérifier toutes les 5 minutes
+      const interval = setInterval(async () => {
+        await checkAuth();
+      }, 5 * 60 * 1000); // Vérifier toutes les 5 minutes
       return () => clearInterval(interval);
     }
   }, [user]);

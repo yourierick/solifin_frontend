@@ -122,9 +122,9 @@ const PurchasePack = () => {
 
   if (loading) {
     return (
-      <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
@@ -143,7 +143,8 @@ const PurchasePack = () => {
           border: 'none',
           borderRadius: 2,
           boxShadow: 'none'
-        }}  
+        }} 
+        className="dark:bg-[rgba(17,24,39,0.95)]" 
       >
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'whitesmoke', textAlign: 'center' }}>

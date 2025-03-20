@@ -20,10 +20,10 @@ export default function Packs() {
   const fetchPacks = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/packs');
+      const response = await axios.get('/api/admin/packs');
       setPacks(response.data.packs || []);
     } catch (err) {
-      showToast('Erreur lors du chargement des packs', 'error');
+      Notification.error('Erreur lors du chargement des packs');
       setPacks([]);
     } finally {
       setLoading(false);
@@ -32,13 +32,13 @@ export default function Packs() {
 
   const togglePackStatus = async (packId) => {
     try {
-      const response = await axios.patch(`/admin/packs/${packId}/toggle-status`);
+      const response = await axios.patch(`/api/admin/packs/${packId}/toggle-status`);
       if (response.data.success) {
-        showToast(response.data.message, 'success');
+        Notification.success(response.data.message);
         fetchPacks();
       }
     } catch (err) {
-      showToast('Erreur lors de la mise à jour du statut', 'error');
+      Notification.error('Erreur lors de la mise à jour du statut');
     }
   };
 
@@ -46,19 +46,19 @@ export default function Packs() {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce pack ?')) return;
     
     try {
-      const response = await axios.delete(`/admin/packs/${packId}`);
+      const response = await axios.delete(`/api/admin/packs/${packId}`);
       if (response.data.success) {
         showToast(response.data.message, 'success');
         fetchPacks();
       }
     } catch (err) {
-      showToast('Erreur lors de la suppression du pack', 'error');
+      Notification.error('Erreur lors de la suppression du pack');
     }
   };
 
   const showCommissionModal = (packId) => {
     setSelectedPackId(packId);
-    axios.get(`/admin/packs/${packId}/commission-rates`)
+    axios.get(`/api/admin/packs/${packId}/commission-rates`)
       .then(response => {
         setCommissionRates(response.data.rates);
         setIsCommissionModalVisible(true);
@@ -70,7 +70,7 @@ export default function Packs() {
 
   const handleCommissionSubmit = async (level, rate) => {
     try {
-      await axios.post(`/admin/packs/${selectedPackId}/commission-rate`, {
+      await axios.post(`/api/admin/packs/${selectedPackId}/commission-rate`, {
         level,
         commission_rate: rate
       });
@@ -201,7 +201,7 @@ export default function Packs() {
 
       {isCommissionModalVisible && (
         <div 
-          className="fixed inset-0 z-50 bg-gray-500 bg-opacity-75 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-gray-700 bg-opacity-75 flex items-center justify-center"
           onClick={() => setIsCommissionModalVisible(false)}
         >
           <div 
@@ -217,8 +217,8 @@ export default function Packs() {
                 ×
               </button>
             </div>
-            
-            <div className="space-y-4">
+            <hr />
+            <div className="space-y-4 mt-4">
               {[1, 2, 3, 4].map((level) => (
                 <div key={level} className="flex items-center space-x-4">
                   <span className="w-48">
@@ -238,6 +238,7 @@ export default function Packs() {
                     <input
                       type="number"
                       name="rate"
+                      step="0.01"
                       min="0"
                       max="100"
                       defaultValue={commissionRates[level]}

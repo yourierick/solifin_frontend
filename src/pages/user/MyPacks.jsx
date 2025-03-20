@@ -547,8 +547,8 @@ const MyPacks = () => {
             p: 4, 
             textAlign: 'center',
             bgcolor: isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'background.paper',
-            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-            boxShadow: 'none'
+            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+            boxShadow: 'none',
           }}
         >
           <Typography 
@@ -575,7 +575,7 @@ const MyPacks = () => {
               <Card
                 sx={{
                   bgcolor: isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'background.paper',
-                  border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+                  border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '2px solid rgba(0, 0, 0, 0.1)',
                   boxShadow: 'none'
                 }}
               >

@@ -16,6 +16,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from '../utils/axios';
 import { useToast } from '../contexts/ToastContext';
+import Notification from './Notification';
 
 const paymentMethods = [
   {
@@ -153,20 +154,20 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       const response = await axios.post('/api/packs/purchase_a_new_pack', {
         pack_id: pack.id,
         payment_method: paymentMethod,
-        months: months,
+        duration_months: months,
         amount: totalAmount,
         payment_details: formFields,
         referral_code: referralCode.trim()
       });
 
       if (response.data.success) {
-        toast.success('Achat effectué avec succès');
+        Notification.success('Achat effectué avec succès');
         onClose();
       } else {
-        setError(response.data.message || 'Une erreur est survenue');
+        Notification.error(response.data.message || 'Une erreur est survenue');
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Une erreur est survenue');
+      Notification.error(error.response?.data?.message || 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }

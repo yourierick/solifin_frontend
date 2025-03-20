@@ -31,6 +31,7 @@ import Tree from 'react-d3-tree';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
+import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 
 const CustomNode = ({ nodeDatum, isDarkMode, toggleNode }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -165,6 +166,15 @@ const MyPacks = () => {
   const [viewMode, setViewMode] = useState('table');
   const treeRef = useRef(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    });
+  };
 
   useEffect(() => {
     fetchUserPacks();
@@ -616,8 +626,45 @@ const MyPacks = () => {
                     gutterBottom
                     sx={{ color: isDarkMode ? 'grey.300' : 'text.primary' }}
                   >
-                    Code de parrainage: <strong>{userPack.referral_code}</strong>
+                    Code de parrainage: <strong>{userPack.referral_code}</strong> 
                   </Typography>
+
+                  <Typography 
+                    variant="body2" 
+                    gutterBottom
+                    sx={{ color: isDarkMode ? 'grey.300' : 'text.primary', display: 'flex', alignItems: 'center' }}
+                  >
+                    Lien de parrainage: 
+                    <Box 
+                      component="span" 
+                      sx={{ 
+                        bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', 
+                        px: 1, 
+                        py: 0.5, 
+                        borderRadius: 1, 
+                        fontFamily: 'monospace', 
+                        fontSize: '0.875rem', 
+                        marginRight: '8px', 
+                        cursor: 'text' 
+                      }}
+                    >
+                      {userPack.link_referral}
+                    </Box>
+                    <Tooltip title={copySuccess ? 'Copié !' : 'Copier'} placement="top" arrow>
+                      <ContentCopyIcon 
+                        onClick={() => handleCopy(userPack.link_referral)}
+                        sx={{ 
+                          ml: 1, 
+                          cursor: 'pointer', 
+                          color: isDarkMode ? 'grey.500' : 'grey.700',
+                          '&:hover': {
+                            color: isDarkMode ? 'grey.300' : 'grey.900',
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                  </Typography>
+
 
                   {userPack.sponsor_info && (
                     <Box sx={{ mt: 2, p: 2, borderRadius: 1, bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'grey.50' }}>

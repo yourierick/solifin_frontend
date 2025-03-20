@@ -70,7 +70,7 @@ function App() {
             <Login />
           </PublicRoute>
         } />
-        <Route path="/register/:referral_code?" element={
+        <Route path="/register" element={
           <PublicRoute>
             <Register />
           </PublicRoute>
@@ -122,7 +122,6 @@ function App() {
           <Route path="mespacks" element={<MesPacks />} />
           <Route path="packs/add" element={<AddPack />} />
           <Route path="packs/edit/:id" element={<EditPack />} />
-          <Route path="commissions" element={<div>Gestion des commissions (à venir)</div>} />
           <Route path="validations">
             <Route path="ads" element={<AdvertisementValidation />} />
             <Route path="opportunities" element={<OpportunityValidation />} />
@@ -178,8 +177,8 @@ const PublicRoute = ({ children }) => {
     );
   }
   
-  // Si l'utilisateur est connecté, rediriger vers le dashboard approprié
-  if (user) {
+  // Si l'utilisateur est connecté et n'est pas sur la page d'accueil
+  if (user && window.location.pathname !== '/') {
     // Vérifier si l'utilisateur est admin de plusieurs façons possibles
     const isAdmin = user.is_admin === 1 || user.is_admin === true || user.role === 'admin';
     

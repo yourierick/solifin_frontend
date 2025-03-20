@@ -413,7 +413,7 @@ const PackStatsModal = ({ open, onClose, packId }) => {
               Total des commissions
             </Typography>
             <Typography variant="h4">
-              {stats?.financial_info.total_commission} $
+              {stats?.financial_info.total_commission.toFixed(2)} $
             </Typography>
           </CardContent>
         </Card>

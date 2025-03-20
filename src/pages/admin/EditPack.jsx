@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../../utils/axios';
 import { PlusIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../../contexts/ToastContext';
-
+import Notification from '../../components/Notification';
 export default function EditPack() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -26,7 +26,7 @@ export default function EditPack() {
 
   const fetchPack = async () => {
     try {
-      const response = await axios.get(`/admin/packs/${id}`);
+      const response = await axios.get(`/api/admin/packs/${id}`);
       const pack = response.data.data;
       
       setFormData({
@@ -50,7 +50,7 @@ export default function EditPack() {
         setCurrentFormations(pack.formations.split('/').pop());
       }
     } catch (err) {
-      showToast('Erreur lors du chargement du pack', 'error');
+      Notification.error('Erreur lors du chargement du pack', 'error');
       navigate('/admin/packs');
     }
   };
@@ -77,11 +77,11 @@ export default function EditPack() {
       const validExtensions = ['zip', 'rar', '7z'];
       
       if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        showToast('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
         return;
       }
       setFormations(file);
-      showToast('Fichier ajouté avec succès', 'success');
+      Notification.success('Fichier ajouté avec succès', 'success');
     }
   };
 
@@ -113,11 +113,11 @@ export default function EditPack() {
       const validExtensions = ['zip', 'rar', '7z'];
       
       if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        showToast('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
         return;
       }
       setFormations(file);
-      showToast('Fichier ajouté avec succès', 'success');
+      Notification.success('Fichier ajouté avec succès', 'success');
     }
   };
 
@@ -143,22 +143,22 @@ export default function EditPack() {
     try {
       // Valider les données avant l'envoi
       if (!formData.name.trim()) {
-        showToast('Le nom du pack est requis', 'error');
+        Notification.error('Le nom du pack est requis');
         return;
       }
       if (!formData.description.trim()) {
-        showToast('La description du pack est requise', 'error');
+        Notification.error('La description du pack est requise');
         return;
       }
       if (!formData.price || formData.price <= 0) {
-        showToast('Le prix doit être supérieur à 0', 'error');
+        Notification.error('Le prix doit être supérieur à 0');
         return;
       }
       
       // Filtrer les avantages vides
       const filteredAvantages = avantages.filter(avantage => avantage.trim() !== '');
       if (filteredAvantages.length === 0) {
-        showToast('Au moins un avantage est requis', 'error');
+        Notification.error('Au moins un avantage est requis');
         return;
       }
 
@@ -175,10 +175,11 @@ export default function EditPack() {
       
       formDataToSend.append('avantages', JSON.stringify(filteredAvantages));
 
-      const response = await axios.post(`/admin/packs/${id}`, formDataToSend, {
+      const response = await axios.post(`/api/admin/packs/${id}`, formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
+          'X-Requested-With': 'XMLHttpRequest'
+        }
       });
 
       if (response.data.success) {
@@ -190,9 +191,9 @@ export default function EditPack() {
       
       if (err.response?.data?.errors) {
         const firstError = Object.values(err.response.data.errors)[0][0];
-        showToast(firstError, 'error');
+        Notification.error(firstError);
       } else {
-        showToast(
+        Notification.error(
           err.response?.data?.message || 'Une erreur est survenue lors de la mise à jour du pack',
           'error'
         );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -16,20 +16,56 @@ const LoginForm = () => {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    watch
   } = useForm();
+
+  // Surveiller la valeur de rememberMe
+  const rememberMe = watch('rememberMe');
+
+  // Charger l'email stocké au montage du composant
+  useEffect(() => {
+    const storedEmail = localStorage.getItem('rememberedEmail');
+    const storedRememberMe = localStorage.getItem('rememberMe') === 'true';
+
+    if (storedEmail && storedRememberMe) {
+      setValue('email', storedEmail);
+      setValue('rememberMe', true);
+    }
+  }, [setValue]);
 
   const onSubmit = async (data) => {
     try {
       setIsLoading(true);
       const result = await login(data.email, data.password);
       
-      if (!result.success) {
+      if (result.success) {
+        // Gérer le stockage de l'email
+        if (data.rememberMe) {
+          localStorage.setItem('rememberedEmail', data.email);
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberMe');
+        }
+      } else {
         toast.error(result.error || 'Erreur de connexion');
       }
     } catch (error) {
       toast.error('Une erreur est survenue lors de la connexion');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Gérer le changement de l'état "Se souvenir de moi"
+  const handleRememberMeChange = (e) => {
+    const checked = e.target.checked;
+    setValue('rememberMe', checked);
+    
+    if (!checked) {
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberMe');
     }
   };
 
@@ -122,6 +158,7 @@ const LoginForm = () => {
           <input
             {...register('rememberMe')}
             type="checkbox"
+            onChange={handleRememberMeChange}
             className={`h-4 w-4 rounded focus:ring-primary-500 ${
               isDarkMode 
                 ? 'bg-gray-700 border-gray-600 text-primary-500' 

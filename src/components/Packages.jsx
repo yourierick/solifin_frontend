@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../contexts/ThemeContext';
-import axios from '../utils/axios';
+import publicAxios from '../utils/publicAxios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,17 +28,20 @@ const itemVariants = {
 
 export default function Packages() {
   const { isDarkMode } = useTheme();
-  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [packs, setPacks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPacks = async () => {
       try {
-        const response = await axios.get('/api/packs');
-        if (response.data.success) {
+        const response = await publicAxios.get('/api/packs');
+        console.log('Response data:', response.data); // Pour déboguer
+        if (response.data && response.data.data) {
           setPacks(response.data.data.filter(pack => pack.status));
+        } else {
+          console.error('Format de réponse invalide:', response.data);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des packs:', error);
@@ -115,8 +118,8 @@ export default function Packages() {
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
                   onClick={() => {
-                    if (!isAuthenticated) {
-                      navigate('/register', { state: { selectedPackId: pack.id } });
+                    if (!user) {
+                      navigate('/register');
                     } else {
                       if (user.is_admin) {
                         navigate('/admin/dashboard');

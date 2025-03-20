@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  CircularProgress,
 } from '@mui/material';
 import { Person as PersonIcon } from '@mui/icons-material';
 import axios from '../../utils/axios';
@@ -142,7 +141,7 @@ const Users = () => {
     //console.log('Showing loading state'); // Debug log
     return (
       <div className="flex justify-center items-center h-64">
-        <CircularProgress />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -198,7 +197,7 @@ const Users = () => {
 
         {loading && !users.length ? (
           <div className="flex justify-center items-center h-64">
-            <CircularProgress />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : users.length === 0 ? (
           <div className="text-center py-8">
@@ -320,8 +319,8 @@ const Users = () => {
               <ReferralList userId={selectedUser.id} />
             </div>
           ) : (
-            <div className="flex justify-center p-8">
-              <CircularProgress />
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           )}
         </DialogContent>

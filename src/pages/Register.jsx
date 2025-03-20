@@ -61,38 +61,11 @@ export default function Register() {
     province: '',
     city: '',
     sponsor_code: '',
-    pack_id: '',
     acceptTerms: false,
   });
   const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
-    const fetchPacks = async () => {
-      try {
-        setLoadingPacks(true);
-        const response = await axios.get('/api/packs');
-        if (response.data.success) {
-          const activePacks = response.data.data.filter((pack) => pack.status);
-          setPacks(activePacks.map((pack) => ({ id: pack.id, name: pack.name, price: pack.price })));
-
-          if (selectedPackId) {
-            const selectedPack = activePacks.find((p) => p.id === selectedPackId);
-            if (selectedPack) {
-              setFormData((prev) => ({
-                ...prev,
-                pack_id: selectedPack.id,
-              }));
-            }
-          }
-        }
-      } catch (error) {
-
-        Notification.error('Impossible de charger les packs disponible')
-      } finally {
-        setLoadingPacks(false);
-      }
-    };
-
     const fetchCountries = async () => {
       try {
         setLoadingCountries(true);
@@ -111,7 +84,6 @@ export default function Register() {
       }
     };
 
-    fetchPacks();
     fetchCountries();
 
     // Extract referral code from URL if present
@@ -136,7 +108,6 @@ export default function Register() {
     if (!formData.password_confirmation) errors.password_confirmation = 'La confirmation du mot de passe est obligatoire';
     if (formData.password !== formData.password_confirmation) errors.password_confirmation = 'Les mots de passe ne correspondent pas';
     if (!formData.sponsor_code.trim()) errors.sponsor_code = 'Le code parrain est obligatoire';
-    if (!formData.pack_id) errors.pack_id = 'La sélection d\'un pack est obligatoire';
     if (!formData.acceptTerms) errors.acceptTerms = 'Vous devez accepter les conditions d\'utilisation';
 
     setFormErrors(errors);
@@ -419,46 +390,6 @@ export default function Register() {
                       },
                     }}
                   />
-
-                  <FormControl 
-                    fullWidth 
-                    error={!!formErrors.pack_id}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#2E7D32',
-                        },
-                      },
-                      '& .MuiInputLabel-root.Mui-focused': {
-                        color: '#2E7D32',
-                      },
-                    }}
-                  >
-                    <InputLabel>Pack d'investissement</InputLabel>
-                    <Select
-                      name="pack_id"
-                      value={formData.pack_id}
-                      onChange={handleChange}
-                      required
-                      disabled={loadingPacks || selectedPackId}
-                    >
-                      <MenuItem value="">Sélectionnez un pack</MenuItem>
-                      {loadingPacks ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} style={{ color: '#2E7D32' }} /> Chargement...
-                        </MenuItem>
-                      ) : (
-                        packs.map((pack) => (
-                          <MenuItem key={pack.id} value={pack.id}>
-                            {pack.name} - {pack.price}€/mois
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
-                    {formErrors.pack_id && (
-                      <FormHelperText>{formErrors.pack_id}</FormHelperText>
-                    )}
-                  </FormControl>
 
                   <FormControlLabel
                     control={
