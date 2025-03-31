@@ -22,13 +22,8 @@ const paymentMethods = {
     ]
   },
   cards: {
-    name: 'Cartes',
-    icon: CreditCardIcon,
-    options: [
-      { id: 'visa', name: 'Visa' },
-      { id: 'mastercard', name: 'Mastercard' },
-      { id: 'credit-card', name: 'Carte de crédit' }
-    ]
+    name: 'Carte bancaire',
+    icon: CreditCardIcon
   }
 };
 
@@ -50,21 +45,22 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   const [resendLoading, setResendLoading] = useState(false);
 
   const isFormValid = () => {
-    if (!selectedMethod || !selectedOption) return false;
+    if (!selectedMethod) return false;
     
     if (selectedMethod === 'mobileMoney') {
-      if (!otpSent) return false;
+      if (!selectedOption || !otpSent) return false;
       return formData.phoneNumber && formData.amount && otp;
     }
     
     if (selectedMethod === 'cards') {
+      if (!otpSent) return false;
       return formData.cardHolderName && 
              formData.cardNumber && 
              formData.expiryDate && 
-             formData.cvv && 
-             formData.amount;
+             formData.amount &&
+             otp;
     }
-    
+  
     return false;
   };
 
@@ -72,7 +68,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     try {
       setResendLoading(true);
       const response = await axios.post('/api/withdrawal/send-otp', {
-        phone_number: formData.phoneNumber
+        phone_number: selectedMethod === 'mobileMoney' ? formData.phoneNumber : null,
+        payment_method: selectedMethod === 'mobileMoney' ? 'mobile-money' : 'card'
       });
 
       if (response.data.success) {
@@ -80,7 +77,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         Notification.success(response.data.message);
       }
     } catch (error) {
-      Notification.error('Erreur lors de l\'envoi du code OTP');
+      Notification.error(error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP');
     } finally {
       setResendLoading(false);
     }
@@ -107,17 +104,22 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
           otp: otp
         });
       } else {
+        if (!otpSent) {
+          await handleSendOtp();
+          return;
+        }
+
         response = await axios.post('/api/withdrawal/request', {
           wallet_id: walletId,
           wallet_type: walletType,
-          payment_method: selectedOption,
+          payment_method: 'card',
           amount: formData.amount,
           card_details: {
             number: formData.cardNumber,
             expiry: formData.expiryDate,
-            cvv: formData.cvv,
             holder_name: formData.cardHolderName
-          }
+          },
+          otp: otp
         });
       }
 
@@ -133,7 +135,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   };
 
   const renderFields = () => {
-    if (!selectedOption) return null;
+    if (!selectedMethod) return null;
 
     if (selectedMethod === 'mobileMoney') {
       return (
@@ -263,41 +265,22 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Date d'expiration
-              </label>
-              <input
-                type="text"
-                value={formData.expiryDate}
-                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                className={`mt-1 block w-full rounded-md ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300'
-                }`}
-                placeholder="MM/YY"
-                required
-              />
-            </div>
-            <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                CVV
-              </label>
-              <input
-                type="text"
-                value={formData.cvv}
-                onChange={(e) => setFormData({ ...formData, cvv: e.target.value })}
-                className={`mt-1 block w-full rounded-md ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300'
-                }`}
-                placeholder="123"
-                required
-              />
-            </div>
+          <div>
+            <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              Date d'expiration
+            </label>
+            <input
+              type="text"
+              value={formData.expiryDate}
+              onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+              className={`mt-1 block w-full rounded-md ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white' 
+                  : 'border-gray-300'
+              }`}
+              placeholder="MM/YY"
+              required
+            />
           </div>
           <div>
             <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
@@ -315,6 +298,60 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
               placeholder="0.00"
               required
             />
+          </div>
+          <div className="flex flex-col space-y-2">
+            {!otpSent ? (
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={!formData.cardHolderName || !formData.cardNumber || !formData.expiryDate || !formData.amount || resendLoading}
+                className={`w-full px-4 py-2 text-sm font-medium rounded-md ${
+                  !formData.cardHolderName || !formData.cardNumber || !formData.expiryDate || !formData.amount || resendLoading
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : isDarkMode
+                      ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                      : 'bg-primary-500 hover:bg-primary-600 text-white'
+                }`}
+              >
+                {resendLoading ? (
+                  <ArrowPathIcon className="h-5 w-5 animate-spin mx-auto" />
+                ) : (
+                  'Envoyer le code OTP'
+                )}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Code OTP
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className={`block w-full rounded-md ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'border-gray-300'
+                    }`}
+                    placeholder="Entrez le code reçu"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={resendLoading}
+                    className={`px-3 py-2 rounded-md ${
+                      isDarkMode 
+                        ? 'bg-gray-700 hover:bg-gray-600' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    <ArrowPathIcon className={`h-5 w-5 ${resendLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -389,42 +426,52 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
           </div>
 
           {selectedMethod && (
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {paymentMethods[selectedMethod].name}
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {paymentMethods[selectedMethod].options.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelectedOption(option.id)}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      selectedOption === option.id
-                        ? isDarkMode
-                          ? 'bg-gray-700 border-primary-500'
-                          : 'bg-primary-50 border-primary-500'
-                        : isDarkMode
-                          ? 'border-gray-600 hover:border-gray-500'
-                          : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <span className={`text-sm font-medium ${
-                      selectedOption === option.id
-                        ? 'text-primary-500'
-                        : isDarkMode
-                          ? 'text-gray-300'
-                          : 'text-gray-700'
-                    }`}>
-                      {option.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <>
+              {selectedMethod === 'mobileMoney' && (
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {paymentMethods[selectedMethod].name}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {paymentMethods[selectedMethod].options.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedOption(option.id)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                          selectedOption === option.id
+                            ? isDarkMode
+                              ? 'bg-gray-700 border-primary-500'
+                              : 'bg-primary-50 border-primary-500'
+                            : isDarkMode
+                              ? 'border-gray-600 hover:border-gray-500'
+                              : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <PhoneIcon className={`h-5 w-5 ${
+                          selectedOption === option.id
+                            ? 'text-primary-500'
+                            : isDarkMode
+                              ? 'text-gray-400'
+                              : 'text-gray-500'
+                        }`} />
+                        <span className={`text-sm font-medium ${
+                          selectedOption === option.id
+                            ? 'text-primary-500'
+                            : isDarkMode
+                              ? 'text-gray-300'
+                              : 'text-gray-700'
+                        }`}>
+                          {option.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {renderFields()}
+            </>
           )}
-
-          {renderFields()}
         </form>
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">

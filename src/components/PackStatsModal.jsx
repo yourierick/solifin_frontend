@@ -333,7 +333,7 @@ const PackStatsModal = ({ open, onClose, packId }) => {
               <TableCell>{referral.pack_name}</TableCell>
               <TableCell>{referral.purchase_date}</TableCell>
               <TableCell>{referral.expiry_date}</TableCell>
-              <TableCell>{referral.validity_months}</TableCell>
+              <TableCell>{referral.validity_months.toFixed(0)}</TableCell>
               <TableCell>
                 <Chip
                   label={referral.status === 'active' ? 'Actif' : 'Inactif'}
@@ -549,7 +549,7 @@ const PackStatsModal = ({ open, onClose, packId }) => {
                   <TableCell>{referral.pack_name}</TableCell>
                   <TableCell>{referral.purchase_date}</TableCell>
                   <TableCell>{referral.expiry_date}</TableCell>
-                  <TableCell>{referral.validity_months}</TableCell>
+                  <TableCell>{referral.validity_months.toFixed(0)}</TableCell>
                   <TableCell>{referral.generation}</TableCell>
                   <TableCell>
                     <Chip

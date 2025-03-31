@@ -394,8 +394,8 @@ export default function Wallets() {
           </div>
 
           {showFilters && (
-            <div className="mb-4 flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="w-full">
                 <select
                   value={statusFilter}
                   onChange={handleStatusFilter}
@@ -413,7 +413,7 @@ export default function Wallets() {
                 </select>
               </div>
 
-              <div className="flex-1 min-w-[200px]">
+              <div className="w-full">
                 <select
                   value={typeFilter}
                   onChange={handleTypeFilter}
@@ -430,7 +430,7 @@ export default function Wallets() {
                 </select>
               </div>
 
-              <div className="flex gap-2 flex-1 min-w-[300px]">
+              <div className="w-full grid grid-cols-2 gap-2">
                 <input
                   type="date"
                   value={dateFilter.startDate}
@@ -511,7 +511,7 @@ export default function Wallets() {
                         transaction.type === 'withdrawal' || transaction.type === 'transfer' ? 'text-red-500' : 'text-green-500'
                       }`}>
                         {transaction.type === 'withdrawal' || transaction.type === 'transfer' ? '-' : '+'}
-                        {transaction.amount} {transaction.metadata?.currency || '€'}
+                        {transaction.amount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -524,24 +524,45 @@ export default function Wallets() {
                         isDarkMode ? 'text-gray-200' : 'text-gray-900'
                       }`}>
                         <div className="flex flex-col">
-                          {transaction.metadata.source && (
-                            <div>Source: {transaction.metadata.source}</div>
+                          {transaction.type === "commission" || transaction.type === "transfer" ? (
+                            <div>
+                              {transaction.metadata.source && (
+                                <div>Source: {transaction.metadata.source}</div>
+                              )}
+                              {transaction.metadata.pack_name && (
+                                <div>{transaction.metadata.pack_name}</div>
+                              )}
+                              {transaction.metadata.duration && (
+                                <div>{transaction.metadata.duration} mois</div>
+                              )}
+                              {transaction.metadata.payment_method && (
+                                <div>Méthode: {transaction.metadata.payment_method}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              {transaction.metadata.withdrawal_request_id && (
+                                <div>ID de la demande: {transaction.metadata.withdrawal_request_id}</div>
+                              )}
+                              {transaction.metadata.payment_method && (
+                                <div>Méthode: {transaction.metadata.payment_method}</div>
+                              )}
+                              {transaction.metadata.payment_details && (
+                                <div className="mt-1">
+                                {transaction.metadata.payment_details.phone_number ? (
+                                  <div>Numéro: {transaction.metadata.payment_details.phone_number}</div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div>Carte: ****{transaction.metadata.payment_details.number.slice(-4)}</div>
+                                    <div>Propriétaire: {transaction.metadata.payment_details.holder_name}</div>
+                                    <div>Date d'expiration: {transaction.metadata.payment_details.expiry}</div>
+                                  </div>
+                                )}
+                              </div>
+                              )}
+                            </>
                           )}
-                          {transaction.metadata.pack_name && (
-                            <div>{transaction.metadata.pack_name}</div>
-                          )}
-                          {transaction.metadata.withdrawal_request_id && (
-                            <div>ID de la demande: {transaction.metadata.withdrawal_request_id}</div>
-                          )}
-                          {transaction.metadata.payment_method && (
-                            <div>{transaction.metadata.payment_method}</div>
-                          )}
-                          {!transaction.metadata.source && 
-                           !transaction.metadata.pack_name && 
-                           !transaction.metadata.payment_method && 
-                           !transaction.metadata.withdrawal_request_id && (
-                            <span className="text-gray-400">Détails non disponibles</span>
-                          )}
+
                         </div>
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${

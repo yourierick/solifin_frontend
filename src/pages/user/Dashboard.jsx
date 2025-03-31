@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
 import DashboardCarousel from '../../components/DashboardCarousel';
@@ -7,6 +8,8 @@ import {
   ArrowTrendingUpIcon,
   GiftIcon,
 } from '@heroicons/react/24/outline';
+import axios from '../../utils/axios';
+
 
 const stats = [
   {
@@ -137,6 +140,28 @@ const getStatusText = (status) => {
 
 export default function UserDashboard() {
   const { isDarkMode } = useTheme();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/stats/global');
+      if (response.data.success) {
+        setStats(response.data.data);
+        console.log(response.data.data);
+      }
+    } catch (error) {
+      setError('Erreur lors de la récupération des statistiques');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={`space-y-8 ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -164,19 +189,18 @@ export default function UserDashboard() {
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
           <motion.div
-            key={stat.name}
+            key="Solde actuel"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
             className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
               isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
             }`}
           >
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <stat.icon className={`h-6 w-6 ${
+                <BanknotesIcon className={`h-6 w-6 ${
                   isDarkMode ? 'text-primary-400' : 'text-primary-600'
                 }`} />
               </div>
@@ -185,30 +209,146 @@ export default function UserDashboard() {
                   <dt className={`text-sm font-medium truncate ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    {stat.name}
+                    Solde actuel
                   </dt>
-                  <dd className="flex items-baseline">
+                  <dd className="items-baseline">
                     <div className={`text-2xl font-semibold ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
-                      {stat.value}
+                      {stats?.general_stats?.wallet.balance} $
                     </div>
-                    <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                      stat.changeType === 'positive'
-                        ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                        : isDarkMode ? 'text-red-400' : 'text-red-600'
-                    }`}>
-                      {stat.change}
+                    <div className={`block`}>
+                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
+                        ${ isDarkMode ? 'text-green-400' : 'text-green-600'
+                      }`}>
+                        total_in: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.wallet.total_earned} $</span>
+                      </div>
+                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
+                        ${ isDarkMode ? 'text-red-400' : 'text-red-600'
+                      }`}>
+                        total_out: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.wallet.total_withdrawn} $</span>
+                      </div>
                     </div>
                   </dd>
                 </dl>
               </div>
             </div>
           </motion.div>
-        ))}
+          <motion.div
+            key="Total commissions gagnées"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+            className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
+              isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
+            }`}
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <GiftIcon className={`h-6 w-6 ${
+                  isDarkMode ? 'text-primary-400' : 'text-primary-600'
+                }`} />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className={`text-sm font-medium truncate ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Commissions mensuelles
+                  </dt>
+                  <dd className="flex items-baseline">
+                    <div className={`text-2xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {stats?.financial_info.total_commission.toFixed(2)} $
+                    </div>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            key="Total des filleuls"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+            className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
+              isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
+            }`}
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <UsersIcon className={`h-6 w-6 ${
+                  isDarkMode ? 'text-primary-400' : 'text-primary-600'
+                }`} />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className={`text-sm font-medium truncate ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Total des filleuls
+                  </dt>
+                  <dd className="flex items-baseline">
+                    <div className={`text-2xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {stats?.general_stats.total_referrals}
+                    </div>
+                    <div className={`block`}>
+                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
+                        ${ isDarkMode ? 'text-green-400' : 'text-green-600'
+                      }`}>
+                        actifs: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.active_referrals}</span>
+                      </div>
+                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
+                        ${ isDarkMode ? 'text-red-400' : 'text-red-600'
+                      }`}>
+                        inactifs: <span style={{ fontSize: "9pt" }}> {stats?.general_stats?.inactive_referrals}</span>
+                      </div>
+                    </div>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            key="Failed commission"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+            className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
+              isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
+            }`}
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <GiftIcon className={`h-6 w-6 ${
+                  isDarkMode ? 'text-primary-400' : 'text-primary-600'
+                }`} />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className={`text-sm font-medium truncate ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Commission échouée
+                  </dt>
+                  <dd className="flex items-baseline">
+                    <div className={`text-2xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {stats?.general_stats.failed_commission}
+                    </div>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </motion.div>
       </div>
+      
 
-      {/* Activités récentes */}
+      {/* Performances par pack */}
       <div className={`shadow rounded-lg ${
         isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
       }`}>
@@ -218,7 +358,7 @@ export default function UserDashboard() {
           <h3 className={`text-lg font-medium leading-6 ${
             isDarkMode ? 'text-white' : 'text-gray-900'
           }`}>
-            Activités récentes
+            Performances par pack
           </h3>
         </div>
         <div className="overflow-x-auto">
@@ -230,51 +370,75 @@ export default function UserDashboard() {
                 <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  Description
+                  Pack
                 </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  Montant
+                  Nombre de filleuls
                 </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  Statut
+                  Commissions générées
                 </th>
                 <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  Date
+                  Performance mensuelle
                 </th>
               </tr>
             </thead>
             <tbody className={`divide-y ${
               isDarkMode ? 'divide-gray-700' : 'divide-gray-200'
             }`}>
-              {recentActivities.map((activity) => (
-                <tr key={activity.id} className={
+              {stats?.packs_performance?.map((pack) => (
+                <tr key={pack?.id || 'unknown'} className={
                   isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'
                 }>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>
-                    {activity.description}
+                    {pack?.name || '-'}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    {activity.amount || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(activity.status, isDarkMode)}`}>
-                      {getStatusText(activity.status)}
-                    </span>
+                    {pack?.total_referrals || 0}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    {activity.date}
+                    {Number(pack?.total_commissions || 0).toFixed(2)} $
+                  </td>
+                  <td className={`px-6 py-4 whitespace-nowrap`}>
+                    <div className="flex items-center">
+                      {pack?.performance && Array.from({ length: 5 }).map((_, i) => (
+                        <span 
+                          key={i}
+                          className={`inline-block ${
+                            i < (pack.performance.stars || 0) 
+                              ? pack.performance.color === 'error' 
+                                ? 'text-red-500' 
+                                : pack.performance.color === 'warning' 
+                                  ? 'text-yellow-500' 
+                                  : pack.performance.color === 'primary' 
+                                    ? 'text-blue-500' 
+                                    : 'text-green-500'
+                              : 'text-gray-300'
+                          }`}
+                        >
+                          {i < (pack.performance.stars || 0) ? '★' : '☆'}
+                        </span>
+                      ))}
+                      {pack?.performance && (
+                        <span className={`ml-2 text-xs ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          ({pack.performance.monthly_count || 0} membres en {pack.performance.month || '-'})
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

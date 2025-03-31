@@ -125,7 +125,7 @@ export default function Stats() {
         <Grid item xs={12} md={4}>
           <Card sx={cardStyle}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" style={{ fontWeight: 'bold' }} gutterBottom>
                 Nombre total de filleuls
               </Typography>
               <Typography variant="h4">
@@ -137,13 +137,13 @@ export default function Stats() {
         <Grid item xs={12} md={8}>
           <Card sx={cardStyle}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="p" style={{ fontWeight: 'bold' }} gutterBottom>
                 Filleuls par génération (tous packs confondus)
               </Typography>
               <Grid container spacing={2}>
                 {stats?.general_stats.referrals_by_generation.map((count, index) => (
                   <Grid item xs={6} sm={3} key={index}>
-                    <Typography variant="subtitle1">
+                    <Typography variant="subtitle1" style={{ fontStyle: 'italic', fontSize : "10pt" }}>
                       {index + 1}e génération
                     </Typography>
                     <Typography variant="h5">{count}</Typography>
@@ -156,10 +156,10 @@ export default function Stats() {
         <Grid item xs={12} md={4}>
           <Card sx={cardStyle}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="p" style={{ fontWeight: 'bold' }} gutterBottom>
                 Meilleure génération
               </Typography>
-              <Typography variant="h5" color="primary">
+              <Typography variant="h6" color="primary">
                 {stats?.general_stats.best_generation}e génération
               </Typography>
               <Typography variant="body2" color="textSecondary">
@@ -171,7 +171,7 @@ export default function Stats() {
         <Grid item xs={12} md={4}>
           <Card sx={cardStyle}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="p" style={{ fontWeight: 'bold' }} gutterBottom>
                 Meilleur mois
               </Typography>
               <Typography variant="h5" color="primary">
@@ -186,19 +186,19 @@ export default function Stats() {
         <Grid item xs={12} md={4}>
           <Card sx={cardStyle}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="p" style={{ fontWeight: 'bold' }} gutterBottom>
                 Statut des filleuls
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="subtitle1">Actifs</Typography>
-                  <Typography variant="h5">
+                  <Typography variant="h6" style={{ fontSize: '10pt', fontStyle: 'italic' }}>Actifs</Typography>
+                  <Typography variant="p" style={{ fontSize: '14pt' }}>
                     {stats?.general_stats.active_referrals}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="subtitle1">Inactifs</Typography>
-                  <Typography variant="h5">
+                  <Typography variant="h6" style={{ fontSize: '11pt', fontStyle: 'italic' }}>Inactifs</Typography>
+                  <Typography variant="p" style={{ fontSize: '14pt' }}>
                     {stats?.general_stats.inactive_referrals}
                   </Typography>
                 </Grid>

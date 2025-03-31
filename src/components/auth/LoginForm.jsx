@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
 import { useTheme } from '../../contexts/ThemeContext';
+import Notification from '../Notification';
 import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const LoginForm = () => {
@@ -49,10 +49,10 @@ const LoginForm = () => {
           localStorage.removeItem('rememberMe');
         }
       } else {
-        toast.error(result.error || 'Erreur de connexion');
+        Notification.error('Email ou mot de passe incorrect');
       }
     } catch (error) {
-      toast.error('Une erreur est survenue lors de la connexion');
+      Notification.error('Une erreur est survenue lors de la connexion');
     } finally {
       setIsLoading(false);
     }

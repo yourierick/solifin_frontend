@@ -33,6 +33,7 @@ import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
 import PackStatsModal from '../../components/PackStatsModal';
 import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
+import RenewPackForm from '../../components/RenewPackForm';
 
 const CustomNode = ({ nodeDatum, isDarkMode, toggleNode }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -205,11 +206,14 @@ const MyPacks = () => {
     return selectedPack.pack.price * duration;
   };
 
-  const handleRenew = async () => {
+  const handleRenew = async (renewData) => {
     try {
       setRenewing(true);
       const response = await axios.post(`/api/packs/${selectedPack.pack_id}/renew`, {
-        duration_months: duration
+        duration_months: renewData.duration_months,
+        payment_method: renewData.payment_method,
+        payment_details: renewData.payment_details ? renewData.payment_details : [],
+        amount: renewData.amount
       });
 
       if (response.data.success) {
@@ -842,43 +846,29 @@ const MyPacks = () => {
         </Grid>
       )}
 
-      <Dialog open={renewDialog} onClose={handleRenewClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Renouveler {selectedPack?.pack?.name}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" gutterBottom>
-            Prix mensuel : {selectedPack?.pack?.price}$
-          </Typography>
-
-          <TextField
-            fullWidth
-            type="number"
-            label="Durée (mois)"
-            value={duration}
-            onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
-            inputProps={{ min: 1 }}
-            margin="normal"
-            required
-          />
-
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Prix total : {calculateTotalPrice()}$
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleRenewClose}>
-            Annuler
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleRenew}
-            disabled={renewing}
-          >
-            {renewing ? <CircularProgress size={24} /> : 'Renouveler'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {renewDialog && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            minHeight: '100vh',
+            height: '100%'
+          }}
+        >
+          <div className="max-w-md w-full relative z-[51]">
+            <RenewPackForm
+              open={renewDialog}
+              onClose={handleRenewClose}
+              pack={selectedPack?.pack}
+              onRenew={handleRenew}
+            />
+          </div>
+        </div>
+      )}
 
       <PackStatsModal
         open={statsDialog}

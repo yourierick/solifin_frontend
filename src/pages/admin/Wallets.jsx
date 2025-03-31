@@ -15,6 +15,7 @@ import {
   CircleStackIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline';
+import { FaFilter, FaTimes } from "react-icons/fa";
 
 const paymentMethods = [
   {
@@ -116,10 +117,17 @@ export default function Wallets() {
   const [systemWallet, setSystemWallet] = useState(null);
   const [showWithdrawalForm, setShowWithdrawalForm] = useState(false);
   const [selectedWalletForWithdrawal, setSelectedWalletForWithdrawal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [transactionsPerPage] = useState(5);
+  const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
     fetchWalletData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter, dateFilter]);
 
   const fetchWalletData = async () => {
     try {
@@ -146,6 +154,21 @@ export default function Wallets() {
     setSearchTerm(e.target.value);
   };
 
+  const handleStatusFilter = (e) => {
+    setStatusFilter(e.target.value);
+    setCurrentPage(1); // Réinitialiser la pagination lors du changement de filtre
+  };
+
+  const handleTypeFilter = (e) => {
+    setTypeFilter(e.target.value);
+    setCurrentPage(1); // Réinitialiser la pagination lors du changement de filtre
+  };
+
+  const handleDateFilter = (field) => (e) => {
+    setDateFilter(prev => ({ ...prev, [field]: e.target.value }));
+    setCurrentPage(1); // Réinitialiser la pagination lors du changement de filtre
+  };
+
   const getTransactionStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -169,7 +192,7 @@ export default function Wallets() {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || transaction.status.toLowerCase() === statusFilter;
     const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
     
     const matchesDate = (!dateFilter.startDate || new Date(transaction.created_at) >= new Date(dateFilter.startDate)) &&
@@ -177,6 +200,12 @@ export default function Wallets() {
     
     return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
+
+  // Pagination
+  const indexOfLastTransaction = currentPage * transactionsPerPage;
+  const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
+  const currentTransactions = filteredTransactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
+  const totalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
 
   if (loading) {
     return (
@@ -313,7 +342,7 @@ export default function Wallets() {
         <div className="flex flex-col space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Recherche existante */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-[200px]">
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <MagnifyingGlassIcon className={`h-5 w-5 ${
@@ -334,8 +363,8 @@ export default function Wallets() {
               </div>
             </div>
 
-            {/* Bouton de rafraîchissement */}
-            <div className="flex items-center">
+            {/* Bouton de rafraîchissement et toggle filtres */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleRefresh}
                 className={`p-2 rounded-md ${
@@ -344,67 +373,79 @@ export default function Wallets() {
               >
                 <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${
+                  showFilters ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title={showFilters ? "Masquer les filtres" : "Afficher les filtres"}
+              >
+                {showFilters ? <FaTimes className="w-5 h-5" /> : <FaFilter className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
-          {/* Nouvelle ligne de filtres */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Filtre par statut */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={`block w-full rounded-md ${
-                isDarkMode
-                  ? 'bg-gray-700 border-gray-600 text-white'
-                  : 'border-gray-300 text-gray-900'
-              }`}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="completed">Complété</option>
-              <option value="pending">En attente</option>
-              <option value="failed">Échoué</option>
-            </select>
+          {/* Filtres avancés */}
+          {showFilters && (
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="w-full">
+                <select
+                  value={statusFilter}
+                  onChange={handleStatusFilter}
+                  className={`w-full px-3 py-2 rounded-md ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="completed">Complété</option>
+                  <option value="pending">En attente</option>
+                  <option value="failed">Échoué</option>
+                </select>
+              </div>
 
-            {/* Filtre par type */}
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className={`block w-full rounded-md ${
-                isDarkMode
-                  ? 'bg-gray-700 border-gray-600 text-white'
-                  : 'border-gray-300 text-gray-900'
-              }`}
-            >
-              <option value="all">Tous les types</option>
-              <option value="sales">Vente</option>
-              <option value="withdrawal">Retrait</option>
-              <option value="paiement">Paiement</option>
-            </select>
+              <div className="w-full">
+                <select
+                  value={typeFilter}
+                  onChange={handleTypeFilter}
+                  className={`w-full px-3 py-2 rounded-md ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="all">Tous les types</option>
+                  <option value="sales">Vente</option>
+                  <option value="withdrawal">Retrait</option>
+                  <option value="paiement">Paiement</option>
+                </select>
+              </div>
 
-            {/* Filtres de date */}
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={dateFilter.startDate}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
-                className={`block w-full rounded-md ${
-                  isDarkMode
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'border-gray-300 text-gray-900'
-                }`}
-              />
-              <input
-                type="date"
-                value={dateFilter.endDate}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
-                className={`block w-full rounded-md ${
-                  isDarkMode
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'border-gray-300 text-gray-900'
-                }`}
-              />
+              <div className="w-full grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={dateFilter.startDate}
+                  onChange={handleDateFilter('startDate')}
+                  className={`w-full px-3 py-2 rounded-md ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                />
+                <input
+                  type="date"
+                  value={dateFilter.endDate}
+                  onChange={handleDateFilter('endDate')}
+                  className={`w-full px-3 py-2 rounded-md ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -412,97 +453,157 @@ export default function Wallets() {
       <div className={`rounded-lg shadow-lg overflow-hidden ${
         isDarkMode ? 'bg-gray-800' : 'bg-white'
       }`}>
-        <h2 className={`p-4 text-lg font-medium ${
-          isDarkMode ? 'text-white' : 'text-gray-900'
-        }`}>
-          Historique des transactions
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
-              <tr>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Montant
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Type
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Détails
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Statut
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${
-              isDarkMode ? 'divide-gray-700' : 'divide-gray-200'
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`text-lg font-medium ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
             }`}>
-              {filteredTransactions.map((transaction) => (
-                <tr
-                  key={transaction.id}
-                  className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
-                >
-                  <td className={`px-6 py-4 whitespace-nowrap ${
-                    transaction.type === 'sales' 
-                      ? 'text-green-500' 
-                      : 'text-red-200'
-                  }`}>
-                    {transaction.type === 'sales' ? '+' : '-'}{transaction.amount}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {transaction.type}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {transaction.metadata ? (
-                      <div className="max-w-xs overflow-hidden">
-                        {transaction.metadata.source && (
-                          <div>{transaction.metadata.source}</div>
-                        )}
-                        {transaction.metadata.pack_name && (
-                          <div>{transaction.metadata.pack_name}</div>
-                        )}
-                        {!transaction.metadata.source && !transaction.metadata.pack_name && (
-                          <span className="text-gray-400">Détails non disponibles</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">Aucun détail</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      getTransactionStatusColor(transaction.status)
+              Historique des transactions
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            {currentTransactions.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
+                  <tr>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
                     }`}>
-                      {transaction.status}
-                    </span>
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {transaction.created_at}
-                  </td>
-                </tr>
+                      Montant
+                    </th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Type
+                    </th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Détails
+                    </th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Statut
+                    </th>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${
+                  isDarkMode ? 'divide-gray-700' : 'divide-gray-200'
+                }`}>
+                  {currentTransactions.map((transaction) => (
+                    <tr
+                      key={transaction.id}
+                      className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
+                    >
+                      <td className={`px-6 py-4 whitespace-nowrap ${
+                        transaction.type === 'sales' 
+                          ? 'text-green-500' 
+                          : 'text-red-500'
+                      }`}>
+                        {transaction.type === 'sales' ? '+' : '-'}{transaction.amount}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        {transaction.type}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        {transaction.metadata ? (
+                          <div className="max-w-xs overflow-hidden">
+                            {transaction.metadata.source && (
+                              <div>{transaction.metadata.source}</div>
+                            )}
+                            {transaction.metadata.pack_name && (
+                              <div>{transaction.metadata.pack_name}</div>
+                            )}
+                            {!transaction.metadata.source && !transaction.metadata.pack_name && (
+                              <span className="text-gray-400">Détails non disponibles</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Aucun détail</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          getTransactionStatusColor(transaction.status)
+                        }`}>
+                          {transaction.status}
+                        </span>
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        {transaction.created_at}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className={`text-center py-8 ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {transactions.length === 0 ? (
+                  "Aucune transaction n'a été trouvée"
+                ) : (
+                  "Aucune transaction ne correspond aux filtres sélectionnés"
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && filteredTransactions.length > 0 && (
+            <div className="flex justify-center gap-2 p-4">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 1
+                    ? `${isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-400'} cursor-not-allowed`
+                    : `${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`
+                }`}
+              >
+                Précédent
+              </button>
+              {[...Array(totalPages)].map((_, index) => (
+                <button
+                  key={index + 1}
+                  onClick={() => setCurrentPage(index + 1)}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === index + 1
+                      ? `${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white`
+                      : `${isDarkMode 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+                  }`}
+                >
+                  {index + 1}
+                </button>
               ))}
-            </tbody>
-          </table>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === totalPages
+                    ? `${isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-400'} cursor-not-allowed`
+                    : `${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`
+                }`}
+              >
+                Suivant
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -531,4 +632,4 @@ export default function Wallets() {
       )}
     </div>
   );
-} 
+}

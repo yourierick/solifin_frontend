@@ -61,7 +61,7 @@ const paymentMethods = [
   }
 ];
 
-export default function PurchasePackForm({ open, onClose, pack }) {
+export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   const { isDarkMode } = useTheme();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,6 @@ export default function PurchasePackForm({ open, onClose, pack }) {
   const [walletBalance, setWalletBalance] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [selectedMobileOption, setSelectedMobileOption] = useState('');
-  const [referralCode, setReferralCode] = useState('');
 
   useEffect(() => {
     if (pack) {
@@ -150,24 +149,20 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     }
 
     try {
-      const response = await axios.post('/api/packs/purchase_a_new_pack', {
-        pack_id: pack.id,
-        payment_method: paymentMethod,
-        duration_months: months,
-        amount: totalAmount,
-        payment_details: formFields,
-        referral_code: referralCode.trim()
-      });
-
-      if (response.data.success) {
-        Notification.success('Achat effectué avec succès');
-        onClose();
-      } else {
-        Notification.error(response.data.message || 'Une erreur est survenue');
+      // Appel à la fonction de renouvellement fournie par le parent
+      if (onRenew) {
+        await onRenew({
+          duration_months: months,
+          payment_method: paymentMethod,
+          payment_details: formFields,
+          amount: totalAmount
+        });
       }
+      
+      setLoading(false);
+      onClose();
     } catch (error) {
-      Notification.error(error.response?.data?.message || 'Une erreur est survenue');
-    } finally {
+      setError(error.message || 'Une erreur est survenue');
       setLoading(false);
     }
   };
@@ -239,7 +234,7 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
           <Typography variant="h6" component="h2">
-            Acheter {pack?.name}
+            Renouveler {pack?.name}
           </Typography>
           <IconButton onClick={onClose} size="small">
             <XMarkIcon className="h-5 w-5" />
@@ -280,20 +275,6 @@ export default function PurchasePackForm({ open, onClose, pack }) {
                 <Typography variant="h6" color="primary" className="font-bold">
                   {totalAmount} $
                 </Typography>
-              </div>
-
-              <div>
-                <Typography variant="subtitle2" gutterBottom>
-                  Code de parrainage
-                </Typography>
-                <TextField
-                  type="text"
-                  value={referralCode}
-                  onChange={(e) => setReferralCode(e.target.value)}
-                  fullWidth
-                  size="small"
-                  placeholder="Entrez le code"
-                />
               </div>
             </div>
 
@@ -348,7 +329,7 @@ export default function PurchasePackForm({ open, onClose, pack }) {
               {loading ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
-                paymentMethod === 'wallet' ? 'Payer maintenant' : 'Procéder au paiement'
+                paymentMethod === 'wallet' ? 'Renouveler maintenant' : 'Procéder au renouvellement'
               )}
             </Button>
           </div>

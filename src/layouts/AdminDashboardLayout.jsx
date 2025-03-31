@@ -31,11 +31,12 @@
  * - ToastContext : Notifications
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import useWithdrawalRequests from '../hooks/useWithdrawalRequests';
 import {
   ChartBarIcon,
   UsersIcon,
@@ -54,6 +55,7 @@ import {
   MegaphoneIcon,
   WalletIcon,
   HomeIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -84,6 +86,9 @@ export default function AdminDashboardLayout() {
   const { isDarkMode, isSidebarCollapsed, toggleSidebar, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
   const [userData, setUserData] = useState(null);
+  const { pendingCount } = useWithdrawalRequests();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -105,10 +110,26 @@ export default function AdminDashboardLayout() {
     logout();
   };
 
+  // Fermer le menu déroulant lorsqu'on clique à l'extérieur
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownRef]);
+
   const renderNavLink = (item, isMobile = false) => {
     const isActive = location.pathname === item.href;
     const hasChildren = item.children && item.children.length > 0;
     const isSubmenuOpen = openSubmenu === item.name;
+    
+    // Vérifier si c'est le lien des demandes de retrait
+    const isWithdrawalRequests = item.href === '/admin/withdrawal-requests';
 
     if (hasChildren) {
       return (
@@ -167,8 +188,24 @@ export default function AdminDashboardLayout() {
             : 'text-gray-700 hover:bg-gray-50'
         }`}
       >
-        <item.icon className={`h-5 w-5 ${isActive && !isDarkMode ? 'text-primary-600' : ''}`} />
-        {(!isSidebarCollapsed || isMobile) && <span className="ml-3">{item.name}</span>}
+        <div className="relative">
+          <item.icon className={`h-5 w-5 ${isActive && !isDarkMode ? 'text-primary-600' : ''}`} />
+          {isWithdrawalRequests && pendingCount > 0 && (
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+              {pendingCount}
+            </span>
+          )}
+        </div>
+        {(!isSidebarCollapsed || isMobile) && (
+          <div className="ml-3 flex items-center">
+            <span>{item.name}</span>
+            {isWithdrawalRequests && pendingCount > 0 && isSidebarCollapsed && !isMobile && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </div>
+        )}
       </Link>
     );
   };
@@ -340,24 +377,76 @@ export default function AdminDashboardLayout() {
                 )}
               </button>
 
-              {/* Bouton déconnexion */}
-              <button
-                onClick={logout}
-                className={`p-2 rounded-lg flex items-center gap-2 ${
-                  isDarkMode
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}
-                title="Déconnexion"
-              >
-                <ArrowLeftOnRectangleIcon className="h-6 w-6" />
-              </button>
+              {/* Profile dropdown */}
+              <div className="relative ml-3" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-2 focus:outline-none"
+                >
+                  {userData?.picture ? (
+                    <img
+                      className="h-8 w-8 rounded-full object-cover"
+                      src={userData.picture}
+                      alt={`Photo de profil de ${userData.name || 'l\'utilisateur'}`}
+                    />
+                  ) : (
+                    <UserCircleIcon 
+                      className={`h-8 w-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
 
-              <span className={`text-sm ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                Bonjour { userData?.name } !
-              </span>
+                {/* Dropdown menu */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-64 rounded-lg shadow-lg py-2 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+                    <div className="px-4 py-3 flex flex-col items-center border-b border-gray-200 dark:border-gray-700">
+                      {userData?.picture ? (
+                        <img
+                          className="h-16 w-16 rounded-full object-cover mb-3"
+                          src={userData.picture}
+                          alt={`Photo de profil de ${userData.name || 'l\'utilisateur'}`}
+                        />
+                      ) : (
+                        <UserCircleIcon 
+                          className={`h-16 w-16 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-3`}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                          {userData?.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {userData?.email}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="py-1">
+                      <Link
+                        to="/admin/profile"
+                        className="flex items-center justify-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <UserCircleIcon className="h-5 w-5" />
+                        Mon profil
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setShowProfileMenu(false);
+                        }}
+                        className="flex items-center justify-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
+                      >
+                        <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+                        Se déconnecter
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

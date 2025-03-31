@@ -32,6 +32,8 @@ import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { Link } from 'react-router-dom';
 import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
+import RenewPackForm from '../../components/RenewPackForm';
+import PackStatsModal from '../../components/PackStatsModal';
 
 const CustomNode = ({ nodeDatum, isDarkMode, toggleNode }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -166,6 +168,7 @@ const MyPacks = () => {
   const [viewMode, setViewMode] = useState('table');
   const treeRef = useRef(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [selectedPackId, setSelectedPackId] = useState(null);
 
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -276,14 +279,9 @@ const MyPacks = () => {
     }
   };
 
-  const handleStatsClick = async (packId) => {
-    try {
-      const response = await axios.get(`/api/packs/${packId}/stats`);
-      setCurrentPackStats(response.data.data);
-      setStatsDialog(true);
-    } catch (error) {
-      Notification.error('Erreur lors du chargement des statistiques');
-    }
+  const handleStatsClick = (packId) => {
+    setSelectedPackId(packId);
+    setStatsDialog(true);
   };
 
   const handleReferralsClick = async (packId) => {
@@ -888,76 +886,14 @@ const MyPacks = () => {
       </Dialog>
 
       {/* Dialogs for Stats and Referrals */}
-      <Dialog 
-        open={statsDialog} 
-        onClose={() => setStatsDialog(false)}
-        maxWidth="md" 
-        fullWidth
-      >
-        <DialogTitle sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper',
-          color: isDarkMode ? 'grey.100' : 'text.primary'
-        }}>
-          Statistiques des commissions
-        </DialogTitle>
-        <DialogContent sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper',
-          color: isDarkMode ? 'grey.100' : 'text.primary'
-        }}>
-          {currentPackStats && (
-            <Box sx={{ py: 2 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Commission totale
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.total_commission}$
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Nombre de filleuls
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.referral_count}
-                    </Typography>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card sx={{ 
-                    bgcolor: isDarkMode ? 'grey.800' : 'grey.50',
-                    p: 2
-                  }}>
-                    <Typography variant="h6" color="primary">
-                      Commission ce mois
-                    </Typography>
-                    <Typography variant="h4">
-                      {currentPackStats.monthly_commission}$
-                    </Typography>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ 
-          bgcolor: isDarkMode ? 'grey.900' : 'background.paper'
-        }}>
-          <Button onClick={() => setStatsDialog(false)}>
-            Fermer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <PackStatsModal
+        open={statsDialog}
+        onClose={() => {
+          setStatsDialog(false);
+          setSelectedPackId(null);
+        }}
+        packId={selectedPackId}
+      />
 
       <Dialog 
         open={referralsDialog} 

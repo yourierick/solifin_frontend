@@ -47,12 +47,14 @@ import EditPack from './pages/admin/EditPack';
 import MyPacks from './pages/user/MyPacks';
 import MesPacks from './pages/admin/MyPacks';
 import Profile from './pages/Profile';
+import AdminProfile from './pages/admin/AdminProfile';
 import DashboardLayout from './layouts/DashboardLayout';
 import PurchasePack from './pages/PurchasePack';
 import VerificationSuccess from './pages/VerificationSuccess';
 import VerificationError from './pages/VerificationError';
 import BuyPack from './pages/user/Packs';
 import Stats from './pages/user/Stats';
+import WithdrawalRequests from './components/WithdrawalRequests';
 
 function App() {
   return (
@@ -115,8 +117,10 @@ function App() {
           }>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<Users />} />
+          <Route path="withdrawal-requests" element={<WithdrawalRequests />} />
           <Route path="users/:id" element={<UserDetails />} />
           <Route path="wallets" element={<Wallets />} />
+          <Route path="profile" element={<AdminProfile />} />
           {/* <Route path="withdrawal-requests" element={<WithdrawalRequests />} /> */}
           <Route path="packs" element={<Packs />} />
           <Route path="mespacks" element={<MesPacks />} />

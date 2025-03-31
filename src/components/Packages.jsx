@@ -124,7 +124,7 @@ export default function Packages() {
                       if (user.is_admin) {
                         navigate('/admin/dashboard');
                       } else {
-                        navigate('/user/packs');
+                        navigate('/dashboard/buypacks');
                       }
                     }
                   }}
