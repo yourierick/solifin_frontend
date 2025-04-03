@@ -102,29 +102,22 @@ export const AuthProvider = ({ children }) => {
       if (response.data) {
         setUser(response.data);
       }
-    } catch (error) {
-      console.error('Erreur d\'authentification:', error);
-      if (error.response?.status === 401) {
-        // Session expirée
-        setUser(null);
-        // Récupérer la dernière URL visitée pour cet utilisateur
-        const lastUrl = localStorage.getItem(`lastUrl_${user?.id}`);
-        if (lastUrl) {
-          setLastVisitedUrl(lastUrl);
-        }
-      }
-    } finally {
       setLoading(false);
+      return true;
+    } catch (error) {
+      setUser(null);
+      setLoading(false);
+      return false;
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (login, password) => {
     try {
       setLoading(true);
       // Obtenir un cookie CSRF avant la connexion
       await axios.get('/sanctum/csrf-cookie');
       
-      const response = await axios.post('/api/login', { email, password });
+      const response = await axios.post('/api/login', { login, password });
       
       if (response.data.user) {
         setUser(response.data.user);
@@ -139,20 +132,10 @@ export const AuthProvider = ({ children }) => {
           lastVisitedUrl
         };
       }
+      return { success: false, message: response.data.message };
     } catch (error) {
       console.error('Erreur de connexion:', error);
-      let errorMessage = 'Email ou mot de passe incorrect';
-      
-      if (error.response?.status === 422) {
-        errorMessage = 'Veuillez vérifier vos informations';
-      } else if (error.response?.status === 429) {
-        errorMessage = 'Trop de tentatives, veuillez réessayer plus tard';
-      }
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
+      return { success: false, error };
     } finally {
       setLoading(false);
     }
@@ -160,19 +143,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      setLoading(true);
       await axios.post('/api/logout');
       setUser(null);
-      // Supprimer la dernière URL visitée
-      if (user?.id) {
-        localStorage.removeItem(`lastUrl_${user.id}`);
-      }
-      return { success: true };
+      return true;
     } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-      return { 
-        success: false, 
-        error: 'Erreur lors de la déconnexion' 
-      };
+      console.error('Erreur de déconnexion:', error);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 

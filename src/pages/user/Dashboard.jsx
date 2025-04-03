@@ -193,7 +193,7 @@ export default function UserDashboard() {
             key="Solde actuel"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.7 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
             className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
               isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
             }`}
@@ -238,7 +238,7 @@ export default function UserDashboard() {
             key="Total commissions gagnées"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.7 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
             className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
               isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
             }`}
@@ -271,7 +271,7 @@ export default function UserDashboard() {
             key="Total des filleuls"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.7 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
             className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
               isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
             }`}
@@ -316,7 +316,7 @@ export default function UserDashboard() {
             key="Failed commission"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.7 }}
+            transition={{ duration: 0.3, delay: 0.8 }}
             className={`overflow-hidden rounded-lg px-4 py-5 shadow sm:p-6 ${
               isDarkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-gray-200'
             }`}
@@ -392,6 +392,7 @@ export default function UserDashboard() {
             <tbody className={`divide-y ${
               isDarkMode ? 'divide-gray-700' : 'divide-gray-200'
             }`}>
+              {console.log(stats?.packs_performance)}
               {stats?.packs_performance?.map((pack) => (
                 <tr key={pack?.id || 'unknown'} className={
                   isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'

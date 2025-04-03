@@ -45,8 +45,6 @@ export default function Register() {
   const selectedPackId = location.state?.selectedPackId;
 
   const [loading, setLoading] = useState(false);
-  const [packs, setPacks] = useState([]);
-  const [loadingPacks, setLoadingPacks] = useState(false);
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,6 +53,7 @@ export default function Register() {
     password: '',
     password_confirmation: '',
     phone: '',
+    whatsapp: '',
     address: '',
     gender: '',
     country: '',
@@ -291,6 +290,27 @@ export default function Register() {
                     required
                     error={!!formErrors.phone}
                     helperText={formErrors.phone}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    type="tel"
+                    label="Whatsapp"
+                    name="whatsapp"
+                    value={formData.whatsapp}
+                    onChange={handleChange}
+                    error={!!formErrors.whatsapp}
+                    helperText={formErrors.whatsapp}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         '&.Mui-focused fieldset': {

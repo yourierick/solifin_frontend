@@ -15,8 +15,8 @@ export default function EditPack() {
     price: '',
     status: true,
   });
-  const [formations, setFormations] = useState(null);
-  const [currentFormations, setCurrentFormations] = useState('');
+  //const [formations, setFormations] = useState(null);
+  //const [currentFormations, setCurrentFormations] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const { showToast } = useToast();
 
@@ -30,9 +30,11 @@ export default function EditPack() {
       const pack = response.data.data;
       
       setFormData({
+        categorie: pack.categorie,
         name: pack.name,
         description: pack.description,
         price: pack.price,
+        duree_publication_en_jour: pack.duree_publication_en_jour,
         status: pack.status,
       });
       
@@ -63,63 +65,63 @@ export default function EditPack() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = [
-        'application/zip',
-        'application/x-zip-compressed',
-        'application/x-rar-compressed',
-        'application/x-7z-compressed',
-        'application/octet-stream'
-      ];
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      const validExtensions = ['zip', 'rar', '7z'];
+  // const handleFileChange = (e) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     const validTypes = [
+  //       'application/zip',
+  //       'application/x-zip-compressed',
+  //       'application/x-rar-compressed',
+  //       'application/x-7z-compressed',
+  //       'application/octet-stream'
+  //     ];
+  //     const fileExtension = file.name.split('.').pop().toLowerCase();
+  //     const validExtensions = ['zip', 'rar', '7z'];
       
-      if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
-        return;
-      }
-      setFormations(file);
-      Notification.success('Fichier ajouté avec succès', 'success');
-    }
-  };
+  //     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+  //       Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+  //       return;
+  //     }
+  //     setFormations(file);
+  //     Notification.success('Fichier ajouté avec succès', 'success');
+  //   }
+  // };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  // const handleDrag = (e) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  //   if (e.type === "dragenter" || e.type === "dragover") {
+  //     setDragActive(true);
+  //   } else if (e.type === "dragleave") {
+  //     setDragActive(false);
+  //   }
+  // };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+  // const handleDrop = (e) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  //   setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const validTypes = [
-        'application/zip',
-        'application/x-zip-compressed',
-        'application/x-rar-compressed',
-        'application/x-7z-compressed',
-        'application/octet-stream'
-      ];
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      const validExtensions = ['zip', 'rar', '7z'];
+  //   if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+  //     const file = e.dataTransfer.files[0];
+  //     const validTypes = [
+  //       'application/zip',
+  //       'application/x-zip-compressed',
+  //       'application/x-rar-compressed',
+  //       'application/x-7z-compressed',
+  //       'application/octet-stream'
+  //     ];
+  //     const fileExtension = file.name.split('.').pop().toLowerCase();
+  //     const validExtensions = ['zip', 'rar', '7z'];
       
-      if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
-        return;
-      }
-      setFormations(file);
-      Notification.success('Fichier ajouté avec succès', 'success');
-    }
-  };
+  //     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+  //       Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+  //       return;
+  //     }
+  //     setFormations(file);
+  //     Notification.success('Fichier ajouté avec succès', 'success');
+  //   }
+  // };
 
   const handleAvantageChange = (index, value) => {
     const newAvantages = [...avantages];
@@ -142,6 +144,16 @@ export default function EditPack() {
 
     try {
       // Valider les données avant l'envoi
+      if (!formData.categorie.trim()) {
+        Notification.warning('La catégorie du pack est requise');
+        return;
+      }
+
+      if (!formData.duree_publication_en_jour || formData.duree_publication_en_jour <= 0) {
+        Notification.warning('La durée de publication doit être supérieur à 0');
+        return;
+      }
+
       if (!formData.name.trim()) {
         Notification.error('Le nom du pack est requis');
         return;
@@ -164,14 +176,16 @@ export default function EditPack() {
 
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name.trim());
+      formDataToSend.append('categorie', formData.categorie.trim());
+      formDataToSend.append('duree_publication_en_jour', formData.duree_publication_en_jour);
       formDataToSend.append('description', formData.description.trim());
       formDataToSend.append('price', formData.price);
       formDataToSend.append('status', formData.status ? '1' : '0');
       formDataToSend.append('_method', 'PUT'); // Pour la méthode PUT
       
-      if (formations) {
-        formDataToSend.append('formations', formations);
-      }
+      // if (formations) {
+      //   formDataToSend.append('formations', formations);
+      // }
       
       formDataToSend.append('avantages', JSON.stringify(filteredAvantages));
 
@@ -181,9 +195,9 @@ export default function EditPack() {
           'X-Requested-With': 'XMLHttpRequest'
         }
       });
-
+      
       if (response.data.success) {
-        showToast(response.data.message || 'Pack mis à jour avec succès', 'success');
+        Notification.success(response.data.message || 'Pack mis à jour avec succès');
         navigate('/admin/packs');
       }
     } catch (err) {
@@ -228,6 +242,23 @@ export default function EditPack() {
 
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
             <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Catégorie du pack
+                </label>
+                <select
+                  name="categorie"
+                  value={formData.categorie}
+                  onChange={handleInputChange}
+                  required
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                >
+                  <option value="">Sélectionnez une catégorie</option>
+                  <option selected={formData.categorie === 'packs à 1 étoile'} value="packs à 1 étoile">packs à 1 étoile</option>
+                  <option selected={formData.categorie === 'packs à 2 étoiles'} value="packs à 2 étoiles">packs à 2 étoiles</option>
+                  <option selected={formData.categorie === 'packs à 3 étoiles/VIP'} value="packs à 3 étoiles/VIP">packs à 3 étoiles/VIP</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nom du pack
@@ -316,6 +347,20 @@ export default function EditPack() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Durée de publication (en jours)
+                </label>
+                <input
+                  type="number"
+                  name="duree_publication_en_jour"
+                  value={formData.duree_publication_en_jour}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                  placeholder="Durée de publication en jours"
+                />
+              </div>
+
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Formations (ZIP, RAR, ou 7Z)
                 </label>
                 <div
@@ -377,7 +422,7 @@ export default function EditPack() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <label className="flex items-center">

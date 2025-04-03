@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Container,
   Grid,
@@ -30,7 +30,7 @@ import Notification from '../../components/Notification';
 import Tree from 'react-d3-tree';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import RenewPackForm from '../../components/RenewPackForm';
 import PackStatsModal from '../../components/PackStatsModal';
@@ -151,7 +151,7 @@ const CustomNode = ({ nodeDatum, isDarkMode, toggleNode }) => {
   );
 };
 
-const MyPacks = () => {
+export default function MyPacks() {
   const [userPacks, setUserPacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [renewDialog, setRenewDialog] = useState(false);
@@ -510,6 +510,8 @@ const MyPacks = () => {
     saveAs(dataBlob, `${fileName}.xlsx`);
   };
 
+  const navigate = useNavigate();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -528,21 +530,6 @@ const MyPacks = () => {
         >
         Mes Packs
       </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          component={Link}
-          to="/dashboard/buypacks"
-          startIcon={<PlusIcon className="h-5 w-5" />}
-          sx={{
-            bgcolor: isDarkMode ? 'primary.dark' : 'primary.main',
-            '&:hover': {
-              bgcolor: isDarkMode ? 'primary.main' : 'primary.dark'
-            }
-          }}
-        >
-          Acheter un nouveau pack
-        </Button>
       </Box>
 
       {userPacks.length === 0 ? (
@@ -560,16 +547,15 @@ const MyPacks = () => {
             gutterBottom
             sx={{ color: isDarkMode ? 'grey.300' : 'text.primary' }}
           >
-            Vous n'avez pas encore de pack
+            Il n'y a aucun pack créé dans le système
           </Typography>
           <Button
             variant="contained"
             color="primary"
-            component="a"
-            href="/#packages"
+            onClick={() => navigate('../packs')}
             sx={{ mt: 2 }}
           >
-            Découvrir nos packs
+            Ajouter des packs
           </Button>
         </Card>
       ) : (
@@ -1145,5 +1131,3 @@ const MyPacks = () => {
     </Container>
   );
 };
-
-export default MyPacks;

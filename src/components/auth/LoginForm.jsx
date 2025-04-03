@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTheme } from '../../contexts/ThemeContext';
 import Notification from '../Notification';
-import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, IdentificationIcon } from '@heroicons/react/24/outline';
 
 const LoginForm = () => {
   const { login } = useAuth();
@@ -23,13 +23,13 @@ const LoginForm = () => {
   // Surveiller la valeur de rememberMe
   const rememberMe = watch('rememberMe');
 
-  // Charger l'email stocké au montage du composant
+  // Charger l'identifiant stocké au montage du composant
   useEffect(() => {
-    const storedEmail = localStorage.getItem('rememberedEmail');
+    const storedLogin = localStorage.getItem('rememberedLogin');
     const storedRememberMe = localStorage.getItem('rememberMe') === 'true';
 
-    if (storedEmail && storedRememberMe) {
-      setValue('email', storedEmail);
+    if (storedLogin && storedRememberMe) {
+      setValue('login', storedLogin);
       setValue('rememberMe', true);
     }
   }, [setValue]);
@@ -37,19 +37,20 @@ const LoginForm = () => {
   const onSubmit = async (data) => {
     try {
       setIsLoading(true);
-      const result = await login(data.email, data.password);
+      const result = await login(data.login, data.password);
       
       if (result.success) {
-        // Gérer le stockage de l'email
+        // Gérer le stockage de l'identifiant
         if (data.rememberMe) {
-          localStorage.setItem('rememberedEmail', data.email);
+          localStorage.setItem('rememberedLogin', data.login);
           localStorage.setItem('rememberMe', 'true');
         } else {
-          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberedLogin');
           localStorage.removeItem('rememberMe');
         }
+        Notification.success("Bonjour " + result.user.name + " !");
       } else {
-        Notification.error('Email ou mot de passe incorrect');
+        Notification.error(result.message);
       }
     } catch (error) {
       Notification.error('Une erreur est survenue lors de la connexion');
@@ -64,7 +65,7 @@ const LoginForm = () => {
     setValue('rememberMe', checked);
     
     if (!checked) {
-      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberedLogin');
       localStorage.removeItem('rememberMe');
     }
   };
@@ -73,34 +74,30 @@ const LoginForm = () => {
     <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
       <div className="rounded-md shadow-sm -space-y-px">
         <div>
-          <label htmlFor="email" className="sr-only">
-            Adresse email
+          <label htmlFor="login" className="sr-only">
+            Email ou ID de compte
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <EnvelopeIcon className={`h-5 w-5 ${
+              <IdentificationIcon className={`h-5 w-5 ${
                 isDarkMode ? 'text-gray-500' : 'text-gray-400'
               }`} />
             </div>
             <input
-              {...register('email', {
-                required: 'L\'email est requis',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Adresse email invalide',
-                },
+              {...register('login', {
+                required: 'L\'identifiant est requis'
               })}
-              type="email"
+              type="text"
               className={`appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pl-10 ${
                 isDarkMode 
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
                   : 'bg-white border-gray-300 text-gray-900'
               }`}
-              placeholder="Adresse email"
+              placeholder="Email ou ID de compte"
             />
           </div>
-          {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+          {errors.login && (
+            <p className="mt-1 text-sm text-red-600">{errors.login.message}</p>
           )}
         </div>
         <div>
@@ -225,4 +222,4 @@ const LoginForm = () => {
   );
 };
 
-export default LoginForm; 
+export default LoginForm;

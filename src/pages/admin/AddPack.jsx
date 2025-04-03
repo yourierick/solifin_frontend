@@ -41,12 +41,14 @@ export default function AddPack() {
   const [loading, setLoading] = useState(false);
   const [avantages, setAvantages] = useState(['']);
   const [formData, setFormData] = useState({
+    categorie: '',
     name: '',
     description: '',
     price: '',
+    duree_publication_en_jour: '',
     status: true,
   });
-  const [formations, setFormations] = useState(null);
+  //const [formations, setFormations] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const { showToast } = useToast();
 
@@ -58,65 +60,65 @@ export default function AddPack() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Vérifier le type de fichier
-      const validTypes = [
-        'application/zip',
-        'application/x-zip-compressed',
-        'application/x-rar-compressed',
-        'application/x-7z-compressed',
-        'application/octet-stream' // Pour certains fichiers .zip
-      ];
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      const validExtensions = ['zip', 'rar', '7z'];
+  // const handleFileChange = (e) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     // Vérifier le type de fichier
+  //     const validTypes = [
+  //       'application/zip',
+  //       'application/x-zip-compressed',
+  //       'application/x-rar-compressed',
+  //       'application/x-7z-compressed',
+  //       'application/octet-stream' // Pour certains fichiers .zip
+  //     ];
+  //     const fileExtension = file.name.split('.').pop().toLowerCase();
+  //     const validExtensions = ['zip', 'rar', '7z'];
       
-      if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
-        return;
-      }
-      setFormations(file);
-      Notification.success('Fichier ajouté avec succès', 'success');
-    }
-  };
+  //     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+  //       Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)', 'error');
+  //       return;
+  //     }
+  //     setFormations(file);
+  //     Notification.success('Fichier ajouté avec succès', 'success');
+  //   }
+  // };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  // const handleDrag = (e) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  //   if (e.type === "dragenter" || e.type === "dragover") {
+  //     setDragActive(true);
+  //   } else if (e.type === "dragleave") {
+  //     setDragActive(false);
+  //   }
+  // };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+  // const handleDrop = (e) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  //   setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      // Vérifier le type de fichier
-      const validTypes = [
-        'application/zip',
-        'application/x-zip-compressed',
-        'application/x-rar-compressed',
-        'application/x-7z-compressed',
-        'application/octet-stream' // Pour certains fichiers .zip
-      ];
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      const validExtensions = ['zip', 'rar', '7z'];
+  //   if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+  //     const file = e.dataTransfer.files[0];
+  //     // Vérifier le type de fichier
+  //     const validTypes = [
+  //       'application/zip',
+  //       'application/x-zip-compressed',
+  //       'application/x-rar-compressed',
+  //       'application/x-7z-compressed',
+  //       'application/octet-stream' // Pour certains fichiers .zip
+  //     ];
+  //     const fileExtension = file.name.split('.').pop().toLowerCase();
+  //     const validExtensions = ['zip', 'rar', '7z'];
       
-      if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-        Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)');
-        return;
-      }
-      setFormations(file);
-      Notification.success('Fichier ajouté avec succès');
-    }
-  };
+  //     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+  //       Notification.warning('Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)');
+  //       return;
+  //     }
+  //     setFormations(file);
+  //     Notification.success('Fichier ajouté avec succès');
+  //   }
+  // };
 
   const handleAvantageChange = (index, value) => {
     const newAvantages = [...avantages];
@@ -143,6 +145,10 @@ export default function AddPack() {
         Notification.warning('Le nom du pack est requis');
         return;
       }
+      if (!formData.categorie.trim()) {
+        Notification.warning('La catégorie du pack est requise');
+        return;
+      }
       if (!formData.description.trim()) {
         Notification.warning('La description du pack est requise');
         return;
@@ -151,10 +157,16 @@ export default function AddPack() {
         Notification.warning('Le prix doit être supérieur à 0');
         return;
       }
-      if (!formations) {
-        Notification.warning('Le fichier des formations est requis');
+
+      if (!formData.duree_publication_en_jour || formData.duree_publication_en_jour <= 0) {
+        Notification.warning('La durée de publication doit être supérieur à 0');
         return;
       }
+
+      // if (!formations) {
+      //   Notification.warning('Le fichier des formations est requis');
+      //   return;
+      // }
       
       // Filtrer les avantages vides
       const filteredAvantages = avantages.filter(avantage => avantage.trim() !== '');
@@ -164,11 +176,13 @@ export default function AddPack() {
       }
 
       const formDataToSend = new FormData();
+      formDataToSend.append('categorie', formData.categorie.trim());
       formDataToSend.append('name', formData.name.trim());
       formDataToSend.append('description', formData.description.trim());
       formDataToSend.append('price', formData.price);
       formDataToSend.append('status', formData.status ? '1' : '0');
-      formDataToSend.append('formations', formations);
+      //formDataToSend.append('formations', formations);
+      formDataToSend.append('duree_publication_en_jour', formData.duree_publication_en_jour);
       formDataToSend.append('avantages', JSON.stringify(filteredAvantages));
 
       const response = await axios.post('/api/admin/packs', formDataToSend, {
@@ -224,6 +238,23 @@ export default function AddPack() {
 
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
             <div className="grid grid-cols-1 gap-6">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Catégorie du pack
+                </label>
+                <select 
+                  name="categorie"
+                  onChange={handleInputChange}
+                  required
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                >
+                  <option disabled selected>Sélectionnez une catégorie</option>
+                  <option value="packs à 1 étoile">packs à 1 étoile</option>
+                  <option value="packs à 2 étoiles">packs à 2 étoiles</option>
+                  <option value="packs à 3 étoiles/VIP">packs à 3 étoiles/VIP</option>
+                </select>
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Nom du pack
@@ -256,7 +287,7 @@ export default function AddPack() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Prix ($)
+                  Prix de rénouvellement mensuel ($)
                 </label>
                 <div className="relative rounded-md shadow-sm">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -314,6 +345,24 @@ export default function AddPack() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Durée des publications en jour
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <input
+                    type="number"
+                    name="duree_publication_en_jour"
+                    value={formData.duree_publication_en_jour}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    className="block w-full rounded-md border-gray-300 pl-7 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    placeholder="1 jour par exemple"
+                  />
+                </div>
+              </div>
+
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Formations (ZIP, RAR, ou 7Z)
                 </label>
                 <div
@@ -368,7 +417,7 @@ export default function AddPack() {
                     )}
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <div className="flex items-center">
                 <input

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useToast } from '../hooks/useToast';
 import axios from 'axios';
-import { UserCircleIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon } from '@heroicons/react/24/solid';
+import Notification from '../components/Notification';
 
-export default function Profile() {
+export default function AdminProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -14,6 +15,7 @@ export default function Profile() {
     name: '',
     email: '',
     phone: '',
+    whatsapp: '',
     address: '',
     sexe: '',
     pays: '',
@@ -24,7 +26,6 @@ export default function Profile() {
     password_confirmation: ''
   });
   const [previewUrl, setPreviewUrl] = useState(null);
-  const { showToast } = useToast();
 
   useEffect(() => {
     fetchProfile();
@@ -43,7 +44,7 @@ export default function Profile() {
         .sort((a, b) => a.name.localeCompare(b.name));
       setCountries(sortedCountries);
     } catch (err) {
-      showToast('Erreur lors du chargement des pays', 'error');
+      Notification.error('Erreur lors du chargement des pays');
     } finally {
       setLoadingCountries(false);
     }
@@ -57,6 +58,7 @@ export default function Profile() {
         name: response.data.data.name,
         email: response.data.data.email,
         phone: response.data.data.phone || '',
+        whatsapp: response.data.data.whatsapp || '',
         address: response.data.data.address || '',
         sexe: response.data.data.sexe || '',
         pays: response.data.data.pays || '',
@@ -68,7 +70,7 @@ export default function Profile() {
       });
       setLoading(false);
     } catch (err) {
-      showToast('Erreur lors du chargement du profil', 'error');
+      Notification.error('Erreur lors du chargement du profil', 'error');
     }
   };
 
@@ -128,7 +130,7 @@ export default function Profile() {
       });
 
       if (response.data.success) {
-        showToast('Profil mis à jour avec succès', 'success');
+        Notification.success('Profil mis à jour avec succès');
         setIsEditing(false);
         fetchProfile();
       }
@@ -137,76 +139,211 @@ export default function Profile() {
         setValidationErrors(err.response.data.errors);
         // Afficher le premier message d'erreur comme toast
         const firstError = Object.values(err.response.data.errors)[0][0];
-        showToast(firstError, 'error');
+        Notification.error(firstError, 'error');
       } else {
-        showToast('Erreur lors de la mise à jour du profil', 'error');
+        Notification.error('Erreur lors de la mise à jour du profil');
       }
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8">
+          <div className="flex flex-col items-center justify-center space-y-4 py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <p className="text-gray-500 dark:text-gray-400">Chargement du profil...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-2 py-2">
-      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl overflow-hidden">
-        <div className="relative bg-gradient-to-r from-primary-800 to-primary-700 h-32">
-          <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-            <div className="relative group">
-              {previewUrl || user.picture ? (
-                <img
-                  src={previewUrl || user.profile_picture_url}
-                  alt="Profile"
-                  className={`h-32 w-32 rounded-full object-cover border-4 ${
-                    validationErrors.picture ? 'border-red-500' : 'border-white'
-                  }`}
-                />
-              ) : (
-                <UserCircleIcon className={`h-32 w-32 text-gray-300 ${
-                  validationErrors.picture ? 'text-red-500' : ''
-                }`} />
-              )}
-              {isEditing && (
-                <>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="profile-picture"
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden">
+        {/* En-tête avec bannière dégradée */}
+        <div className="relative bg-gradient-to-r from-primary-600 to-primary-800 h-48">
+          {/* Bouton d'édition flottant */}
+          <div className="absolute right-6 top-6">
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-primary-700 bg-white rounded-md shadow-md hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-600"
+              >
+                <PencilSquareIcon className="h-4 w-4" />
+                <span>Modifier</span>
+              </button>
+            ) : (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setPreviewUrl(null);
+                    // Réinitialiser les données
+                    fetchProfile();
+                  }}
+                  className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-md shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-600"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  <span>Annuler</span>
+                </button>
+                <button
+                  type="submit"
+                  form="profile-form"
+                  className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-600"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                  <span>Enregistrer</span>
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Photo de profil */}
+          <div className="absolute -bottom-16 left-6 md:left-10">
+            <div className="relative">
+              <div className="h-32 w-32 rounded-full overflow-hidden bg-white dark:bg-gray-700 border-4 border-white dark:border-gray-700 shadow-lg">
+                {user.profile_picture_url || previewUrl ? (
+                  <img 
+                    src={isEditing && previewUrl ? previewUrl : user.profile_picture_url} 
+                    alt={user.name} 
+                    className="h-full w-full object-cover"
                   />
-                  <label
-                    htmlFor="profile-picture"
-                    className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200"
-                  >
-                    <span className="text-white text-sm">Modifier</span>
-                  </label>
-                </>
+                ) : (
+                  <UserCircleIcon className="h-full w-full text-gray-400 dark:text-gray-500 p-2" />
+                )}
+              </div>
+              
+              {isEditing && (
+                <label 
+                  htmlFor="picture"
+                  className="absolute inset-0 cursor-pointer bg-gray-900 bg-opacity-40 rounded-full flex items-center justify-center text-white hover:bg-opacity-60 transition-all duration-200 group"
+                >
+                  <div className="flex flex-col items-center">
+                    <PhotoIcon className="h-8 w-8 mb-1 group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-medium">Changer</span>
+                  </div>
+                  <input 
+                    type="file" 
+                    id="picture" 
+                    name="picture" 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                </label>
               )}
             </div>
           </div>
         </div>
-
+        
+        {/* Contenu principal */}
         <div className="px-6 pt-20 pb-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Mon Profile
-            </h2>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-full shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            >
-              {isEditing ? 'Annuler' : 'Modifier'}
-            </button>
-          </div>
+          {!isEditing ? (
+            <div>
+              {/* Informations de base */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h2>
+                <div className="flex items-center mt-2 space-x-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {user.is_admin ? 'Administrateur' : 'Utilisateur'}
+                  </span>
+                  {user.email_verified_at && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      Vérifié
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 mt-2">{user.email}</p>
+              </div>
+              
+              {/* Sections d'informations */}
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                    Informations personnelles
+                  </h3>
+                  <dl className="space-y-4">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Nom</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.name}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.email}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Téléphone</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.phone || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Whatsapp</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.whatsapp || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Sexe</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">
+                        {user.sexe === 'homme' ? 'Masculin' : user.sexe === 'femme' ? 'Féminin' : '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
 
-          {isEditing ? (
-            <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                    Localisation
+                  </h3>
+                  <dl className="space-y-4">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Pays</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.pays || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Province</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.province || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Ville</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.ville || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Adresse</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.address || '-'}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Informations administrateur
+                  </h3>
+                  <dl className="space-y-4">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Rôle</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">Administrateur</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière connexion</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">
+                        {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form id="profile-form" onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-6">
                   <div>
@@ -260,6 +397,25 @@ export default function Profile() {
                       <p className="mt-1 text-sm text-red-500">{validationErrors.phone[0]}</p>
                     )}
                   </div>
+                  <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Whatsapp
+                    </label>
+                    <input
+                      type="tel"
+                      name="whatsapp"
+                      value={formData.whatsapp}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${
+                        validationErrors.whatsapp ? 'border-red-500' : 'border-gray-300'
+                      } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
+                    />
+                    {validationErrors.whatsapp && (
+                      <p className="mt-1 text-sm text-red-500">{validationErrors.whatsapp[0]}</p>
+                    )}
+                  </div>
+                </div>
                 </div>
 
                 <div className="space-y-6">
@@ -271,7 +427,8 @@ export default function Profile() {
                       name="sexe"
                       value={formData.sexe}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-2.5 rounded-lg border ${ validationErrors.sexe ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-4 py-2.5 rounded-lg border ${
+                        validationErrors.sexe ? 'border-red-500' : 'border-gray-300'
                       } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
                     >
                       <option value="">Sélectionner</option>
@@ -298,15 +455,20 @@ export default function Profile() {
                       >
                         <option value="">Sélectionner un pays</option>
                         {countries.map(pays => (
-                          <option key={pays.code} value={pays.name}>
+                          <option selected={formData.pays === pays.name} key={pays.code} value={pays.name}>
                             {pays.name}
                           </option>
                         ))}
                       </select>
-                      {validationErrors.pays && (
-                        <p className="mt-1 text-sm text-red-500">{validationErrors.pays[0]}</p>
+                      {loadingCountries && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-2 border-primary-500 rounded-full border-t-transparent"></div>
+                        </div>
                       )}
                     </div>
+                    {validationErrors.pays && (
+                      <p className="mt-1 text-sm text-red-500">{validationErrors.pays[0]}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -365,7 +527,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mt-8">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nouveau mot de passe
@@ -382,6 +544,9 @@ export default function Profile() {
                   {validationErrors.password && (
                     <p className="mt-1 text-sm text-red-500">{validationErrors.password[0]}</p>
                   )}
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Laissez vide pour conserver le mot de passe actuel
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -401,69 +566,14 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-
-              <div className="flex justify-end pt-6">
-                <button
-                  type="submit"
-                  className="px-8 py-3 text-base font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-full shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                >
-                  Enregistrer les modifications
-                </button>
-              </div>
             </form>
-          ) : (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Informations personnelles</h3>
-                <dl className="space-y-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Nom</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.name}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.email}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Téléphone</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.phone || '-'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Sexe</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">
-                      {user.sexe === 'homme' ? 'Masculin' : user.sexe === 'femme' ? 'Féminin' : '-'}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Localisation</h3>
-                <dl className="space-y-4">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Pays</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.pays || '-'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Province</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.province || '-'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Ville</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.ville || '-'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Adresse</dt>
-                    <dd className="mt-1 text-base text-gray-900 dark:text-white">{user.address || '-'}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
           )}
         </div>
       </div>
       {validationErrors.picture && (
-        <p className="mt-2 text-sm text-red-500 text-center">{validationErrors.picture[0]}</p>
+        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{validationErrors.picture[0]}</p>
+        </div>
       )}
     </div>
   );
