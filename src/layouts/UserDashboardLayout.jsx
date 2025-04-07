@@ -62,42 +62,19 @@ import {
   WalletIcon,
   CubeIcon,
   UserCircleIcon,
+  NewspaperIcon,
+  MapIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const navigation = [
   { name: 'Tableau de bord', href: '/dashboard', icon: HomeIcon },
   { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
-  { name: 'Mon portefeuille', href: '/dashboard/wallet', icon: WalletIcon },
+  { name: 'Finance', href: '/dashboard/wallet', icon: WalletIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
-  {
-    name: 'Opportunités',
-    href: '/dashboard/opportunities',
-    icon: LightBulbIcon,
-    children: [
-      { name: 'Ajouter une opportunité', href: '/dashboard/opportunities/create' },
-      { name: 'Mes opportunités', href: '/dashboard/opportunities/list' },
-    ]
-  },
-  {
-    name: 'Publicités',
-    href: '/user/ads',
-    icon: MegaphoneIcon,
-    children: [
-      { name: 'Créer une publicité', href: '/user/ads/create' },
-      { name: 'Mes publicités', href: '/user/ads/list' },
-    ]
-  },
-  {
-    name: 'Offres d\'emploi',
-    href: '/user/jobs',
-    icon: BriefcaseIcon,
-    children: [
-      { name: 'Publier une offre', href: '/user/jobs/create' },
-      { name: 'Mes offres', href: '/user/jobs/list' },
-    ]
-  },
+  { name: "Fil d'actualités", href: '#', icon: MapIcon },
+  { name: "Ma page", href: "/dashboard/my-page", icon:  NewspaperIcon}
 ];
 
 export default function UserDashboardLayout() {

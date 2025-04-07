@@ -11,6 +11,7 @@ export default function AdminProfile() {
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [packs, setPacks] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -54,6 +55,7 @@ export default function AdminProfile() {
     try {
       const response = await axios.get('/api/profile');
       setUser(response.data.data);
+      setPacks(response.data.packs);
       setFormData({
         name: response.data.data.name,
         email: response.data.data.email,
@@ -64,6 +66,7 @@ export default function AdminProfile() {
         pays: response.data.data.pays || '',
         province: response.data.data.province || '',
         ville: response.data.data.ville || '',
+        pack_de_publication_id: response.data.data.pack_de_publication_id || '',
         picture: null,
         password: '',
         password_confirmation: ''
@@ -338,6 +341,13 @@ export default function AdminProfile() {
                         {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : '-'}
                       </dd>
                     </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Pack de publication</dt>
+                      <dd className="mt-1 text-base text-gray-900 dark:text-white">
+                        {packs.find(pack => pack.id === user.pack_de_publication_id)?.name || '-'}
+                      </dd>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{packs.find(pack => pack.id === user.pack_de_publication_id)?.duree_publication_en_jour || '-'} jours de durée pour vos publications</span>
+                    </div>
                   </dl>
                 </div>
               </div>
@@ -522,6 +532,27 @@ export default function AdminProfile() {
                     />
                     {validationErrors.address && (
                       <p className="mt-1 text-sm text-red-500">{validationErrors.address[0]}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pack de publication</label>
+                    <select
+                      name="pack_de_publication_id"
+                      value={formData.pack_de_publication_id}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${
+                        validationErrors.pack_de_publication_id ? 'border-red-500' : 'border-gray-300'
+                      } focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors duration-200`}
+                    >
+                      <option value="">Sélectionnez un pack</option>
+                      {packs.map((pack) => (
+                        <option key={pack.id} value={pack.id}>
+                          {pack.name}
+                        </option>
+                      ))}
+                    </select>
+                    {validationErrors.pack_de_publication_id && (
+                      <p className="mt-1 text-sm text-red-500">{validationErrors.pack_de_publication_id[0]}</p>
                     )}
                   </div>
                 </div>

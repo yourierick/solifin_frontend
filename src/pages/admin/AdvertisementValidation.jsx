@@ -1,471 +1,521 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import {
+import { Tab } from '@headlessui/react';
+import { 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  ArrowPathIcon, 
   EyeIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
-  ArrowPathIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
+  ChatBubbleBottomCenterTextIcon,
+  TagIcon 
 } from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import Modal from '../../components/Modal';
-import Button from '../../components/Button';
-import Alert from '../../components/Alert';
-import { useToast } from '../../hooks/useToast';
+import axios from 'axios';
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default function AdvertisementValidation() {
-  const [advertisements, setAdvertisements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAd, setSelectedAd] = useState(null);
-  const [validationNote, setValidationNote] = useState('');
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationAction, setValidationAction] = useState(null);
-  const [validationHistory, setValidationHistory] = useState([]);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '',
-    published: '',
-    search: '',
-    start_date: '',
-    end_date: '',
-    sort_field: 'created_at',
-    sort_direction: 'desc'
+  const [pendingItems, setPendingItems] = useState({
+    advertisements: [],
+    jobOffers: [],
+    businessOpportunities: []
   });
-  const { showToast } = useToast();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItemType, setSelectedItemType] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   useEffect(() => {
-    loadAdvertisements();
-  }, [filters]);
+    fetchPendingItems();
+  }, []);
 
-  const loadAdvertisements = async () => {
+  const fetchPendingItems = async () => {
     try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+      setIsLoading(true);
+      const [advertisementsRes, jobOffersRes, businessOpportunitiesRes] = await Promise.all([
+        axios.get('/api/admin/advertisements/pending'),
+        axios.get('/api/admin/job-offers/pending'),
+        axios.get('/api/admin/business-opportunities/pending')
+      ]);
+
+      setPendingItems({
+        advertisements: advertisementsRes.data,
+        jobOffers: jobOffersRes.data,
+        businessOpportunities: businessOpportunitiesRes.data
       });
-      const response = await axios.get(`/api/admin/advertisements/pending?${params}`);
-      setAdvertisements(response.data.data.advertisements);
     } catch (error) {
-      showToast('Erreur lors du chargement des publicités', 'error');
+      console.error("Erreur lors du chargement des données:", error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const loadValidationHistory = async (adId) => {
-    try {
-      const response = await axios.get(`/api/admin/advertisements/${adId}/history`);
-      setValidationHistory(response.data.data.validations);
-      setShowHistoryModal(true);
-    } catch (error) {
-      showToast('Erreur lors du chargement de l\'historique', 'error');
-    }
+  const openPreviewModal = (item, type) => {
+    setSelectedItem(item);
+    setSelectedItemType(type);
+    setIsPreviewModalOpen(true);
   };
 
-  const handleValidationClick = (ad, action) => {
-    setSelectedAd(ad);
-    setValidationAction(action);
-    setValidationNote('');
-    setShowValidationModal(true);
+  const closePreviewModal = () => {
+    setSelectedItem(null);
+    setSelectedItemType(null);
+    setIsPreviewModalOpen(false);
   };
 
-  const handleValidation = async () => {
+  const openRejectModal = (item, type) => {
+    setSelectedItem(item);
+    setSelectedItemType(type);
+    setRejectionReason('');
+    setIsRejectModalOpen(true);
+  };
+
+  const closeRejectModal = () => {
+    setSelectedItem(null);
+    setSelectedItemType(null);
+    setRejectionReason('');
+    setIsRejectModalOpen(false);
+  };
+
+  const handleApprove = async (id, type) => {
     try {
-      const endpoint = `/api/admin/advertisements/${selectedAd.id}/${validationAction}`;
-      const response = await axios.post(endpoint, { note: validationNote });
+      let endpoint = '';
+      let stateKey = '';
       
-      showToast(
-        response.data.message,
-        'success'
+      switch (type) {
+        case 'advertisement':
+          endpoint = `/api/admin/advertisements/${id}/approve`;
+          stateKey = 'advertisements';
+          break;
+        case 'jobOffer':
+          endpoint = `/api/admin/job-offers/${id}/approve`;
+          stateKey = 'jobOffers';
+          break;
+        case 'businessOpportunity':
+          endpoint = `/api/admin/business-opportunities/${id}/approve`;
+          stateKey = 'businessOpportunities';
+          break;
+        default:
+          return;
+      }
+
+      await axios.post(endpoint);
+      
+      // Mettre à jour la liste des items en attente
+      setPendingItems(prev => ({
+        ...prev,
+        [stateKey]: prev[stateKey].filter(item => item.id !== id)
+      }));
+    } catch (error) {
+      console.error("Erreur lors de l'approbation:", error);
+    }
+  };
+  
+  const handleChangeEtat = async (id, type, newEtat) => {
+    try {
+      let endpoint = '';
+      let stateKey = '';
+      
+      switch (type) {
+        case 'advertisement':
+          endpoint = `/api/admin/advertisements/${id}/etat`;
+          stateKey = 'advertisements';
+          break;
+        case 'jobOffer':
+          endpoint = `/api/admin/job-offers/${id}/etat`;
+          stateKey = 'jobOffers';
+          break;
+        case 'businessOpportunity':
+          endpoint = `/api/admin/business-opportunities/${id}/etat`;
+          stateKey = 'businessOpportunities';
+          break;
+        default:
+          return;
+      }
+
+      await axios.patch(endpoint, { etat: newEtat });
+      
+      // Mettre à jour la liste des items en attente
+      setPendingItems(prev => ({
+        ...prev,
+        [stateKey]: prev[stateKey].map(item => 
+          item.id === id ? { ...item, etat: newEtat } : item
+        )
+      }));
+    } catch (error) {
+      console.error("Erreur lors du changement d'état:", error);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedItem || !selectedItemType) return;
+    
+    try {
+      let endpoint = '';
+      let stateKey = '';
+      
+      switch (selectedItemType) {
+        case 'advertisement':
+          endpoint = `/api/admin/advertisements/${selectedItem.id}/reject`;
+          stateKey = 'advertisements';
+          break;
+        case 'jobOffer':
+          endpoint = `/api/admin/job-offers/${selectedItem.id}/reject`;
+          stateKey = 'jobOffers';
+          break;
+        case 'businessOpportunity':
+          endpoint = `/api/admin/business-opportunities/${selectedItem.id}/reject`;
+          stateKey = 'businessOpportunities';
+          break;
+        default:
+          return;
+      }
+
+      await axios.post(endpoint, { reason: rejectionReason });
+      
+      // Mettre à jour la liste des items en attente
+      setPendingItems(prev => ({
+        ...prev,
+        [stateKey]: prev[stateKey].filter(item => item.id !== selectedItem.id)
+      }));
+      
+      closeRejectModal();
+    } catch (error) {
+      console.error("Erreur lors du rejet:", error);
+    }
+  };
+
+  const renderItemList = (items, type) => {
+    if (items.length === 0) {
+      return (
+        <div className="text-center py-10 text-gray-500">
+          <p>Aucun élément en attente de validation</p>
+        </div>
       );
-      
-      setShowValidationModal(false);
-      loadAdvertisements();
-    } catch (error) {
-      showToast('Erreur lors de la validation', 'error');
     }
-  };
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      pending: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">En attente</span>,
-      approved: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Approuvée</span>,
-      rejected: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Rejetée</span>
-    };
-    return badges[status] || status;
-  };
-
-  const handleSort = (field) => {
-    setFilters(prev => ({
-      ...prev,
-      sort_field: field,
-      sort_direction: prev.sort_field === field && prev.sort_direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const renderSortIcon = (field) => {
-    if (filters.sort_field !== field) return null;
-    return filters.sort_direction === 'asc' ? 
-      <ChevronUpIcon className="w-4 h-4" /> : 
-      <ChevronDownIcon className="w-4 h-4" />;
-  };
-
-  const renderValidationModal = () => (
-    <Modal
-      isOpen={showValidationModal}
-      onClose={() => setShowValidationModal(false)}
-      title={`${validationAction === 'approve' ? 'Approuver' : 'Rejeter'} la publicité`}
-    >
+    return (
       <div className="space-y-4">
-        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-          <h3 className="font-medium">{selectedAd?.title}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300">{selectedAd?.description}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Note de {validationAction === 'approve' ? 'validation' : 'rejet'}
-            {validationAction === 'reject' && <span className="text-red-500">*</span>}
-          </label>
-          <textarea
-            className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 p-2"
-            rows="4"
-            value={validationNote}
-            onChange={(e) => setValidationNote(e.target.value)}
-            placeholder={
-              validationAction === 'approve'
-                ? 'Ajouter une note (optionnel)'
-                : 'Veuillez expliquer la raison du rejet'
-            }
-            required={validationAction === 'reject'}
-          />
-        </div>
-
-        <div className="flex justify-end space-x-3">
-          <Button
-            variant="secondary"
-            onClick={() => setShowValidationModal(false)}
-          >
-            Annuler
-          </Button>
-          <Button
-            variant={validationAction === 'approve' ? 'success' : 'danger'}
-            onClick={handleValidation}
-            disabled={validationAction === 'reject' && !validationNote.trim()}
-          >
-            {validationAction === 'approve' ? 'Approuver' : 'Rejeter'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-
-  const renderHistoryModal = () => (
-    <Modal
-      isOpen={showHistoryModal}
-      onClose={() => setShowHistoryModal(false)}
-      title="Historique des validations"
-    >
-      <div className="space-y-4">
-        {validationHistory.map((validation) => (
-          <div
-            key={validation.id}
-            className="border-l-4 border-blue-500 pl-4 py-2"
-          >
+        {items.map(item => (
+          <div key={item.id} className="bg-white shadow rounded-lg p-4">
             <div className="flex justify-between items-start">
               <div>
-                <span className="font-medium">
-                  {validation.user.name}
-                </span>
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {' '}a {validation.action === 'submit' ? 'soumis' :
-                    validation.action === 'approve' ? 'approuvé' :
-                    validation.action === 'reject' ? 'rejeté' :
-                    validation.action === 'publish' ? 'publié' : 'dépublié'
-                  } la publicité
-                </span>
+                <h3 className="font-medium text-gray-900">{item.titre}</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {item.user?.nom} {item.user?.prenom} • {new Date(item.created_at).toLocaleDateString()}
+                </p>
+                <div className="flex items-center mt-1 space-x-2">
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${item.etat === 'disponible' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {item.etat === 'disponible' ? 'Disponible' : 'Terminé'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mt-2 line-clamp-2">{item.description}</p>
               </div>
-              <span className="text-sm text-gray-500">
-                {format(new Date(validation.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
-              </span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => openPreviewModal(item, type)}
+                  className="p-2 rounded-full hover:bg-gray-100"
+                >
+                  <EyeIcon className="h-5 w-5 text-gray-500" />
+                </button>
+                <button
+                  onClick={() => handleApprove(item.id, type)}
+                  className="p-2 rounded-full hover:bg-green-100"
+                >
+                  <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                </button>
+                <button
+                  onClick={() => openRejectModal(item, type)}
+                  className="p-2 rounded-full hover:bg-red-100"
+                >
+                  <XCircleIcon className="h-5 w-5 text-red-600" />
+                </button>
+                <button
+                  onClick={() => handleChangeEtat(item.id, type, item.etat === 'disponible' ? 'terminé' : 'disponible')}
+                  className="p-2 rounded-full hover:bg-blue-100"
+                >
+                  <TagIcon className="h-5 w-5 text-blue-600" />
+                </button>
+              </div>
             </div>
-            {validation.note && (
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                Note: {validation.note}
-              </p>
-            )}
           </div>
         ))}
       </div>
-    </Modal>
-  );
+    );
+  };
 
-  const renderFiltersModal = () => (
-    <Modal
-      isOpen={showFiltersModal}
-      onClose={() => setShowFiltersModal(false)}
-      title="Filtrer les publicités"
-    >
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Statut
-          </label>
-          <select
-            className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 p-2"
-            value={filters.status}
-            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-          >
-            <option value="">Tous</option>
-            <option value="pending">En attente</option>
-            <option value="approved">Approuvée</option>
-            <option value="rejected">Rejetée</option>
-          </select>
-        </div>
+  const renderPreviewModal = () => {
+    if (!selectedItem) return null;
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Publication
-          </label>
-          <select
-            className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 p-2"
-            value={filters.published}
-            onChange={(e) => setFilters(prev => ({ ...prev, published: e.target.value }))}
-          >
-            <option value="">Tous</option>
-            <option value="true">Publiée</option>
-            <option value="false">Non publiée</option>
-          </select>
-        </div>
+    let details = [];
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date de début
-          </label>
-          <input
-            type="date"
-            className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 p-2"
-            value={filters.start_date}
-            onChange={(e) => setFilters(prev => ({ ...prev, start_date: e.target.value }))}
-          />
-        </div>
+    // Configuration des détails selon le type
+    if (selectedItemType === 'advertisement') {
+      details = [
+        { label: 'Catégorie', value: selectedItem.categorie === 'produit' ? 'Produit' : 'Service' },
+        { label: 'Contacts', value: selectedItem.contacts },
+        { label: 'Email', value: selectedItem.email },
+        { label: 'Adresse', value: selectedItem.adresse },
+        { label: 'Besoin de livreurs', value: selectedItem.besoin_livreurs },
+        { label: 'Point de vente', value: selectedItem.point_vente },
+        { label: 'Quantité disponible', value: selectedItem.quantite_disponible },
+        { label: 'Prix unitaire', value: `${selectedItem.prix_unitaire_vente} ${selectedItem.devise}` },
+      ];
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Date de fin
-          </label>
-          <input
-            type="date"
-            className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 p-2"
-            value={filters.end_date}
-            onChange={(e) => setFilters(prev => ({ ...prev, end_date: e.target.value }))}
-          />
-        </div>
+      if (selectedItem.besoin_livreurs === 'OUI') {
+        details.push(
+          { label: 'Prix à la livraison', value: `${selectedItem.prix_unitaire_livraison} ${selectedItem.devise}` },
+          { label: 'Conditions de livraison', value: selectedItem.conditions_livraison }
+        );
+      }
+    } else if (selectedItemType === 'jobOffer') {
+      details = [
+        { label: 'Entreprise', value: selectedItem.entreprise },
+        { label: 'Lieu', value: selectedItem.lieu },
+        { label: 'Type de contrat', value: selectedItem.type_contrat },
+        { label: 'Compétences requises', value: selectedItem.competences_requises },
+        { label: 'Expérience requise', value: selectedItem.experience_requise },
+        { label: 'Niveau d\'études', value: selectedItem.niveau_etudes },
+        { label: 'Salaire', value: selectedItem.salaire ? `${selectedItem.salaire} ${selectedItem.devise}` : 'Non spécifié' },
+        { label: 'Avantages', value: selectedItem.avantages },
+        { label: 'Date limite', value: selectedItem.date_limite ? new Date(selectedItem.date_limite).toLocaleDateString() : 'Non spécifié' },
+        { label: 'Email de contact', value: selectedItem.email_contact },
+      ];
+    } else if (selectedItemType === 'businessOpportunity') {
+      details = [
+        { label: 'Secteur', value: selectedItem.secteur },
+        { label: 'Bénéfices attendus', value: selectedItem.benefices_attendus },
+        { label: 'Investissement requis', value: selectedItem.investissement_requis ? `${selectedItem.investissement_requis} ${selectedItem.devise}` : 'Non spécifié' },
+        { label: 'Durée de retour sur investissement', value: selectedItem.duree_retour_investissement },
+        { label: 'Localisation', value: selectedItem.localisation },
+        { label: 'Contacts', value: selectedItem.contacts },
+        { label: 'Email', value: selectedItem.email },
+        { label: 'Conditions de participation', value: selectedItem.conditions_participation },
+        { label: 'Date limite', value: selectedItem.date_limite ? new Date(selectedItem.date_limite).toLocaleDateString() : 'Non spécifié' },
+      ];
+    }
 
-        <div className="flex justify-end space-x-3">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setFilters({
-                status: '',
-                published: '',
-                search: '',
-                start_date: '',
-                end_date: '',
-                sort_field: 'created_at',
-                sort_direction: 'desc'
-              });
-              setShowFiltersModal(false);
-            }}
-          >
-            Réinitialiser
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => setShowFiltersModal(false)}
-          >
-            Appliquer
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-
-  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <ArrowPathIcon className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">
+              Aperçu - {selectedItem.titre}
+            </h3>
+            <button
+              onClick={closePreviewModal}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <XCircleIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div>
+              <h4 className="font-semibold text-xl mb-2">{selectedItem.titre}</h4>
+              <p className="text-gray-700">{selectedItem.description}</p>
+            </div>
+            
+            {selectedItem.image && (
+              <div className="mt-4">
+                <img 
+                  src={selectedItem.image} 
+                  alt={selectedItem.titre} 
+                  className="max-h-64 rounded-lg mx-auto object-contain"
+                />
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {details.map((detail, index) => (
+                <div key={index} className="border-b pb-2">
+                  <span className="text-sm text-gray-500">{detail.label}</span>
+                  <p className="font-medium">{detail.value || 'Non spécifié'}</p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  closePreviewModal();
+                  openRejectModal(selectedItem, selectedItemType);
+                }}
+                className="px-4 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors flex items-center"
+              >
+                <XCircleIcon className="h-5 w-5 mr-2" />
+                Rejeter
+              </button>
+              <button
+                onClick={() => {
+                  handleApprove(selectedItem.id, selectedItemType);
+                  closePreviewModal();
+                }}
+                className="px-4 py-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors flex items-center"
+              >
+                <CheckCircleIcon className="h-5 w-5 mr-2" />
+                Approuver
+              </button>
+              <button
+                onClick={() => {
+                  handleChangeEtat(selectedItem.id, selectedItemType, selectedItem.etat === 'disponible' ? 'terminé' : 'disponible');
+                  closePreviewModal();
+                }}
+                className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
+              >
+                <TagIcon className="h-5 w-5 mr-2" />
+                Marquer comme {selectedItem.etat === 'disponible' ? 'terminé' : 'disponible'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
-  }
+  };
 
-  return (
-    <div className="space-y-6">
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Gestion des publicités
-        </h1>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              className="w-full rounded-lg border dark:bg-gray-700 dark:border-gray-600 pl-10 pr-4 py-2"
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            />
-            <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+  const renderRejectModal = () => {
+    if (!selectedItem) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">
+              Raison du rejet
+            </h3>
+            <button
+              onClick={closeRejectModal}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <XCircleIcon className="h-6 w-6" />
+            </button>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFiltersModal(true)}
-          >
-            <FunnelIcon className="w-5 h-5 mr-2" />
-            Filtres
-          </Button>
-          <Button
-            variant="primary"
-            onClick={loadAdvertisements}
-          >
-            <ArrowPathIcon className="w-5 h-5" />
-          </Button>
+          <div className="p-6">
+            <p className="text-gray-700 mb-4">
+              Veuillez fournir une raison pour le rejet de cette publication. Cela aidera l'utilisateur à comprendre pourquoi sa publication n'a pas été approuvée.
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 h-32"
+              placeholder="Raison du rejet..."
+            />
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={closeRejectModal}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectionReason.trim()}
+                className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 ${
+                  !rejectionReason.trim() ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Rejeter la publication
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      {advertisements.length === 0 ? (
-        <Alert
-          type="info"
-          message="Aucune publicité trouvée"
-        />
-      ) : (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('title')}
-                  >
-                    <div className="flex items-center">
-                      Publicité
-                      {renderSortIcon('title')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('user.name')}
-                  >
-                    <div className="flex items-center">
-                      Annonceur
-                      {renderSortIcon('user.name')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('created_at')}
-                  >
-                    <div className="flex items-center">
-                      Soumis le
-                      {renderSortIcon('created_at')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Statut
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {advertisements.map((ad) => (
-                  <tr key={ad.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {ad.image_path && (
-                          <img
-                            src={ad.image_path}
-                            alt={ad.title}
-                            className="w-10 h-10 rounded-lg object-cover mr-3"
-                          />
-                        )}
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">{ad.title}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {ad.description.substring(0, 100)}
-                            {ad.description.length > 100 && '...'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900 dark:text-white">{ad.user.name}</div>
-                        <div className="text-gray-500 dark:text-gray-400">{ad.user.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      {format(new Date(ad.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(ad.validation_status)}
-                      {ad.is_published && (
-                        <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                          Publiée
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => loadValidationHistory(ad.id)}
-                        title="Voir l'historique"
-                      >
-                        <ClockIcon className="w-4 h-4" />
-                      </Button>
-                      {ad.validation_status === 'pending' && (
-                        <>
-                          <Button
-                            variant="success"
-                            size="sm"
-                            onClick={() => handleValidationClick(ad, 'approve')}
-                            title="Approuver"
-                          >
-                            <CheckCircleIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleValidationClick(ad, 'reject')}
-                            title="Rejeter"
-                          >
-                            <XCircleIcon className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+  return (
+    <div className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className="sm:flex sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Validation des publications</h1>
+          <p className="mt-2 text-sm text-gray-700">
+            Gérez les publications en attente de validation.
+          </p>
         </div>
-      )}
+        <button
+          onClick={fetchPendingItems}
+          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+        >
+          <ArrowPathIcon className="h-5 w-5 mr-2" />
+          Actualiser
+        </button>
+      </div>
 
-      {renderValidationModal()}
-      {renderHistoryModal()}
-      {renderFiltersModal()}
+      <div className="mt-8 bg-white shadow rounded-lg">
+        <Tab.Group>
+          <Tab.List className="flex space-x-1 rounded-t-lg bg-primary-50 p-1">
+            <Tab className={({ selected }) => classNames(
+              'w-full py-3 text-sm font-medium rounded-lg',
+              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
+              selected
+                ? 'bg-white shadow text-primary-700'
+                : 'text-gray-600 hover:bg-white/[0.12] hover:text-primary-600'
+            )}>
+              Publicités 
+              {pendingItems.advertisements.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
+                  {pendingItems.advertisements.length}
+                </span>
+              )}
+            </Tab>
+            <Tab className={({ selected }) => classNames(
+              'w-full py-3 text-sm font-medium rounded-lg',
+              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
+              selected
+                ? 'bg-white shadow text-primary-700'
+                : 'text-gray-600 hover:bg-white/[0.12] hover:text-primary-600'
+            )}>
+              Offres d'emploi
+              {pendingItems.jobOffers.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
+                  {pendingItems.jobOffers.length}
+                </span>
+              )}
+            </Tab>
+            <Tab className={({ selected }) => classNames(
+              'w-full py-3 text-sm font-medium rounded-lg',
+              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
+              selected
+                ? 'bg-white shadow text-primary-700'
+                : 'text-gray-600 hover:bg-white/[0.12] hover:text-primary-600'
+            )}>
+              Opportunités d'affaires
+              {pendingItems.businessOpportunities.length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
+                  {pendingItems.businessOpportunities.length}
+                </span>
+              )}
+            </Tab>
+          </Tab.List>
+          <Tab.Panels>
+            <Tab.Panel className="p-4">
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : renderItemList(pendingItems.advertisements, 'advertisement')}
+            </Tab.Panel>
+            <Tab.Panel className="p-4">
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : renderItemList(pendingItems.jobOffers, 'jobOffer')}
+            </Tab.Panel>
+            <Tab.Panel className="p-4">
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : renderItemList(pendingItems.businessOpportunities, 'businessOpportunity')}
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
+      </div>
+
+      {/* Modals */}
+      {isPreviewModalOpen && renderPreviewModal()}
+      {isRejectModalOpen && renderRejectModal()}
     </div>
   );
 }

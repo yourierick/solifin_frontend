@@ -19,7 +19,8 @@
  * - Système de notifications toast
  */
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense } from 'react';
 import RequireAuth from './components/RequireAuth';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -38,10 +39,9 @@ import AddPack from './pages/admin/AddPack';
 import Packs from './pages/admin/Packs';
 import Users from './pages/admin/Users';
 import UserDetails from './pages/admin/UserDetails';
+import MyPage from './pages/user/MyPage';
 // import WithdrawalRequests from './pages/admin/WithdrawalRequests';
 import AdvertisementValidation from './pages/admin/AdvertisementValidation';
-import JobOfferValidation from './pages/admin/JobOfferValidation';
-import OpportunityValidation from './pages/admin/OpportunityValidation';
 import ToastContainer from './components/Toast';
 import EditPack from './pages/admin/EditPack';
 import MyPacks from './pages/user/MyPacks';
@@ -49,6 +49,7 @@ import MesPacks from './pages/admin/MyPacks';
 import Profile from './pages/Profile';
 import AdminProfile from './pages/admin/AdminProfile';
 import DashboardLayout from './layouts/DashboardLayout';
+import { PublicationPackProvider } from './contexts/PublicationPackContext';
 import PurchasePack from './pages/PurchasePack';
 import VerificationSuccess from './pages/VerificationSuccess';
 import VerificationError from './pages/VerificationError';
@@ -58,113 +59,99 @@ import WithdrawalRequests from './components/WithdrawalRequests';
 
 function App() {
   return (
-    <div>
-      <ToastContainer />
-      <Routes>
-        {/* Routes publiques */}
-        <Route path="/" element={
-          <PublicRoute>
-            <Homepage />
-          </PublicRoute>
-        } />
-        <Route path="/login" element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        } />
-        <Route path="/register" element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        } />
-        <Route path="/forgot-password" element={
-          <PublicRoute>
-            <ForgotPassword />
-          </PublicRoute>
-        } />
-        <Route path="/reset-password/:token" element={
-          <PublicRoute>
-            <ResetPassword />
-          </PublicRoute>
-        } />
-        <Route path="/email/verify/:id/:hash" element={
-          <PublicRoute>
-            <EmailVerification />
-          </PublicRoute>
-        } />
-        <Route path="/verification-success" element={
-          <PublicRoute>
-            <VerificationSuccess />
-          </PublicRoute>
-        } />
-        <Route path="/verification-error" element={
-          <PublicRoute>
-            <VerificationError />
-          </PublicRoute>
-        } />
-        <Route path="/purchase-pack/:sponsor_code" element={
-          <PublicRoute>
-            <PurchasePack />
-          </PublicRoute>
-        } />
+    <PublicationPackProvider>
+        <div>
+          <ToastContainer />
+          <Routes>
+            {/* Routes publiques */}
+            <Route path="/" element={
+              <PublicRoute>
+                <Homepage />
+              </PublicRoute>
+            } />
+            <Route path="/login" element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } />
+            <Route path="/register" element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } />
+            <Route path="/forgot-password" element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            } />
+            <Route path="/reset-password/:token" element={
+              <PublicRoute>
+                <ResetPassword />
+              </PublicRoute>
+            } />
+            <Route path="/email/verify/:id/:hash" element={
+              <PublicRoute>
+                <EmailVerification />
+              </PublicRoute>
+            } />
+            <Route path="/verification-success" element={
+              <PublicRoute>
+                <VerificationSuccess />
+              </PublicRoute>
+            } />
+            <Route path="/verification-error" element={
+              <PublicRoute>
+                <VerificationError />
+              </PublicRoute>
+            } />
+            <Route path="/purchase-pack/:sponsor_code" element={
+              <PublicRoute>
+                <PurchasePack />
+              </PublicRoute>
+            } />
+            
+            {/* Routes protégées */}
+            <Route path="/admin/*"
+              element={
+                <PrivateRoute>
+                  <AdminDashboardLayout />
+                </PrivateRoute>
+              }>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<Users />} />
+              <Route path="withdrawal-requests" element={<WithdrawalRequests />} />
+              <Route path="users/:id" element={<UserDetails />} />
+              <Route path="wallets" element={<Wallets />} />
+              <Route path="profile" element={<AdminProfile />} />
+              {/* <Route path="withdrawal-requests" element={<WithdrawalRequests />} /> */}
+              <Route path="packs" element={<Packs />} />
+              <Route path="mespacks" element={<MesPacks />} />
+              <Route path="packs/add" element={<AddPack />} />
+              <Route path="packs/edit/:id" element={<EditPack />} />
+              <Route path="settings" element={<div>Paramètres (à venir)</div>} />
+            </Route>
         
-        {/* Routes protégées */}
-        <Route path="/admin/*"
-          element={
-            <PrivateRoute>
-              <AdminDashboardLayout />
-            </PrivateRoute>
-          }>
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="withdrawal-requests" element={<WithdrawalRequests />} />
-          <Route path="users/:id" element={<UserDetails />} />
-          <Route path="wallets" element={<Wallets />} />
-          <Route path="profile" element={<AdminProfile />} />
-          {/* <Route path="withdrawal-requests" element={<WithdrawalRequests />} /> */}
-          <Route path="packs" element={<Packs />} />
-          <Route path="mespacks" element={<MesPacks />} />
-          <Route path="packs/add" element={<AddPack />} />
-          <Route path="packs/edit/:id" element={<EditPack />} />
-          <Route path="validations">
-            <Route path="ads" element={<AdvertisementValidation />} />
-            <Route path="opportunities" element={<OpportunityValidation />} />
-            <Route path="jobs" element={<JobOfferValidation />} />
-          </Route>
-          <Route path="settings" element={<div>Paramètres (à venir)</div>} />
-        </Route>
-        
-        <Route path="/dashboard/*"
-          element={
-            <PrivateRoute>
-              <UserDashboardLayout />
-            </PrivateRoute>
-          }>
-          <Route index element={<UserDashboard />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="wallet" element={<Wallet />} />
-          <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
-          <Route path="stats" element={<Stats />} />
-          <Route path="opportunities">
-            <Route path="create" element={<div>Ajouter une opportunité (à venir)</div>} />
-            <Route path="list" element={<div>Mes opportunités (à venir)</div>} />
-          </Route>
-          <Route path="ads">
-            <Route path="create" element={<div>Créer une publicité (à venir)</div>} />
-            <Route path="list" element={<div>Mes publicités (à venir)</div>} />
-          </Route>
-          <Route path="jobs">
-            <Route path="create" element={<div>Publier une offre d'emploi (à venir)</div>} />
-            <Route path="list" element={<div>Mes offres d'emploi (à venir)</div>} />
-          </Route>
-          <Route path="packs" element={<MyPacks />} />
-          <Route path="buypacks" element={<BuyPack />} />
-        </Route>
+            <Route path="/dashboard/*"
+              element={
+                <PrivateRoute>
+                  <UserDashboardLayout />
+                </PrivateRoute>
+              }>
+              <Route index element={<UserDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="wallet" element={<Wallet />} />
+              <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
+              <Route path="stats" element={<Stats />} />
+              <Route path="my-page" element={<MyPage />} />
+              <Route path="packs" element={<MyPacks />} />
+              <Route path="buypacks" element={<BuyPack />} />
+            </Route>
 
-        {/* Redirection pour les routes inconnues */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+            {/* Redirection pour les routes inconnues */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </PublicationPackProvider>
   );
 }
 
