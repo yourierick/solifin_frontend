@@ -213,7 +213,6 @@ export default function MyPage() {
   const handleFormSubmit = async (data) => {
     const isCreating = !isEditMode;
     const apiPath = getPublicationTypeApiPath(currentFormType);
-    const method = isCreating ? 'post' : 'put';
     const url = isCreating ? `/api/${apiPath}` : `/api/${apiPath}/${currentPublication.id}`;
     
     try {
@@ -224,7 +223,45 @@ export default function MyPage() {
         },
       };
       
-      const response = await axios[method](url, data, config);
+      // Vérifier si l'objet data est bien un FormData
+      if (!(data instanceof FormData)) {
+        console.error('Les données ne sont pas au format FormData');
+        throw new Error('Format de données incorrect');
+      }
+      
+      // Pour les mises à jour, utiliser POST avec _method=PUT au lieu de PUT directement
+      // car PHP ne traite pas correctement les données multipart/form-data avec PUT
+      if (!isCreating) {
+        data.append('_method', 'PUT');
+      }
+      
+      // Log pour déboguer
+      console.log('Envoi de données au serveur:', isCreating ? 'POST' : 'POST avec _method=PUT', url);
+      console.log('Données envoyées:');
+      for (let pair of data.entries()) {
+        // Si c'est conditions_livraison, s'assurer que c'est un tableau
+        if (pair[0] === 'conditions_livraison') {
+          // Convertir en tableau si ce n'est pas déjà fait
+          let conditions = pair[1];
+          if (typeof conditions === 'string') {
+            try {
+              conditions = JSON.parse(conditions);
+            } catch (e) {
+              conditions = [];
+            }
+          }
+          if (!Array.isArray(conditions)) {
+            conditions = [];
+          }
+          // Remplacer la valeur dans le FormData
+          data.delete('conditions_livraison');
+          data.append('conditions_livraison', JSON.stringify(conditions));
+        }
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+      
+      // Toujours utiliser POST, avec _method=PUT pour les mises à jour
+      const response = await axios.post(url, data, config);
       
       // Recharger toutes les données après une création ou modification
       // pour s'assurer que nous avons les données les plus à jour
@@ -240,9 +277,6 @@ export default function MyPage() {
       // Mettre à jour les statistiques de la page
       setSubscribersCount(pageResponse.data.page.nombre_abonnes);
       setLikesCount(pageResponse.data.page.nombre_likes);
-      
-      // Afficher une notification de succès
-      Notification.success(isCreating ? 'Publication créée avec succès' : 'Publication modifiée avec succès');
       
       // Fermer le formulaire
       handleFormClose();

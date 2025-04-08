@@ -36,7 +36,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       email: initialData.email,
       adresse: initialData.adresse,
       lien: initialData.lien,
-      devise: initialData.devise || 'XOF'
+      devise: initialData.devise || 'FC'
     } : {}
   });
   const [selectedImage, setSelectedImage] = useState(null);
@@ -81,7 +81,11 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       { name: 'devise', label: 'Devise', type: 'select', required: true, options: [
         { value: 'XOF', label: 'XOF (FCFA)' },
         { value: 'EUR', label: 'EUR (€)' },
-        { value: 'USD', label: 'USD ($)' }
+        { value: 'USD', label: 'USD ($)' },
+        { value: 'YEN', label: 'YEN (¥)' },
+        { value: 'YUAN', label: 'YUAN (¥)' },
+        { value: 'CDF', label: 'CDF (FC)' },
+        { value: 'SAR', label: 'SAR (﷼)' }
       ]},
       { name: 'commission_livraison', label: 'Commission de livraison', type: 'select', 
         options: [
@@ -164,8 +168,10 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
   
   // Mettre à jour le champ caché des conditions de livraison lorsqu'elles changent
   useEffect(() => {
-    if (conditionsLivraison.length > 0 || type === 'advertisement') {
-      setValue('conditions_livraison', JSON.stringify(conditionsLivraison));
+    if (type === 'advertisement') {
+      // S'assurer que conditionsLivraison est toujours un tableau
+      const conditions = Array.isArray(conditionsLivraison) ? conditionsLivraison : [];
+      setValue('conditions_livraison', conditions);
     }
   }, [conditionsLivraison, setValue, type]);
 
@@ -177,20 +183,22 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         setValue('categorie', initialData.categorie);
         setValue('besoin_livreurs', initialData.besoin_livreurs || 'NON');
         // Gérer les conditions de livraison comme un tableau
+        // Traitement des conditions de livraison
+        let conditions = [];
         if (initialData.conditions_livraison) {
           if (Array.isArray(initialData.conditions_livraison)) {
-            setConditionsLivraison(initialData.conditions_livraison);
-          } else {
+            conditions = initialData.conditions_livraison;
+          } else if (typeof initialData.conditions_livraison === 'string') {
             try {
-              // Si c'est une chaîne JSON, essayer de la parser
-              const parsedConditions = JSON.parse(initialData.conditions_livraison);
-              setConditionsLivraison(Array.isArray(parsedConditions) ? parsedConditions : []);
+              const parsed = JSON.parse(initialData.conditions_livraison);
+              conditions = Array.isArray(parsed) ? parsed : [parsed];
             } catch (e) {
-              // Si ce n'est pas un JSON valide, le traiter comme une seule condition
-              setConditionsLivraison([initialData.conditions_livraison]);
+              conditions = initialData.conditions_livraison.length > 0 ? [initialData.conditions_livraison] : [];
             }
           }
         }
+        setConditionsLivraison(conditions);
+        setValue('conditions_livraison', conditions);
         setValue('point_vente', initialData.point_vente);
         setValue('quantite_disponible', initialData.quantite_disponible);
         setValue('prix_unitaire_vente', initialData.prix_unitaire_vente);
@@ -205,7 +213,12 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         setValue('niveau_etudes', initialData.niveau_etudes);
         setValue('salaire', initialData.salaire);
         setValue('avantages', initialData.avantages);
-        setValue('date_limite', initialData.date_limite);
+        // Formater la date au format YYYY-MM-DD pour le champ input type="date"
+        if (initialData.date_limite) {
+          const date = new Date(initialData.date_limite);
+          const formattedDate = date.toISOString().split('T')[0];
+          setValue('date_limite', formattedDate);
+        }
         setValue('email_contact', initialData.email_contact);
       } else if (type === 'businessOpportunity') {
         setValue('secteur', initialData.secteur);
@@ -214,7 +227,12 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         setValue('duree_retour_investissement', initialData.duree_retour_investissement);
         setValue('localisation', initialData.localisation);
         setValue('conditions_participation', initialData.conditions_participation);
-        setValue('date_limite', initialData.date_limite);
+        // Formater la date au format YYYY-MM-DD pour le champ input type="date"
+        if (initialData.date_limite) {
+          const date = new Date(initialData.date_limite);
+          const formattedDate = date.toISOString().split('T')[0];
+          setValue('date_limite', formattedDate);
+        }
       }
     }
   }, [isEditMode, initialData, type, setValue]);
@@ -276,7 +294,14 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       Object.keys(formData).forEach(key => {
         // Ne pas ajouter les champs de fichiers, ils seront gérés séparément
         if (key !== 'image' && key !== 'video') {
-          data.append(key, formData[key]);
+          // Traitement spécial pour conditions_livraison
+          if (key === 'conditions_livraison') {
+            // S'assurer que c'est un tableau avant de l'envoyer
+            const conditions = Array.isArray(formData[key]) ? formData[key] : [];
+            data.append(key, JSON.stringify(conditions));
+          } else {
+            data.append(key, formData[key]);
+          }
         }
       });
       
@@ -320,14 +345,11 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         if (data[key] !== undefined && data[key] !== null && key !== 'image' && key !== 'video' && key !== 'phoneNumber') {
           // Traitement spécial pour conditions_livraison
           if (key === 'conditions_livraison') {
-            // S'assurer que c'est bien un tableau JSON valide
-            try {
-              const conditionsArray = JSON.parse(data[key]);
-              formData.append(key, JSON.stringify(conditionsArray));
-            } catch (e) {
-              console.error('Erreur lors du parsing des conditions de livraison:', e);
-              formData.append(key, JSON.stringify([])); // Tableau vide par défaut en cas d'erreur
-            }
+            // S'assurer que c'est un tableau avant l'envoi
+            const conditions = Array.isArray(data[key]) ? data[key] : [];
+            // Important: stringifier le tableau pour l'envoi
+            formData.append(key, JSON.stringify(conditions));
+            console.log('conditions_livraison ajoutées au FormData:', conditions);
           } else {
             formData.append(key, data[key]);
           }
@@ -335,12 +357,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       });
       
       // Ajouter le numéro de téléphone complet
-      // Pour les offres d'emploi, utiliser 'numero_contact', sinon 'contacts'
-      if (type === 'jobOffer') {
-        formData.append('numero_contact', fullPhoneNumber);
-      } else {
-        formData.append('contacts', fullPhoneNumber);
-      }
+      formData.append('contacts', fullPhoneNumber);
       
       // Ajouter les fichiers uniquement s'ils sont sélectionnés
       // Ne pas ajouter les champs du tout si aucun fichier n'est sélectionné
