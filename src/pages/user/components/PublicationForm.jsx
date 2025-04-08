@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { CheckCircleIcon, InformationCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, InformationCircleIcon, PlusIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePublicationPack } from '../../../contexts/PublicationPackContext';
 import PublicationPackAlert from '../../../components/PublicationPackAlert';
@@ -41,8 +41,25 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
   });
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  
+  // États pour les fichiers initiaux en mode édition
+  const [initialPdfUrl, setInitialPdfUrl] = useState(null);
+  const [initialPdfName, setInitialPdfName] = useState('');
+  const [showInitialPdf, setShowInitialPdf] = useState(false);
+  
+  const [initialImageUrl, setInitialImageUrl] = useState(null);
+  const [initialImageName, setInitialImageName] = useState('');
+  const [showInitialImage, setShowInitialImage] = useState(false);
+  
+  const [initialVideoUrl, setInitialVideoUrl] = useState(null);
+  const [initialVideoName, setInitialVideoName] = useState('');
+  const [showInitialVideo, setShowInitialVideo] = useState(false);
+  
+  // États pour les erreurs
   const [imageError, setImageError] = useState('');
   const [videoError, setVideoError] = useState('');
+  const [pdfError, setPdfError] = useState('');
   const [conditionsLivraison, setConditionsLivraison] = useState([]);
   const [phoneCode, setPhoneCode] = useState(initialPhoneCode);
 
@@ -52,6 +69,66 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
   
   const watchCategorie = watch('categorie');
   const watchBesoinLivreurs = watch('besoin_livreurs');
+  
+  // Charger les fichiers initiaux en mode édition
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      // Traitement du fichier PDF (offres d'emploi)
+      if (initialData.offer_file_url) {
+        setInitialPdfUrl(initialData.offer_file_url);
+        
+        // Extraire le nom du fichier de l'URL
+        // Enlever les paramètres d'URL s'il y en a (tout ce qui suit ?) et décoder les caractères spéciaux
+        const fileName = initialData.offer_file_url.split('/').pop().split('?')[0];
+        const decodedFileName = decodeURIComponent(fileName);
+        
+        // Extraire le nom original du fichier (enlever le timestamp s'il existe)
+        const originalFileName = decodedFileName.replace(/^\d+_/, '');
+        
+        setInitialPdfName(originalFileName);
+        setShowInitialPdf(true);
+      } else if (initialData.offer_file) {
+        // Si nous avons juste le chemin du fichier sans l'URL complète
+        const fileName = initialData.offer_file.split('/').pop().replace(/^\d+_/, '');
+        setInitialPdfName(fileName);
+        setShowInitialPdf(true);
+      }
+      
+      // Traitement de l'image (publicités et opportunités d'affaires)
+      if (initialData.image_url) {
+        setInitialImageUrl(initialData.image_url);
+        
+        // Extraire le nom du fichier de l'URL
+        const fileName = initialData.image_url.split('/').pop().split('?')[0];
+        const decodedFileName = decodeURIComponent(fileName);
+        const originalFileName = decodedFileName.replace(/^\d+_/, '');
+        
+        setInitialImageName(originalFileName);
+        setShowInitialImage(true);
+      } else if (initialData.image) {
+        const fileName = initialData.image.split('/').pop().replace(/^\d+_/, '');
+        setInitialImageName(fileName);
+        setShowInitialImage(true);
+      }
+      
+      // Traitement de la vidéo (publicités)
+      if (initialData.video_url) {
+        setInitialVideoUrl(initialData.video_url);
+        
+        // Extraire le nom du fichier de l'URL
+        const fileName = initialData.video_url.split('/').pop().split('?')[0];
+        const decodedFileName = decodeURIComponent(fileName);
+        const originalFileName = decodedFileName.replace(/^\d+_/, '');
+        
+        setInitialVideoName(originalFileName);
+        setShowInitialVideo(true);
+      } else if (initialData.video) {
+        const fileName = initialData.video.split('/').pop().replace(/^\d+_/, '');
+        setInitialVideoName(fileName);
+        setShowInitialVideo(true);
+      }
+    }
+  }, [isEditMode, initialData]);
 
   const formFields = {
     advertisement: [
@@ -136,6 +213,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       { name: 'avantages', label: 'Avantages', type: 'textarea', placeholder: 'Ex: Assurance maladie, tickets restaurant, etc.' },
       { name: 'date_limite', label: 'Date limite de candidature', type: 'date' },
       { name: 'email_contact', label: 'Email de contact', type: 'email', required: true, placeholder: 'Email pour recevoir les candidatures' },
+      { name: 'offer_file', label: 'Fichier de l\'offre (PDF, max: 5Mo)', type: 'file', accept: 'application/pdf' },
       { name: 'lien', label: 'Lien', type: 'url', placeholder: 'Lien externe (site web, page de recrutement, etc.)' }
     ],
     
@@ -254,10 +332,26 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       }
       
       setSelectedImage(file);
+      setShowInitialImage(false); // Masquer l'image initiale s'il existe
       setImageError('');
     } else {
       setSelectedImage(null);
     }
+  };
+  
+  // Fonction pour supprimer l'image sélectionnée
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    // Réinitialiser le champ de fichier
+    const fileInput = document.getElementById('image');
+    if (fileInput) fileInput.value = '';
+  };
+  
+  // Fonction pour supprimer l'image initiale en mode édition
+  const handleRemoveInitialImage = () => {
+    setShowInitialImage(false);
+    setInitialImageUrl(null);
+    setInitialImageName('');
   };
   
   const handleVideoChange = (e) => {
@@ -276,10 +370,68 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       }
       
       setSelectedVideo(file);
+      setShowInitialVideo(false); // Masquer la vidéo initiale s'il existe
       setVideoError('');
     } else {
       setSelectedVideo(null);
     }
+  };
+  
+  // Fonction pour supprimer la vidéo sélectionnée
+  const handleRemoveVideo = () => {
+    setSelectedVideo(null);
+    // Réinitialiser le champ de fichier
+    const fileInput = document.getElementById('video');
+    if (fileInput) fileInput.value = '';
+  };
+  
+  // Fonction pour supprimer la vidéo initiale en mode édition
+  const handleRemoveInitialVideo = () => {
+    setShowInitialVideo(false);
+    setInitialVideoUrl(null);
+    setInitialVideoName('');
+  };
+  
+  // Gestion du changement de fichier PDF
+  const handlePdfChange = (e) => {
+    const file = e.target?.files?.[0];
+    
+    if (file) {
+      // Vérifier le type de fichier
+      if (file.type !== 'application/pdf') {
+        setPdfError('Seuls les fichiers PDF sont acceptés');
+        setSelectedPdf(null);
+        return;
+      }
+      
+      // Vérifier la taille du fichier (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setPdfError('Le fichier ne doit pas dépasser 5MB');
+        setSelectedPdf(null);
+        return;
+      }
+      
+      setSelectedPdf(file);
+      setShowInitialPdf(false); // Masquer le fichier initial s'il existe
+      setPdfError('');
+    } else {
+      setSelectedPdf(null);
+    }
+  };
+  
+  // Fonction pour supprimer le fichier PDF sélectionné
+  const handleRemovePdf = () => {
+    setSelectedPdf(null);
+    // Réinitialiser le champ de fichier
+    const fileInput = document.getElementById('offer_file');
+    if (fileInput) fileInput.value = '';
+  };
+  
+  // Fonction pour supprimer le fichier PDF initial en mode édition
+  const handleRemoveInitialPdf = () => {
+    setShowInitialPdf(false);
+    setInitialPdfUrl(null);
+    setInitialPdfName('');
   };
 
   // Gestion de la soumission du formulaire
@@ -290,10 +442,45 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       // Créer un objet FormData pour gérer les fichiers
       const data = new FormData();
       
-      // Ajouter chaque champ du formulaire au FormData
+      // Gestion du fichier PDF pour les offres d'emploi
+      if (type === 'jobOffer') {
+        // Cas 1: Un nouveau fichier PDF a été sélectionné
+        if (selectedPdf) {
+          // Ajouter explicitement le fichier avec le nom de champ correct
+          data.append('offer_file', selectedPdf, selectedPdf.name);
+          
+          // Vérification que le fichier est bien dans le FormData
+          let fileInFormData = false;
+          for (let pair of data.entries()) {
+            if (pair[0] === 'offer_file') {
+              fileInFormData = true;
+            }
+          }
+          
+          if (!fileInFormData) {
+            throw new Error('Impossible d\'ajouter le fichier PDF au formulaire');
+          }
+        }
+        // Cas 2: Mode édition, fichier initial conservé (ne rien faire, le backend conservera le fichier existant)
+        else if (isEditMode && showInitialPdf) {
+          // Ne rien faire, le fichier existant sera conservé
+        }
+        // Cas 3: Mode édition, fichier initial supprimé (indiquer au backend de supprimer le fichier)
+        else if (isEditMode && !showInitialPdf && initialPdfUrl) {
+          data.append('remove_offer_file', '1');
+        }
+        // Cas 4: Pas de fichier PDF (optionnel)
+      }
+      
+      // Ajouter ensuite chaque champ du formulaire au FormData
       Object.keys(formData).forEach(key => {
-        // Ne pas ajouter les champs de fichiers, ils seront gérés séparément
-        if (key !== 'image' && key !== 'video') {
+        // Ne pas ajouter les champs de fichiers, ils sont gérés séparément
+        if (key !== 'image' && key !== 'video' && key !== 'offer_file') {
+          // Ne pas ajouter les champs non définis, vides ou avec la valeur "null"
+          if (formData[key] === undefined || formData[key] === '' || formData[key] === 'null' || formData[key] === null) {
+            return;
+          }
+          
           // Traitement spécial pour conditions_livraison
           if (key === 'conditions_livraison') {
             // S'assurer que c'est un tableau avant de l'envoyer
@@ -305,99 +492,79 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         }
       });
       
-      // Ajouter l'image si elle existe
+      // Gestion de l'image
       if (selectedImage) {
+        // Cas 1: Une nouvelle image a été sélectionnée
         data.append('image', selectedImage);
+      } else if (isEditMode && !showInitialImage && initialImageUrl) {
+        // Cas 2: Mode édition, image initiale supprimée (indiquer au backend de supprimer l'image)
+        data.append('remove_image', '1');
       }
+      // Cas 3: Mode édition, image initiale conservée (ne rien faire, le backend conservera l'image existante)
+      // Cas 4: Pas d'image (optionnel)
       
-      // Ajouter la vidéo si elle existe
+      // Gestion de la vidéo
       if (selectedVideo) {
+        // Cas 1: Une nouvelle vidéo a été sélectionnée
         data.append('video', selectedVideo);
+      } else if (isEditMode && !showInitialVideo && initialVideoUrl) {
+        // Cas 2: Mode édition, vidéo initiale supprimée (indiquer au backend de supprimer la vidéo)
+        data.append('remove_video', '1');
       }
+      // Cas 3: Mode édition, vidéo initiale conservée (ne rien faire, le backend conservera la vidéo existante)
+      // Cas 4: Pas de vidéo (optionnel)
       
-      // Appeler la fonction onSubmit passée par le parent
-      await onSubmit(data);
+      // Configuration pour l'envoi de fichiers avec FormData
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      };
+      
+      // Appeler la fonction onSubmit passée en prop avec le FormData
+      await onSubmit(data, config);
     } catch (error) {
-      console.error("Erreur lors de la soumission du formulaire:", error);
-      alert("Erreur lors de la soumission: " + (error.response?.data?.message || error.message || "Veuillez réessayer"));
       // Réinitialiser l'état de soumission pour permettre une nouvelle tentative
       setIsSubmitting(false);
+      // Propager l'erreur pour qu'elle soit traitée par onSubmitHandler
+      throw error;
     }
   };
-
+  
   const onSubmitHandler = async (data) => {
     // Vérifier si le pack est actif avant de soumettre (sauf en mode édition)
     if (!isPackActive && !isEditMode) {
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
-      // Créer un FormData pour gérer les fichiers
-      const formData = new FormData();
-      
+      // Préparer les données supplémentaires pour le formulaire
       // Concaténer l'indicatif téléphonique avec le numéro de téléphone
       const fullPhoneNumber = data.phoneNumber ? `${phoneCode} ${data.phoneNumber.trim()}` : '';
       
-      // Ajouter les champs du formulaire
-      Object.keys(data).forEach(key => {
-        if (data[key] !== undefined && data[key] !== null && key !== 'image' && key !== 'video' && key !== 'phoneNumber') {
-          // Traitement spécial pour conditions_livraison
-          if (key === 'conditions_livraison') {
-            // S'assurer que c'est un tableau avant l'envoi
-            const conditions = Array.isArray(data[key]) ? data[key] : [];
-            // Important: stringifier le tableau pour l'envoi
-            formData.append(key, JSON.stringify(conditions));
-            console.log('conditions_livraison ajoutées au FormData:', conditions);
-          } else {
-            formData.append(key, data[key]);
-          }
-        }
-      });
-      
-      // Ajouter le numéro de téléphone complet
-      formData.append('contacts', fullPhoneNumber);
-      
-      // Ajouter les fichiers uniquement s'ils sont sélectionnés
-      // Ne pas ajouter les champs du tout si aucun fichier n'est sélectionné
-      if (selectedImage && selectedImage instanceof File) {
-        formData.append('image', selectedImage);
+      // Ajouter le numéro de téléphone complet si nécessaire
+      if (fullPhoneNumber) {
+        data.contacts = fullPhoneNumber;
       }
       
-      if (selectedVideo && selectedVideo instanceof File) {
-        formData.append('video', selectedVideo);
+      // Ajouter le statut et l'état pour les nouvelles publications
+      if (!isEditMode) {
+        data.statut = 'en_attente';
+        data.etat = 'disponible';
       }
       
-      // En mode édition, conserver le statut existant si disponible
+      // En mode édition, conserver l'ID
       if (isEditMode && initialData) {
-        formData.append('id', initialData.id);
-        // Le statut sera géré côté serveur en mode édition
-      } else {
-        // Ajouter le statut initial (en attente de validation) pour les nouvelles publications
-        formData.append('statut', 'en_attente');
-        formData.append('etat', 'disponible');
+        data.id = initialData.id;
       }
       
-      try {
-        // Appeler la fonction onSubmit passée en prop et capturer le résultat
-        const submitResult = await onSubmit(formData);
-        
-        // Vérifier si la soumission a échoué (si la fonction onSubmit retourne false)
-        if (submitResult === false) {
-          throw new Error("La soumission a échoué");
-        }
-        
-        // Notification de succès si tout s'est bien passé
-        Notification.success(isEditMode ? 'Publication modifiée avec succès' : 'Publication soumise avec succès');
-      } finally {
-        // Réinitialiser l'état de soumission dans tous les cas (succès ou échec)
-        setIsSubmitting(false);
-      }
+      // Utiliser la nouvelle fonction onFormSubmit pour gérer l'upload du fichier PDF
+      // et la création du FormData avec la configuration correcte
+      await onFormSubmit(data);
       
+      // Notification de succès si tout s'est bien passé
+      Notification.success(isEditMode ? 'Publication modifiée avec succès' : 'Publication soumise avec succès');
     } catch (error) {
-      console.error("Erreur lors de la soumission du formulaire:", error);
-      
       // Message d'erreur détaillé
       let errorMessage = 'Une erreur est survenue lors de la soumission du formulaire';
       
@@ -531,27 +698,269 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
               
               {field.type === 'file' && field.name === 'image' && (
                 <div>
-                  <input
-                    id={field.name}
-                    type="file"
-                    accept={field.accept}
-                    onChange={handleImageChange}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                  />
-                  {imageError && <p className="mt-1 text-sm text-red-600">{imageError}</p>}
+                  {/* Afficher l'image initiale en mode édition */}
+                  {isEditMode && showInitialImage && (
+                    <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium">Image actuelle:</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">"{initialImageName}"</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          {initialImageUrl && (
+                            <a 
+                              href={initialImageUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Voir
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleRemoveInitialImage}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            title="Supprimer l'image"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Zone de sélection de fichier (affichée si pas de fichier initial ou si le fichier initial a été supprimé) */}
+                  {(!isEditMode || !showInitialImage) && (
+                    <div>
+                      <input
+                        type="file"
+                        id="image"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Image jusqu'à 2 Mo (optionnel)
+                      </p>
+                      {imageError && <p className="text-xs text-red-500 dark:text-red-400">{imageError}</p>}
+                      {selectedImage && (
+                        <div className="flex items-center justify-center mt-2">
+                          <p className="text-xs text-green-500 dark:text-green-400 mr-2">
+                            <CheckCircleIcon className="inline-block h-4 w-4 mr-1" />
+                            {selectedImage.name}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="inline-flex items-center p-1 border border-transparent text-xs font-medium rounded-full text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               
               {field.type === 'file' && field.name === 'video' && (
                 <div>
-                  <input
-                    id={field.name}
-                    type="file"
-                    accept={field.accept}
-                    onChange={handleVideoChange}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                  />
-                  {videoError && <p className="mt-1 text-sm text-red-600">{videoError}</p>}
+                  {/* Afficher la vidéo initiale en mode édition */}
+                  {isEditMode && showInitialVideo && (
+                    <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium">Vidéo actuelle:</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">"{initialVideoName}"</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          {initialVideoUrl && (
+                            <a 
+                              href={initialVideoUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Voir
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleRemoveInitialVideo}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            title="Supprimer la vidéo"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Zone de sélection de fichier (affichée si pas de fichier initial ou si le fichier initial a été supprimé) */}
+                  {(!isEditMode || !showInitialVideo) && (
+                    <div>
+                      <input
+                        type="file"
+                        id="video"
+                        accept="video/*"
+                        onChange={handleVideoChange}
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Vidéo jusqu'à 5 Mo (optionnel)
+                      </p>
+                      {videoError && <p className="text-xs text-red-500 dark:text-red-400">{videoError}</p>}
+                      {selectedVideo && (
+                        <div className="flex items-center justify-center mt-2">
+                          <p className="text-xs text-green-500 dark:text-green-400 mr-2">
+                            <CheckCircleIcon className="inline-block h-4 w-4 mr-1" />
+                            {selectedVideo.name}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleRemoveVideo}
+                            className="inline-flex items-center p-1 border border-transparent text-xs font-medium rounded-full text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              )}
+              
+              {field.type === 'file' && field.name === 'offer_file' && (
+                <div>
+                  {/* Afficher le fichier PDF initial en mode édition */}
+                  {isEditMode && showInitialPdf && (
+                    <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium">Fichier PDF actuel:</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">"{initialPdfName}"</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          {initialPdfUrl && (
+                            <a 
+                              href={initialPdfUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Voir
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleRemoveInitialPdf}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            title="Supprimer le fichier PDF"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Zone de sélection de fichier (affichée si pas de fichier initial ou si le fichier initial a été supprimé) */}
+                  {(!isEditMode || !showInitialPdf) && (
+                    <div 
+                      className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md dark:bg-gray-800 transition-colors duration-200"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const files = e.dataTransfer.files;
+                        if (files && files.length > 0) {
+                          const fileInput = document.getElementById(field.name);
+                          fileInput.files = files;
+                          handlePdfChange({ target: { files: files } });
+                        }
+                      }}
+                    >
+                      <div className="space-y-1 text-center">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="flex text-sm text-gray-600 dark:text-gray-300 justify-center">
+                          <label
+                            htmlFor={field.name}
+                            className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-800"
+                          >
+                            <span>Choisir un fichier</span>
+                            <input
+                              id={field.name}
+                              name={field.name}
+                              type="file"
+                              className="sr-only"
+                              accept={field.accept}
+                              onChange={handlePdfChange}
+                            />
+                          </label>
+                          <p className="pl-1">ou glisser-déposer</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          PDF jusqu'à 5 Mo (optionnel)
+                        </p>
+                        {pdfError && <p className="text-xs text-red-500 dark:text-red-400">{pdfError}</p>}
+                        {selectedPdf && (
+                          <div className="flex items-center justify-center mt-2">
+                            <p className="text-xs text-green-500 dark:text-green-400 mr-2">
+                              <CheckCircleIcon className="inline-block h-4 w-4 mr-1" />
+                              {selectedPdf.name}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleRemovePdf}
+                              className="inline-flex items-center p-1 border border-transparent text-xs font-medium rounded-full text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -634,9 +1043,9 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || imageError || videoError}
+            disabled={isSubmitting || imageError || videoError || pdfError}
             className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
-              (isSubmitting || imageError || videoError) ? 'opacity-50 cursor-not-allowed' : ''
+              (isSubmitting || imageError || videoError || pdfError) ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             {isSubmitting ? (

@@ -260,9 +260,7 @@ export default function AdminDashboardLayout() {
       </motion.div>
 
       {/* Sidebar desktop */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
-        isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
-      } transition-all duration-300`}>
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300" style={{ width: isSidebarCollapsed ? '5rem' : '15rem' }}>
         <div className={`flex grow flex-col gap-y-5 overflow-y-auto border-r px-6 pb-4 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'
@@ -312,7 +310,7 @@ export default function AdminDashboardLayout() {
       </div>
 
       {/* Contenu principal */}
-      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} transition-all duration-300`}>
+      <div className="transition-all duration-300" style={{ paddingLeft: isSidebarCollapsed ? '5rem' : '15rem' }}>
         <div className={`sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'

@@ -11,6 +11,7 @@ import PublicationPackAlert from '../../components/PublicationPackAlert';
 import PublicationDetailsModal from './components/PublicationDetailsModal';
 import SearchFilterBar from './components/SearchFilterBar';
 import Modal from '../../components/Modal';
+import Pagination from '../../components/Pagination';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -44,6 +45,13 @@ export default function MyPage() {
     dateRange: 'tous' // 'tous', 'aujourd'hui', 'semaine', 'mois'
   });
   const [showFilters, setShowFilters] = useState(false);
+  
+  // États pour la pagination
+  const [pagination, setPagination] = useState({
+    advertisements: { currentPage: 1, itemsPerPage: 3 },
+    jobOffers: { currentPage: 1, itemsPerPage: 3 },
+    businessOpportunities: { currentPage: 1, itemsPerPage: 3 }
+  });
 
   useEffect(() => {
     // Vérifier le statut du pack de publication
@@ -210,14 +218,14 @@ export default function MyPage() {
   };
 
   // Gestionnaire pour la soumission du formulaire (création ou modification)
-  const handleFormSubmit = async (data) => {
+  const handleFormSubmit = async (data, customConfig = null) => {
     const isCreating = !isEditMode;
     const apiPath = getPublicationTypeApiPath(currentFormType);
     const url = isCreating ? `/api/${apiPath}` : `/api/${apiPath}/${currentPublication.id}`;
     
     try {
-      // Configuration spécifique pour l'envoi de fichiers avec FormData
-      const config = {
+      // Utiliser la configuration personnalisée si elle est fournie, sinon utiliser la configuration par défaut
+      const config = customConfig || {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -225,7 +233,6 @@ export default function MyPage() {
       
       // Vérifier si l'objet data est bien un FormData
       if (!(data instanceof FormData)) {
-        console.error('Les données ne sont pas au format FormData');
         throw new Error('Format de données incorrect');
       }
       
@@ -235,9 +242,21 @@ export default function MyPage() {
         data.append('_method', 'PUT');
       }
       
-      // Log pour déboguer
-      console.log('Envoi de données au serveur:', isCreating ? 'POST' : 'POST avec _method=PUT', url);
-      console.log('Données envoyées:');
+      // Vérification pour le fichier PDF
+      let hasPdfFile = false;
+      
+      // Créer une copie des entrées pour l'inspection
+      const entries = Array.from(data.entries());
+      
+      // Parcourir toutes les entrées pour vérifier offer_file
+      for (let pair of entries) {
+        const [key, value] = pair;
+        
+        if (key === 'offer_file') {
+          hasPdfFile = true;
+        }
+      }
+      
       for (let pair of data.entries()) {
         // Si c'est conditions_livraison, s'assurer que c'est un tableau
         if (pair[0] === 'conditions_livraison') {
@@ -257,7 +276,6 @@ export default function MyPage() {
           data.delete('conditions_livraison');
           data.append('conditions_livraison', JSON.stringify(conditions));
         }
-        console.log(pair[0] + ': ' + pair[1]);
       }
       
       // Toujours utiliser POST, avec _method=PUT pour les mises à jour
@@ -294,8 +312,8 @@ export default function MyPage() {
       
       Notification.error(errorMessage);
       
-      // Retourner false pour indiquer l'échec
-      return false;
+      // Propager l'erreur au composant PublicationForm pour qu'il puisse réinitialiser isSubmitting
+      throw error;
     }
   };
 
@@ -351,19 +369,23 @@ export default function MyPage() {
   };
 
   // Fonction pour filtrer les publications en fonction des critères de recherche et de filtrage
-  const getFilteredPublications = (type) => {
+  const getFilteredPublications = (type, paginate = false) => {
     let items = [];
+    let paginationType = '';
     
     // Sélectionner les publications en fonction du type
     switch (type) {
       case 'advertisement':
         items = publications.advertisements || [];
+        paginationType = 'advertisements';
         break;
       case 'jobOffer':
         items = publications.jobOffers || [];
+        paginationType = 'jobOffers';
         break;
       case 'businessOpportunity':
         items = publications.businessOpportunities || [];
+        paginationType = 'businessOpportunities';
         break;
       default:
         return [];
@@ -419,7 +441,38 @@ export default function MyPage() {
       });
     }
     
+    // Si la pagination est activée, retourner seulement les éléments de la page actuelle
+    if (paginate && paginationType) {
+      const { currentPage, itemsPerPage } = pagination[paginationType];
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      return items.slice(startIndex, endIndex);
+    }
+    
     return items;
+  };
+  
+  // Fonction pour obtenir le nombre total de pages pour un type de publication
+  const getTotalPages = (type) => {
+    const items = getFilteredPublications(type, false);
+    let paginationType = '';
+    
+    switch (type) {
+      case 'advertisement':
+        paginationType = 'advertisements';
+        break;
+      case 'jobOffer':
+        paginationType = 'jobOffers';
+        break;
+      case 'businessOpportunity':
+        paginationType = 'businessOpportunities';
+        break;
+      default:
+        return 1;
+    }
+    
+    const { itemsPerPage } = pagination[paginationType];
+    return Math.ceil(items.length / itemsPerPage) || 1;
   };
   
   // Fonction pour réinitialiser les filtres
@@ -439,10 +492,25 @@ export default function MyPage() {
       ...prev,
       [filterName]: value
     }));
+    
+    // Réinitialiser la pagination à la première page lorsqu'un filtre change
+    setPagination(prev => ({
+      advertisements: { ...prev.advertisements, currentPage: 1 },
+      jobOffers: { ...prev.jobOffers, currentPage: 1 },
+      businessOpportunities: { ...prev.businessOpportunities, currentPage: 1 }
+    }));
+  };
+  
+  // Fonction pour gérer le changement de page
+  const handlePageChange = (type, newPage) => {
+    setPagination(prev => ({
+      ...prev,
+      [type]: { ...prev[type], currentPage: newPage }
+    }));
   };
 
   return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
+    <div className="px-4 py-6 sm:px-6 lg:px-2">
       {/* Page Header - Similar to Facebook */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
         <div className="h-32 bg-gradient-to-r from-primary-500 to-primary-700 rounded-t-lg relative">
@@ -552,27 +620,38 @@ export default function MyPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getFilteredPublications('advertisement').length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
-                      {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
-                        ? 'Aucune publicité ne correspond à vos critères de recherche.'
-                        : 'Vous n\'avez pas encore de publicités.'}
-                    </div>
-                  ) : (
-                    getFilteredPublications('advertisement').map((ad) => (
-                      <PublicationCard
-                        key={ad.id}
-                        publication={ad}
-                        type="advertisement"
-                        onEdit={() => handleEdit(ad, 'advertisement')}
-                        onDelete={() => handleDelete(ad.id, 'advertisement')}
-                        onViewDetails={() => handleViewDetails(ad, 'advertisement')}
-                        onStateChange={(newState) => handleStateChange(ad.id, 'advertisement', newState)}
-                      />
-                    ))
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {getFilteredPublications('advertisement', false).length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
+                        {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
+                          ? 'Aucune publicité ne correspond à vos critères de recherche.'
+                          : 'Vous n\'avez pas encore de publicités.'}
+                      </div>
+                    ) : (
+                      getFilteredPublications('advertisement', true).map((ad) => (
+                        <PublicationCard
+                          key={ad.id}
+                          publication={ad}
+                          type="advertisement"
+                          onEdit={() => handleEdit(ad, 'advertisement')}
+                          onDelete={() => handleDelete(ad.id, 'advertisement')}
+                          onViewDetails={() => handleViewDetails(ad, 'advertisement')}
+                          onStateChange={(newState) => handleStateChange(ad.id, 'advertisement', newState)}
+                        />
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Pagination pour les publicités */}
+                  {getFilteredPublications('advertisement', false).length > 0 && (
+                    <Pagination
+                      currentPage={pagination.advertisements.currentPage}
+                      totalPages={getTotalPages('advertisement')}
+                      onPageChange={(page) => handlePageChange('advertisements', page)}
+                    />
                   )}
-                </div>
+                </>
               )}
             </Tab.Panel>
             
@@ -607,27 +686,38 @@ export default function MyPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getFilteredPublications('jobOffer').length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
-                      {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
-                        ? 'Aucune offre d\'emploi ne correspond à vos critères de recherche.'
-                        : 'Vous n\'avez pas encore d\'offres d\'emploi.'}
-                    </div>
-                  ) : (
-                    getFilteredPublications('jobOffer').map((offer) => (
-                      <PublicationCard
-                        key={offer.id}
-                        publication={offer}
-                        type="jobOffer"
-                        onEdit={() => handleEdit(offer, 'jobOffer')}
-                        onDelete={() => handleDelete(offer.id, 'jobOffer')}
-                        onViewDetails={() => handleViewDetails(offer, 'jobOffer')}
-                        onStateChange={(newState) => handleStateChange(offer.id, 'jobOffer', newState)}
-                      />
-                    ))
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {getFilteredPublications('jobOffer', false).length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
+                        {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
+                          ? 'Aucune offre d\'emploi ne correspond à vos critères de recherche.'
+                          : 'Vous n\'avez pas encore d\'offres d\'emploi.'}
+                      </div>
+                    ) : (
+                      getFilteredPublications('jobOffer', true).map((offer) => (
+                        <PublicationCard
+                          key={offer.id}
+                          publication={offer}
+                          type="jobOffer"
+                          onEdit={() => handleEdit(offer, 'jobOffer')}
+                          onDelete={() => handleDelete(offer.id, 'jobOffer')}
+                          onViewDetails={() => handleViewDetails(offer, 'jobOffer')}
+                          onStateChange={(newState) => handleStateChange(offer.id, 'jobOffer', newState)}
+                        />
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Pagination pour les offres d'emploi */}
+                  {getFilteredPublications('jobOffer', false).length > 0 && (
+                    <Pagination
+                      currentPage={pagination.jobOffers.currentPage}
+                      totalPages={getTotalPages('jobOffer')}
+                      onPageChange={(page) => handlePageChange('jobOffers', page)}
+                    />
                   )}
-                </div>
+                </>
               )}
             </Tab.Panel>
             
@@ -662,27 +752,38 @@ export default function MyPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getFilteredPublications('businessOpportunity').length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
-                      {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
-                        ? 'Aucune opportunité d\'affaires ne correspond à vos critères de recherche.'
-                        : 'Vous n\'avez pas encore d\'opportunités d\'affaires.'}
-                    </div>
-                  ) : (
-                    getFilteredPublications('businessOpportunity').map((opportunity) => (
-                      <PublicationCard
-                        key={opportunity.id}
-                        publication={opportunity}
-                        type="businessOpportunity"
-                        onEdit={() => handleEdit(opportunity, 'businessOpportunity')}
-                        onDelete={() => handleDelete(opportunity.id, 'businessOpportunity')}
-                        onViewDetails={() => handleViewDetails(opportunity, 'businessOpportunity')}
-                        onStateChange={(newState) => handleStateChange(opportunity.id, 'businessOpportunity', newState)}
-                      />
-                    ))
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {getFilteredPublications('businessOpportunity', false).length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-gray-500 dark:text-gray-400">
+                        {searchTerm || filters.statut !== 'tous' || filters.etat !== 'tous' || filters.dateRange !== 'tous' 
+                          ? 'Aucune opportunité d\'affaires ne correspond à vos critères de recherche.'
+                          : 'Vous n\'avez pas encore d\'opportunités d\'affaires.'}
+                      </div>
+                    ) : (
+                      getFilteredPublications('businessOpportunity', true).map((opportunity) => (
+                        <PublicationCard
+                          key={opportunity.id}
+                          publication={opportunity}
+                          type="businessOpportunity"
+                          onEdit={() => handleEdit(opportunity, 'businessOpportunity')}
+                          onDelete={() => handleDelete(opportunity.id, 'businessOpportunity')}
+                          onViewDetails={() => handleViewDetails(opportunity, 'businessOpportunity')}
+                          onStateChange={(newState) => handleStateChange(opportunity.id, 'businessOpportunity', newState)}
+                        />
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Pagination pour les opportunités d'affaires */}
+                  {getFilteredPublications('businessOpportunity', false).length > 0 && (
+                    <Pagination
+                      currentPage={pagination.businessOpportunities.currentPage}
+                      totalPages={getTotalPages('businessOpportunity')}
+                      onPageChange={(page) => handlePageChange('businessOpportunities', page)}
+                    />
                   )}
-                </div>
+                </>
               )}
             </Tab.Panel>
           </Tab.Panels>
