@@ -40,6 +40,7 @@ import Packs from './pages/admin/Packs';
 import Users from './pages/admin/Users';
 import UserDetails from './pages/admin/UserDetails';
 import MyPage from './pages/user/MyPage';
+import NewsFeed from './pages/user/NewsFeed';
 // import WithdrawalRequests from './pages/admin/WithdrawalRequests';
 import AdvertisementValidation from './pages/admin/AdvertisementValidation';
 import ToastContainer from './components/Toast';
@@ -143,6 +144,7 @@ function App() {
               <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
               <Route path="stats" element={<Stats />} />
               <Route path="my-page" element={<MyPage />} />
+              <Route path="news-feed" element={<NewsFeed />} />
               <Route path="packs" element={<MyPacks />} />
               <Route path="buypacks" element={<BuyPack />} />
             </Route>

@@ -2,17 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  CircularProgress,
-  Box,
   Alert
 } from '@mui/material';
 import Notification from '../components/Notification';
 import axios from '../utils/axios';
+import RegistrationPaymentForm from '../components/RegistrationPaymentForm';
 
 const PurchasePack = () => {
   const { sponsor_code } = useParams();
@@ -22,8 +16,8 @@ const PurchasePack = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [pack, setPack] = useState(null);
   const [sponsor, setSponsor] = useState(null);
-  const [duration, setDuration] = useState(1);
   const [registrationData, setRegistrationData] = useState(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(true);
 
   // Récupérer les données d'inscription
   const registrationDataFromLocation = location.state?.registrationData || 
@@ -60,25 +54,21 @@ const PurchasePack = () => {
     fetchPack();
   }, [sponsor_code, navigate, location.state]);
 
-  const calculateTotalPrice = () => {
-    if (!pack) return 0;
-    return pack.price * duration;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handlePaymentSubmit = async (paymentData) => {
     try {
       setPurchasing(true);
 
-      // Créer une copie des données et ajouter duration_months
-      const registrationDataWithDuration = {
+      // Créer une copie des données et ajouter les informations de paiement
+      const registrationDataWithPayment = {
         ...registrationDataFromLocation,
-        duration_months: duration
+        duration_months: paymentData.duration_months,
+        payment_method: paymentData.payment_method,
+        payment_details: paymentData.payment_details,
+        mobile_option: paymentData.mobile_option,
       };
 
-      // 1. Créer le compte utilisateur
-      const registerResponse = await axios.post(`/api/register/${pack.id}`, registrationDataWithDuration);
+      // Créer le compte utilisateur avec les informations de paiement
+      const registerResponse = await axios.post(`/api/register/${pack.id}`, registrationDataWithPayment);
       
       if (!registerResponse.data.success) {
         throw new Error('Erreur lors de la création du compte');
@@ -91,9 +81,11 @@ const PurchasePack = () => {
 
     } catch (error) {
       Notification.error(error.response?.data?.message || 'Une erreur est survenue');
+      return false;
     } finally {
       setPurchasing(false);
     }
+    return true;
   };
 
   const handlePaymentSuccess = async () => {
@@ -122,81 +114,41 @@ const PurchasePack = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#111827]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
   if (!pack) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="error">Pack non trouvé</Alert>
-      </Container>
+      <div className="min-h-screen flex items-center justify-center bg-[#111827]">
+        <Container sx={{ mt: 4 }}>
+          <Alert severity="error">Pack non trouvé</Alert>
+        </Container>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 10 }}>
-      <Card
-        sx={{ 
-          border: 'none',
-          borderRadius: 2,
-          boxShadow: 'none'
-        }} 
-        className="dark:bg-[rgba(17,24,39,0.95)]" 
-      >
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'whitesmoke', textAlign: 'center' }}>
-            Finaliser votre inscription
-          </Typography>
-          <hr />
-
-          <Box sx={{ my: 4, p: 3, borderRadius: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Pack selon le code renseigné : {pack.name}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              Prix mensuel : {pack.price} $
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ marginBottom: '8px' }}>
-              {pack.description}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'yellow' }} gutterBottom>
-              Pour ce pack vous serez sous le parrainage de : {sponsor.name}
-            </Typography>
-          </Box>
-
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Durée (mois)"
-              value={duration}
-              onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
-              inputProps={{ min: 1 }}
-              margin="normal"
-              required
-            />
-
-            <Typography variant="h6" sx={{ mt: 2, mb: 3 }}>
-              Prix total : {calculateTotalPrice()} $
-            </Typography>
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              size="large"
-              disabled={purchasing}
-            >
-              {purchasing ? <CircularProgress size={24} /> : 'Payer et créer mon compte'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </Container>
+    <div className="min-h-screen flex items-center justify-center bg-[#111827]">
+      <Container maxWidth="sm" sx={{ mt: 10, mb: 10 }}>
+        {showPaymentForm && pack && (
+          <RegistrationPaymentForm 
+            open={true} 
+            onClose={() => navigate('/register')} 
+            pack={{
+              ...pack,
+              name: `${pack.name} (Inscription)`,
+              description: pack.description,
+              sponsorName: sponsor?.name
+            }}
+            onSubmit={handlePaymentSubmit}
+            loading={purchasing}
+          />
+        )}
+      </Container>
+    </div>
   );
 };
 

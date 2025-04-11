@@ -73,7 +73,7 @@ const navigation = [
   { name: 'Finance', href: '/dashboard/wallet', icon: WalletIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
-  { name: "Fil d'actualités", href: '#', icon: MapIcon },
+  { name: "Fil d'actualités", href: '/dashboard/news-feed', icon: NewspaperIcon },
   { name: "Ma page", href: "/dashboard/my-page", icon:  NewspaperIcon}
 ];
 
@@ -112,10 +112,10 @@ export default function UserDashboardLayout() {
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       {/* Sidebar mobile */}
       <motion.div
-        initial={{ x: -240 }}
-        animate={{ x: sidebarOpen ? 0 : -240 }}
+        initial={{ x: -280 }}
+        animate={{ x: sidebarOpen ? 0 : -280 }}
         transition={{ duration: 0.3 }}
-        className={`fixed inset-y-0 z-50 flex w-60 flex-col ${
+        className={`fixed inset-y-0 z-50 flex w-72 flex-col ${
           isDarkMode ? 'bg-gray-800' : 'bg-white'
         } lg:hidden`}
       >
@@ -182,7 +182,9 @@ export default function UserDashboardLayout() {
       </motion.div>
 
       {/* Sidebar desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300" style={{ width: isSidebarCollapsed ? '5rem' : '15rem' }}>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
+        isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
+      } transition-all duration-300`}>
         <div className={`flex grow flex-col gap-y-5 overflow-y-auto border-r px-6 pb-4 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'
@@ -249,7 +251,7 @@ export default function UserDashboardLayout() {
       </div>
 
       {/* Contenu principal */}
-      <div className="transition-all duration-300" style={{ paddingLeft: isSidebarCollapsed ? '5rem' : '15rem' }}>
+      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} transition-all duration-300`}>
         <div className={`sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'

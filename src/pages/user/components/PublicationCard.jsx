@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import InteractionBar from '../../../components/InteractionBar';
 
 /**
  * Composant pour afficher une publication (publicité, offre d'emploi ou opportunité d'affaires)
@@ -257,6 +258,15 @@ export default function PublicationCard({ publication, type, onStatusChange, onE
             )}
           </div>
         </div>
+      </div>
+      <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2">
+        <InteractionBar 
+          publicationType={type}
+          publicationId={publication.id}
+          onCommentClick={handleViewDetails}
+          onShareClick={handleViewDetails}
+          showCounts={false}
+        />
       </div>
       <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 flex justify-between items-center">
         <div className="flex space-x-2">
