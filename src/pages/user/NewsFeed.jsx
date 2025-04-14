@@ -5,16 +5,26 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Tab } from '@headlessui/react';
 import {
-  ChatBubbleLeftIcon,
-  HeartIcon,
-  ShareIcon,
-  EllipsisHorizontalIcon,
-  EyeIcon,
   NewspaperIcon,
   BriefcaseIcon,
   LightBulbIcon,
   PlusIcon,
-  UsersIcon
+  ChevronDownIcon,
+  ChatBubbleLeftEllipsisIcon,
+  HeartIcon,
+  ShareIcon,
+  EllipsisHorizontalIcon,
+  XMarkIcon,
+  ArrowPathIcon,
+  UsersIcon,
+  ArrowTopRightOnSquareIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  DocumentArrowDownIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import PostCard from './components/PostCard';
@@ -36,6 +46,9 @@ export default function NewsFeed() {
   const [hasMore, setHasMore] = useState(true);
   const [lastId, setLastId] = useState(0);
 
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [jobFilter, setJobFilter] = useState('all'); // 'all', 'active', 'recent', 'expired'
   const [selectedPost, setSelectedPost] = useState(null);
   const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
   const observer = useRef();
@@ -331,12 +344,12 @@ export default function NewsFeed() {
   };
 
   // Gérer la suppression d'un commentaire
-  const handleDeleteComment = async (commentId, postId) => {
+  const handleDeleteComment = async (commentId, postId, type) => {
     try {
-      const response = await axios.delete(`/api/comments/${commentId}`);
+      const response = await axios.delete(`/api/${type}/comments/${commentId}`);
       
       setPosts(prevPosts => 
-        prevPosts.map(post => 
+        prevPosts.map(post =>   
           post.id === postId 
             ? { 
                 ...post, 
@@ -520,7 +533,7 @@ export default function NewsFeed() {
             }
           >
             <NewspaperIcon className="h-5 w-5 mr-2" />
-            Fil d'actualité
+            Publicités
           </Tab>
           <Tab
             className={({ selected }) =>
@@ -548,7 +561,7 @@ export default function NewsFeed() {
             }
           >
             <LightBulbIcon className="h-5 w-5 mr-2" />
-            Opportunités d'affaires
+            Opportunités
           </Tab>
           <Tab
             className={({ selected }) =>
@@ -616,7 +629,7 @@ export default function NewsFeed() {
                   onCommentLike={handleCommentLike}
                   onDeleteComment={handleDeleteComment}
                   onShare={handleShare}
-                  onViewDetails={() => openPostDetail(post.id)}
+                  onViewDetails={() => openPostDetail(post.id, post.type)}
                   isDarkMode={isDarkMode}
                 />
               );
@@ -634,27 +647,266 @@ export default function NewsFeed() {
           
           {/* Deuxième onglet: Offres d'emploi */}
           <Tab.Panel className={classNames('rounded-xl p-3', 'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2')}>
-            <div className="space-y-6">
+            {/* Barre de recherche et filtres */}
+            <div className={`mb-6 rounded-lg overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+              <div className="p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}">
+                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Offres d'emploi</h2>
+                <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Les offres d'emploi publiées sont certifiées. Aucun frais n'est exigé pour le dépôt des candidatures.
+                </p>
+                <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800'}`}>
+                  <p className="text-sm font-medium">AVIS AUX CANDIDATS</p>
+                  <p className="text-sm mt-1">
+                    <span className="font-semibold">NE PAS ENVOYER DE L'ARGENT</span> sous quelque forme que ce soit (cash, virement, transfert Western Union, mobile money,...). Merci de signaler immédiatement toute demande suspecte.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Barre de recherche */}
+              <div className="p-4">
+                <div className={`flex items-center rounded-lg overflow-hidden ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MagnifyingGlassIcon className={`h-5 w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                    </div>
+                    <input
+                      type="text"
+                      className={`block w-full pl-10 pr-3 py-2 border-none ${isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'} focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                      placeholder="Fonction, référence ou organisme"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    className={`px-4 py-2 ${isDarkMode ? 'bg-primary-600 hover:bg-primary-700' : 'bg-primary-500 hover:bg-primary-600'} text-white font-medium rounded-r-lg focus:outline-none`}
+                  >
+                    RECHERCHER
+                  </button>
+                </div>
+              </div>
+              
+              {/* Filtres */}
+              <div className={`flex flex-wrap gap-2 p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <button
+                  onClick={() => setJobFilter('all')}
+                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${jobFilter === 'all' ? (isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}
+                >
+                  <FunnelIcon className="h-4 w-4 mr-1" />
+                  Toutes
+                </button>
+                <button
+                  onClick={() => setJobFilter('disponible')}
+                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${jobFilter === 'active' ? (isDarkMode ? 'bg-green-800 text-green-100' : 'bg-green-100 text-green-800') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}
+                >
+                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                  Disponible
+                </button>
+                <button
+                  onClick={() => setJobFilter('recent')}
+                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${jobFilter === 'recent' ? (isDarkMode ? 'bg-orange-800 text-orange-100' : 'bg-orange-100 text-orange-800') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}
+                >
+                  <ClockIcon className="h-4 w-4 mr-1" />
+                  Moins de 3 jours
+                </button>
+                <button
+                  onClick={() => setJobFilter('expired')}
+                  className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${jobFilter === 'expired' ? (isDarkMode ? 'bg-red-800 text-red-100' : 'bg-red-100 text-red-800') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}`}
+                >
+                  <XCircleIcon className="h-4 w-4 mr-1" />
+                  Expirée
+                </button>
+              </div>
+              
+              {/* Tri */}
+              <div className={`flex justify-end p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="relative">
+                  <select 
+                    className={`block appearance-none w-full px-4 py-2 pr-8 rounded border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-700 border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                    defaultValue="recent"
+                  >
+                    <option value="recent">Trier par offres récentes</option>
+                    <option value="oldest">Trier par offres anciennes</option>
+                    <option value="company">Trier par organisme</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <ChevronDownIcon className="h-4 w-4" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Tableau des offres */}
+            <div className={`overflow-hidden rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              {/* En-tête du tableau */}
+              <div className={`grid grid-cols-12 gap-4 p-4 font-medium ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'} border-b`}>
+                <div className="col-span-6 sm:col-span-5">Fonction</div>
+                <div className="col-span-3 sm:col-span-3 hidden sm:block">Organisme</div>
+                <div className="col-span-3 sm:col-span-2 hidden sm:block">Lieu</div>
+                <div className="col-span-6 sm:col-span-2 text-right">Insérée</div>
+              </div>
+              
+              {/* Corps du tableau */}
               {loading ? (
-                <div className="flex justify-center p-4">
+                <div className="flex justify-center p-8">
                   <LoadingSpinner size="lg" />
                 </div>
               ) : (
-                posts
-                  .filter(post => post.type === 'offre_emploi')
-                  .map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onLike={handleLike}
-                      onComment={handleAddComment}
-                      onCommentLike={handleCommentLike}
-                      onDeleteComment={handleDeleteComment}
-                      onShare={handleShare}
-                      onViewDetails={() => openPostDetail(post.id)}
-                      isDarkMode={isDarkMode}
-                    />
-                  ))
+                <div>
+                  {posts
+                    .filter(post => post.type === 'offres-emploi')
+                    .filter(post => {
+                      if (searchQuery) {
+                        const query = searchQuery.toLowerCase();
+                        return (
+                          post.title?.toLowerCase().includes(query) ||
+                          post.company_name?.toLowerCase().includes(query) ||
+                          post.location?.toLowerCase().includes(query) ||
+                          post.reference?.toLowerCase().includes(query)
+                        );
+                      }
+                      return true;
+                    })
+                    .filter(post => {
+                      if (jobFilter === 'all') return true;
+                      if (jobFilter === 'disponible') return post.etat === 'disponible';
+                      if (jobFilter === 'recent') {
+                        const threeDaysAgo = new Date();
+                        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                        return new Date(post.created_at) >= threeDaysAgo;
+                      }
+                      if (jobFilter === 'expired') return post.statut === 'expiré';
+                      return true;
+                    })
+                    .map((post) => (
+                      <div 
+                        key={post.id} 
+                        className={`grid grid-cols-12 gap-4 p-4 cursor-pointer hover:${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}
+                        onClick={() => openPostDetail(post.id, post.type)}
+                      >
+                        <div className="col-span-6 sm:col-span-5">
+                          <div className="flex items-start">
+                            <div className={`flex-shrink-0 w-2 h-2 mt-2 rounded-full ${post.status === 'disponible' ? 'bg-green-500' : post.status === 'expired' ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                            <div className="ml-2">
+                              <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{post.title}</div>
+                              <div className="text-sm text-gray-500">{post.reference || 'Réf. non précisée'}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-3 sm:col-span-3 hidden sm:block">
+                          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.company_name || 'Non précisé'}</div>
+                        </div>
+                        <div className="col-span-3 sm:col-span-2 hidden sm:block">
+                          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.location || 'Non précisé'}</div>
+                        </div>
+                        <div className="col-span-6 sm:col-span-2 text-right">
+                          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {new Date(post.created_at).toLocaleDateString('fr-FR')}
+                          </div>
+                          
+                          {/* Actions sociales (j'aime, commentaires, partages) */}
+                          <div className={`flex items-center justify-end mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <button
+                              className="flex items-center mr-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLike(post.id, post.type);
+                              }}
+                            >
+                              {post.is_liked ? (
+                                <HeartIconSolid className="h-4 w-4 text-red-500 mr-1" />
+                              ) : (
+                                <HeartIcon className="h-4 w-4 mr-1" />
+                              )}
+                              <span>{post.likes_count || 0}</span>
+                            </button>
+                            
+                            <button
+                              className="flex items-center mr-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPostDetail(post.id, post.type);
+                              }}
+                            >
+                              <ChatBubbleLeftEllipsisIcon className="h-4 w-4 mr-1" />
+                              <span>{post.comments_count || 0}</span>
+                            </button>
+                            
+                            <button
+                              className="flex items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShare(post.id, post.type);
+                              }}
+                            >
+                              <ShareIcon className="h-4 w-4 mr-1" />
+                              <span>{post.shares_count || 0}</span>
+                            </button>
+                          </div>
+                          
+                          {/* Boutons d'action (Détails, Télécharger, WhatsApp, lien externe) */}
+                          <div className="flex justify-end mt-2 space-x-2">
+                            {/* Bouton Détails */}
+                            <button
+                              className={`p-1 rounded-full ${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+                              title="Voir les détails"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPostDetail(post.id, post.type);
+                              }}
+                            >
+                              <InformationCircleIcon className="w-4 h-4" />
+                            </button>
+                            
+                            {/* Bouton Télécharger */}
+                            {post.offer_file_url && (
+                              <a
+                                href={post.offer_file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`p-1 rounded-full ${isDarkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white`}
+                                title="Télécharger l'offre"
+                                onClick={(e) => e.stopPropagation()}
+                                download
+                              >
+                                <DocumentArrowDownIcon className="w-4 h-4" />
+                              </a>
+                            )}
+                            
+                            {/* Bouton WhatsApp */}
+                            {post.user?.phone && (
+                              <a
+                                href={`https://wa.me/${post.user.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 rounded-full bg-green-600 text-white hover:bg-green-700"
+                                title="Contacter via WhatsApp"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                              </a>
+                            )}
+                            
+                            {/* Bouton Lien externe */}
+                            {post.external_link && (
+                              <a
+                                href={post.external_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`p-1 rounded-full ${isDarkMode ? 'bg-primary-600 hover:bg-primary-700' : 'bg-primary-500 hover:bg-primary-600'} text-white`}
+                                title="En savoir plus"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
               )}
             </div>
           </Tab.Panel>
@@ -668,7 +920,7 @@ export default function NewsFeed() {
                 </div>
               ) : (
                 posts
-                  .filter(post => post.type === 'opportunite_affaire')
+                  .filter(post => post.type === 'opportunites-affaires')
                   .map((post) => (
                     <PostCard
                       key={post.id}
@@ -678,7 +930,7 @@ export default function NewsFeed() {
                       onCommentLike={handleCommentLike}
                       onDeleteComment={handleDeleteComment}
                       onShare={handleShare}
-                      onViewDetails={() => openPostDetail(post.id)}
+                      onViewDetails={() => openPostDetail(post.id, post.type)}
                       isDarkMode={isDarkMode}
                     />
                   ))

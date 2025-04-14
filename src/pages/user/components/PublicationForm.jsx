@@ -13,7 +13,7 @@ import CountryCodeSelector from '../../../components/CountryCodeSelector';
  */
 export default function PublicationForm({ type, onSubmit, onCancel, initialData, isEditMode = false }) {
   // Extraire l'indicatif téléphonique et le numéro si disponible en mode édition
-  let initialPhoneCode = '+225'; // Valeur par défaut: Côte d'Ivoire
+  let initialPhoneCode = '+243'; // Valeur par défaut: Côte d'Ivoire
   let initialPhoneNumber = '';
   
   if (isEditMode && initialData && initialData.contacts) {
@@ -36,17 +36,21 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       email: initialData.email,
       adresse: initialData.adresse,
       lien: initialData.lien,
-      devise: initialData.devise || 'FC'
+      devise: initialData.devise
     } : {}
   });
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [selectedPdf, setSelectedPdf] = useState(null);
-  
+  const [selectedOpportunityPdf, setSelectedOpportunityPdf] = useState(null);
+
   // États pour les fichiers initiaux en mode édition
   const [initialPdfUrl, setInitialPdfUrl] = useState(null);
   const [initialPdfName, setInitialPdfName] = useState('');
-  const [showInitialPdf, setShowInitialPdf] = useState(false);
+  const [showInitialOfferPdf, setShowInitialOfferPdf] = useState(false);
+  const [initialOpportunityUrl, setInitialOpportunityUrl] = useState(null);
+  const [initialOpportunityName, setInitialOpportunityName] = useState('');
+  const [showInitialOpportunityPdf, setShowInitialOpportunityPdf] = useState(false);
   
   const [initialImageUrl, setInitialImageUrl] = useState(null);
   const [initialImageName, setInitialImageName] = useState('');
@@ -86,12 +90,32 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         const originalFileName = decodedFileName.replace(/^\d+_/, '');
         
         setInitialPdfName(originalFileName);
-        setShowInitialPdf(true);
+        setShowInitialOfferPdf(true);
       } else if (initialData.offer_file) {
         // Si nous avons juste le chemin du fichier sans l'URL complète
         const fileName = initialData.offer_file.split('/').pop().replace(/^\d+_/, '');
         setInitialPdfName(fileName);
-        setShowInitialPdf(true);
+        setShowInitialOfferPdf(true);
+      }
+
+      if (initialData.opportunity_file_url) {
+        setInitialOpportunityUrl(initialData.opportunity_file_url);
+        
+        // Extraire le nom du fichier de l'URL
+        // Enlever les paramètres d'URL s'il y en a (tout ce qui suit ?) et décoder les caractères spéciaux
+        const fileName = initialData.opportunity_file_url.split('/').pop().split('?')[0];
+        const decodedFileName = decodeURIComponent(fileName);
+        
+        // Extraire le nom original du fichier (enlever le timestamp s'il existe)
+        const originalFileName = decodedFileName.replace(/^\d+_/, '');
+        
+        setInitialOpportunityName(originalFileName);
+        setShowInitialOpportunityPdf(true);
+      } else if (initialData.opportunity_file) {
+        // Si nous avons juste le chemin du fichier sans l'URL complète
+        const fileName = initialData.opportunity_file.split('/').pop().replace(/^\d+_/, '');
+        setInitialOpportunityName(fileName);
+        setShowInitialOpportunityPdf(true);
       }
       
       // Traitement de l'image (publicités et opportunités d'affaires)
@@ -178,6 +202,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
     ],
     
     jobOffer: [
+      { name: 'reference', label: 'Référence', type: 'text', required: true, placeholder: 'Ex: REF-123456' },
       { name: 'titre', label: 'Titre du poste', type: 'text', required: true, placeholder: 'Ex: Développeur Web Senior' },
       { name: 'entreprise', label: 'Entreprise', type: 'text', required: true, placeholder: 'Nom de l\'entreprise' },
       { name: 'lieu', label: 'Lieu', type: 'text', required: true, placeholder: 'Ex: Abidjan, Côte d\'Ivoire' },
@@ -208,7 +233,11 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       { name: 'devise', label: 'Devise', type: 'select', options: [
         { value: 'XOF', label: 'XOF (FCFA)' },
         { value: 'EUR', label: 'EUR (€)' },
-        { value: 'USD', label: 'USD ($)' }
+        { value: 'USD', label: 'USD ($)' },
+        { value: 'YEN', label: 'YEN (¥)' },
+        { value: 'YUAN', label: 'YUAN (¥)' },
+        { value: 'CDF', label: 'CDF (FC)' },
+        { value: 'SAR', label: 'SAR (﷼)' }
       ]},
       { name: 'avantages', label: 'Avantages', type: 'textarea', placeholder: 'Ex: Assurance maladie, tickets restaurant, etc.' },
       { name: 'date_limite', label: 'Date limite de candidature', type: 'date' },
@@ -226,7 +255,11 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       { name: 'devise', label: 'Devise', type: 'select', options: [
         { value: 'XOF', label: 'XOF (FCFA)' },
         { value: 'EUR', label: 'EUR (€)' },
-        { value: 'USD', label: 'USD ($)' }
+        { value: 'USD', label: 'USD ($)' },
+        { value: 'YEN', label: 'YEN (¥)' },
+        { value: 'YUAN', label: 'YUAN (¥)' },
+        { value: 'CDF', label: 'CDF (FC)' },
+        { value: 'SAR', label: 'SAR (﷼)' }
       ]},
       { name: 'duree_retour_investissement', label: 'Durée estimée de retour sur investissement', type: 'select', options: [
         { value: 'Moins de 6 mois', label: 'Moins de 6 mois' },
@@ -240,7 +273,9 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       { name: 'phoneNumber', label: 'Numéro de téléphone', type: 'phone', required: true, placeholder: 'Numéro sans indicatif et sans 0 initial (ex: 123456789)' },
       { name: 'email', label: 'Email', type: 'email', placeholder: 'Email de contact' },
       { name: 'conditions_participation', label: 'Conditions de participation', type: 'textarea', placeholder: 'Détaillez les conditions requises pour participer' },
-      { name: 'date_limite', label: 'Date limite', type: 'date', placeholder: 'Date limite pour postuler/investir' }
+      { name: 'date_limite', label: 'Date limite', type: 'date', placeholder: 'Date limite pour postuler/investir' },
+      { name: 'opportunity_file', label: 'Fichier de l\'opportunité (PDF, max: 5Mo)', type: 'file', accept: 'application/pdf' },
+      { name: 'lien', label: 'Lien', type: 'url', placeholder: 'Lien externe (site web, page de recrutement, etc.)' }
     ]
   };
   
@@ -283,6 +318,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
         setValue('commission_livraison', initialData.commission_livraison || 'NON');
         setValue('prix_unitaire_livraison', initialData.prix_unitaire_livraison);
       } else if (type === 'jobOffer') {
+        setValue('reference', initialData.reference);
         setValue('entreprise', initialData.entreprise);
         setValue('lieu', initialData.lieu);
         setValue('type_contrat', initialData.type_contrat);
@@ -301,7 +337,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       } else if (type === 'businessOpportunity') {
         setValue('secteur', initialData.secteur);
         setValue('benefices_attendus', initialData.benefices_attendus);
-        setValue('investissement_requis', initialData.investissement_requis);
+        setValue('investissement_requis', initialData.investissement_requis ?? 0);
         setValue('duree_retour_investissement', initialData.duree_retour_investissement);
         setValue('localisation', initialData.localisation);
         setValue('conditions_participation', initialData.conditions_participation);
@@ -391,6 +427,30 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
     setInitialVideoUrl(null);
     setInitialVideoName('');
   };
+
+  const handleOpportunityPdfChange = (e) => {
+    const file = e.target?.files?.[0];
+    
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        setPdfError('Seuls les fichiers PDF sont acceptés');
+        setSelectedOpportunityPdf(null);
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        setPdfError('Le fichier ne doit pas dépasser 5MB');
+        setSelectedOpportunityPdf(null);
+        return;
+      }
+      
+      setSelectedOpportunityPdf(file);
+      setShowInitialOpportunityPdf(false);
+      setPdfError('');
+    } else {
+      setSelectedOpportunityPdf(null);
+    }
+  };
   
   // Gestion du changement de fichier PDF
   const handlePdfChange = (e) => {
@@ -412,7 +472,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       }
       
       setSelectedPdf(file);
-      setShowInitialPdf(false); // Masquer le fichier initial s'il existe
+      setShowInitialOfferPdf(false); // Masquer le fichier initial s'il existe
       setPdfError('');
     } else {
       setSelectedPdf(null);
@@ -420,18 +480,29 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
   };
   
   // Fonction pour supprimer le fichier PDF sélectionné
-  const handleRemovePdf = () => {
+  const handleRemoveOfferPdf = () => {
     setSelectedPdf(null);
-    // Réinitialiser le champ de fichier
-    const fileInput = document.getElementById('offer_file');
-    if (fileInput) fileInput.value = '';
+    const offerFileInput = document.getElementById('offer_file');
+    if (offerFileInput) offerFileInput.value = '';
   };
-  
+
+  const handleRemoveOpportunityPdf = () => {
+    setSelectedOpportunityPdf(null);
+    const opportunityFileInput = document.getElementById('opportunity_file');
+    if (opportunityFileInput) opportunityFileInput.value = '';
+  };
+
   // Fonction pour supprimer le fichier PDF initial en mode édition
-  const handleRemoveInitialPdf = () => {
-    setShowInitialPdf(false);
+  const handleRemoveInitialOfferPdf = () => {
+    setShowInitialOfferPdf(false);
     setInitialPdfUrl(null);
     setInitialPdfName('');
+  };
+
+  const handleRemoveInitialOpportunityPdf = () => {
+    setShowInitialOpportunityPdf(false);
+    setInitialOpportunityUrl(null);
+    setInitialOpportunityName('');
   };
 
   // Gestion de la soumission du formulaire
@@ -439,81 +510,48 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
     setIsSubmitting(true);
     
     try {
-      // Créer un objet FormData pour gérer les fichiers
+      // Créer un FormData pour gérer les fichiers
       const data = new FormData();
       
-      // Gestion du fichier PDF pour les offres d'emploi
-      if (type === 'jobOffer') {
-        // Cas 1: Un nouveau fichier PDF a été sélectionné
-        if (selectedPdf) {
-          // Ajouter explicitement le fichier avec le nom de champ correct
-          data.append('offer_file', selectedPdf, selectedPdf.name);
-          
-          // Vérification que le fichier est bien dans le FormData
-          let fileInFormData = false;
-          for (let pair of data.entries()) {
-            if (pair[0] === 'offer_file') {
-              fileInFormData = true;
-            }
-          }
-          
-          if (!fileInFormData) {
-            throw new Error('Impossible d\'ajouter le fichier PDF au formulaire');
-          }
-        }
-        // Cas 2: Mode édition, fichier initial conservé (ne rien faire, le backend conservera le fichier existant)
-        else if (isEditMode && showInitialPdf) {
-          // Ne rien faire, le fichier existant sera conservé
-        }
-        // Cas 3: Mode édition, fichier initial supprimé (indiquer au backend de supprimer le fichier)
-        else if (isEditMode && !showInitialPdf && initialPdfUrl) {
-          data.append('remove_offer_file', '1');
-        }
-        // Cas 4: Pas de fichier PDF (optionnel)
-      }
-      
-      // Ajouter ensuite chaque champ du formulaire au FormData
+      // Ajouter tous les champs du formulaire
       Object.keys(formData).forEach(key => {
         // Ne pas ajouter les champs de fichiers, ils sont gérés séparément
-        if (key !== 'image' && key !== 'video' && key !== 'offer_file') {
-          // Ne pas ajouter les champs non définis, vides ou avec la valeur "null"
-          if (formData[key] === undefined || formData[key] === '' || formData[key] === 'null' || formData[key] === null) {
-            return;
-          }
-          
-          // Traitement spécial pour conditions_livraison
-          if (key === 'conditions_livraison') {
-            // S'assurer que c'est un tableau avant de l'envoyer
-            const conditions = Array.isArray(formData[key]) ? formData[key] : [];
-            data.append(key, JSON.stringify(conditions));
-          } else {
+        if (key !== 'image' && key !== 'video' && key !== 'offer_file' && key !== 'opportunity_file') {
+          // Ne pas ajouter les champs vides ou null
+          if (formData[key] !== undefined && formData[key] !== '' && formData[key] !== null && formData[key] !== 'null') {
             data.append(key, formData[key]);
           }
         }
       });
-      
+
       // Gestion de l'image
       if (selectedImage) {
-        // Cas 1: Une nouvelle image a été sélectionnée
         data.append('image', selectedImage);
       } else if (isEditMode && !showInitialImage && initialImageUrl) {
-        // Cas 2: Mode édition, image initiale supprimée (indiquer au backend de supprimer l'image)
         data.append('remove_image', '1');
       }
-      // Cas 3: Mode édition, image initiale conservée (ne rien faire, le backend conservera l'image existante)
-      // Cas 4: Pas d'image (optionnel)
-      
+
       // Gestion de la vidéo
       if (selectedVideo) {
-        // Cas 1: Une nouvelle vidéo a été sélectionnée
         data.append('video', selectedVideo);
       } else if (isEditMode && !showInitialVideo && initialVideoUrl) {
-        // Cas 2: Mode édition, vidéo initiale supprimée (indiquer au backend de supprimer la vidéo)
         data.append('remove_video', '1');
       }
-      // Cas 3: Mode édition, vidéo initiale conservée (ne rien faire, le backend conservera la vidéo existante)
-      // Cas 4: Pas de vidéo (optionnel)
-      
+
+      // Gestion du fichier PDF (offres d'emploi)
+      if (selectedPdf) {
+        data.append('offer_file', selectedPdf);
+      } else if (isEditMode && !showInitialOfferPdf && initialPdfUrl) {
+        data.append('remove_offer_file', '1');
+      }
+
+      // Gestion du fichier PDF (opportunités d'affaires)
+      if (selectedOpportunityPdf) {
+        data.append('opportunity_file', selectedOpportunityPdf);
+      } else if (isEditMode && !showInitialOpportunityPdf && initialOpportunityUrl) {
+        data.append('remove_opportunity_file', '1');
+      }
+
       // Configuration pour l'envoi de fichiers avec FormData
       const config = {
         headers: {
@@ -524,9 +562,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
       // Appeler la fonction onSubmit passée en prop avec le FormData
       await onSubmit(data, config);
     } catch (error) {
-      // Réinitialiser l'état de soumission pour permettre une nouvelle tentative
       setIsSubmitting(false);
-      // Propager l'erreur pour qu'elle soit traitée par onSubmitHandler
       throw error;
     }
   };
@@ -850,7 +886,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
               {field.type === 'file' && field.name === 'offer_file' && (
                 <div>
                   {/* Afficher le fichier PDF initial en mode édition */}
-                  {isEditMode && showInitialPdf && (
+                  {isEditMode && showInitialOfferPdf && (
                     <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -877,7 +913,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
                           )}
                           <button
                             type="button"
-                            onClick={handleRemoveInitialPdf}
+                            onClick={handleRemoveInitialOfferPdf}
                             className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
                             title="Supprimer le fichier PDF"
                           >
@@ -889,7 +925,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
                   )}
                   
                   {/* Zone de sélection de fichier (affichée si pas de fichier initial ou si le fichier initial a été supprimé) */}
-                  {(!isEditMode || !showInitialPdf) && (
+                  {(!isEditMode || !showInitialOfferPdf) && (
                     <div 
                       className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md dark:bg-gray-800 transition-colors duration-200"
                       onDragOver={(e) => {
@@ -925,7 +961,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
                         <div className="flex text-sm text-gray-600 dark:text-gray-300 justify-center">
                           <label
                             htmlFor={field.name}
-                            className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-800"
+                            className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
                           >
                             <span>Choisir un fichier</span>
                             <input
@@ -951,7 +987,124 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
                             </p>
                             <button
                               type="button"
-                              onClick={handleRemovePdf}
+                              onClick={handleRemoveOfferPdf}
+                              className="inline-flex items-center p-1 border border-transparent text-xs font-medium rounded-full text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {field.type === 'file' && field.name === 'opportunity_file' && (
+                <div>
+                  {/* Afficher le fichier PDF initial en mode édition */}
+                  {isEditMode && showInitialOpportunityPdf && (
+                    <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium">Fichier PDF actuel:</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">"{initialOpportunityName}"</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          {initialOpportunityUrl && (
+                            <a 
+                              href={initialOpportunityUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Voir
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleRemoveInitialOpportunityPdf}
+                            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
+                            title="Supprimer le fichier PDF"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Zone de sélection de fichier (affichée si pas de fichier initial ou si le fichier initial a été supprimé) */}
+                  {(!isEditMode || !showInitialOpportunityPdf) && (
+                    <div 
+                      className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md dark:bg-gray-800 transition-colors duration-200"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const files = e.dataTransfer.files;
+                        if (files && files.length > 0) {
+                          const fileInput = document.getElementById(field.name);
+                          fileInput.files = files;
+                          handleOpportunityPdfChange({ target: { files: files } });
+                        }
+                      }}
+                    >
+                      <div className="space-y-1 text-center">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="flex text-sm text-gray-600 dark:text-gray-300 justify-center">
+                          <label
+                            htmlFor={field.name}
+                            className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
+                          >
+                            <span>Choisir un fichier</span>
+                            <input
+                              id={field.name}
+                              name={field.name}
+                              type="file"
+                              className="sr-only"
+                              accept={field.accept}
+                              onChange={handleOpportunityPdfChange}
+                            />
+                          </label>
+                          <p className="pl-1">ou glisser-déposer</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          PDF jusqu'à 5 Mo (optionnel)
+                        </p>
+                        {pdfError && <p className="text-xs text-red-500 dark:text-red-400">{pdfError}</p>}
+                        {selectedOpportunityPdf && (
+                          <div className="flex items-center justify-center mt-2">
+                            <p className="text-xs text-green-500 dark:text-green-400 mr-2">
+                              <CheckCircleIcon className="inline-block h-4 w-4 mr-1" />
+                              {selectedOpportunityPdf.name}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleRemoveOpportunityPdf}
                               className="inline-flex items-center p-1 border border-transparent text-xs font-medium rounded-full text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
                             >
                               <TrashIcon className="h-4 w-4" />
