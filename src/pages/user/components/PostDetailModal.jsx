@@ -415,7 +415,11 @@ export default function PostDetailModal({
                 </div>
               )}
 
+<<<<<<< HEAD
               {post.opportunity_file_url && (
+=======
+{post.opportunity_file_url && (
+>>>>>>> aa5bada82c61f7eea1edb6a6387c243a9ee89a6a
                 <div className="flex items-center">
                   <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <a 
