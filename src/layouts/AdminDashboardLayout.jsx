@@ -56,6 +56,8 @@ import {
   WalletIcon,
   HomeIcon,
   UserCircleIcon,
+  CheckBadgeIcon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -64,18 +66,9 @@ const navigation = [
   { name: 'Utilisateurs', href: '/admin/users', icon: UsersIcon },
   { name: 'Demandes de retrait', href: '/admin/withdrawal-requests', icon: BanknotesIcon },
   { name: 'Portefeuilles', href: '/admin/wallets', icon: WalletIcon },
-  { name: 'Packs', href: '/admin/packs', icon: CubeIcon },
+  { name: 'Packs', href: '/admin/packs', icon: ListBulletIcon },
   { name: 'Mes packs', href: '/admin/mespacks', icon: CubeIcon },
-  { 
-    name: 'Validations', 
-    href: '/admin/validations',
-    icon: ClipboardDocumentCheckIcon,
-    children: [
-      { name: 'Publicités', href: '/admin/validations/ads' },
-      { name: 'Opportunités', href: '/admin/validations/opportunities' },
-      { name: 'Offres d\'emploi', href: '/admin/validations/jobs' },
-    ]
-  },
+  { name: 'Validations', href: '/admin/validations', icon: CheckBadgeIcon },
   { name: 'Paramètres', href: '/admin/settings', icon: Cog6ToothIcon },
 ];
 

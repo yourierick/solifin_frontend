@@ -69,8 +69,17 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
             title: 'Informations sur la publicité',
             fields: [
               { label: 'Catégorie', value: publication.categorie === 'produit' ? 'Produit' : 'Service' },
-              { label: 'Prix unitaire', value: `${publication.prix_unitaire_vente} ${publication.devise}` },
-              { label: 'Quantité disponible', value: publication.quantite_disponible },
+              { label: 'Contacts', value: publication.contacts || 'Non spécifié' },
+              { label: 'Email', value: publication.email || 'Non spécifié' },
+              { label: 'Adresse', value: publication.adresse || 'Non spécifié' },
+              { label: 'Besoin de livreurs', value: publication.besoin_livreurs ? 'Oui' : 'Non' },
+              { label: 'Conditions de livraison', value: publication.conditions_livraison || 'Non spécifiées' },
+              { label: 'Point de vente', value: publication.point_vente || 'Non spécifié' },
+              publication.prix_unitaire_vente ? { label: 'Prix unitaire de vente', value: `${publication.prix_unitaire_vente} ${publication.devise}` } : { label: 'Prix unitaire de vente', value: 'Non défini' },
+              publication.commission_livraison ? { label: 'Commission de livraison', value: `${publication.commission_livraison} ` } : { label: 'Commission de livraison', value: 'Non défini' },
+              publication.prix_unitaire_livraison ? { label: 'Prix unitaire de livraison', value: `${publication.prix_unitaire_livraison} ${publication.devise}` } : { label: 'Prix unitaire de livraison', value: 'Non défini' },
+              publication.lien ? { label: 'Lien externe', value: <a href={publication.lien} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Voir le lien</a> } : { label: 'Lien externe', value: 'Aucun lien' },
+              { label: 'Durée d\'affichage', value: publication.duree_affichage + ' jours' || 'Non spécifiée' },
               { label: 'Statut', value: getStatusText(publication.statut) },
               { label: 'État', value: getEtatText(publication.etat || 'disponible') }
             ]
@@ -85,6 +94,32 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
           details: {
             title: 'Informations sur l\'offre d\'emploi',
             fields: [
+              { label: 'Référence', value: publication.reference || 'Non spécifiée' },
+              { label: 'Titre', value: publication.titre || 'Non spécifié' },
+              { label: 'Entreprise', value: publication.entreprise || 'Non spécifiée' },
+              { label: 'Compétences requises', value: 
+                publication.competences_requises ? 
+                <div className="mt-4">
+                  <ul className="list-disc pl-6 space-y-2">
+                    {publication.competences_requises.split(',').map((competence, index) => (
+                      <li key={index} className="text-gray-700 dark:text-gray-300">{competence.trim()}</li>
+                    ))}
+                  </ul>
+                </div> : 'Non spécifiées'
+              },
+              { label: 'Devise', value: publication.devise || 'Non spécifiée' },
+              { label: 'Avantages', value: publication.avantages || 'Non spécifiés' },
+              { label: 'Date limite', value: publication.date_limite ? format(new Date(publication.date_limite), 'dd MMMM yyyy', { locale: fr }) : 'Non spécifiée' },
+              { label: 'Email de contact', value: publication.email_contact || 'Non spécifié' },
+              { label: 'Contacts', value: publication.contacts || 'Non spécifiés' },
+              { label: 'Fichier de l\'offre', value: publication.offer_file ? 
+                <a href={publication.offer_file} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Télécharger le fichier</a> : 
+                'Aucun fichier'
+              },
+              { label: 'Lien externe', value: publication.lien ? 
+                <a href={publication.lien} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Voir le lien</a> : 
+                'Aucun lien'
+              },
               { label: 'Type de contrat', value: publication.type_contrat },
               { label: 'Lieu', value: publication.lieu },
               { label: 'Salaire', value: publication.salaire ? `${publication.salaire} ${publication.devise}` : 'Non spécifié' },
@@ -107,6 +142,13 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
               { label: 'Secteur', value: publication.secteur },
               { label: 'Localisation', value: publication.localisation },
               { label: 'Investissement requis', value: publication.investissement_requis ? `${publication.investissement_requis} ${publication.devise}` : 'Non spécifié' },
+              { label: 'Bénéfices attendus', value: publication.benefices_attendus || 'Non spécifiés' },
+              { label: 'Devise', value: publication.devise || 'Non spécifiée' },
+              { label: 'Durée de retour sur investissement', value: publication.duree_retour_investissement || 'Non spécifiée' },
+              { label: 'Contacts', value: publication.contacts || 'Non spécifiés' },
+              { label: 'Email', value: publication.email || 'Non spécifié' },
+              { label: 'Conditions de participation', value: publication.conditions_participation || 'Non spécifiées' },
+              { label: 'Date limite', value: publication.date_limite ? format(new Date(publication.date_limite), 'dd MMMM yyyy', { locale: fr }) : 'Non spécifiée' },
               { label: 'Statut', value: getStatusText(publication.statut) },
               { label: 'État', value: getEtatText(publication.etat || 'disponible') }
             ]
@@ -165,7 +207,7 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
 
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-12 sm:align-middle sm:max-w-2xl sm:w-full">
           <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -182,7 +224,7 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
                   </button>
                 </div>
 
-                <div className="overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)]">
+                <div className="overflow-y-auto custom-scrollbar max-h-[calc(100vh-250px)]">
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">{details.subtitle}</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Publié le {details.date}</p>
@@ -223,7 +265,7 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
                     <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{details.details.title} - Détails</h4>
                     <dl className="mt-2 divide-y divide-gray-200 dark:divide-gray-700 border-t border-b border-gray-200 dark:border-gray-700">
                       {details.details.fields.map((field, index) => (
-                        <div key={index} className="py-3 flex justify-between text-sm">
+                        <div key={index} className="py-3 flex justify-between text-sm gap-4">
                           <dt className="text-gray-500 dark:text-gray-400">{field.label}</dt>
                           <dd className="text-gray-900 dark:text-white font-medium">{field.value}</dd>
                         </div>

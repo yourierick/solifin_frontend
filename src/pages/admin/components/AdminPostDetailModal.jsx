@@ -1,23 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   XMarkIcon,
-  ChatBubbleLeftIcon,
-  HeartIcon,
-  ShareIcon,
-  PaperAirplaneIcon,
-  EllipsisHorizontalIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
   BriefcaseIcon,
   LightBulbIcon,
-  ClockIcon,
   MapPinIcon,
   CurrencyDollarIcon,
   BuildingOfficeIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   NewspaperIcon,
   EnvelopeIcon,
   PhoneIcon,
@@ -27,28 +21,23 @@ import {
   CalendarIcon,
   DocumentArrowDownIcon,
   TagIcon,
-  StarIcon,
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import { useAuth } from '../../../contexts/AuthContext';
+import axios from 'axios';
 
-export default function PostDetailModal({
+export default function AdminPostDetailModal({
   isOpen,
   onClose,
   post,
-  onLike,
-  onComment,
-  onCommentLike,
-  onDeleteComment,
-  onShare,
+  postType,
+  onApprove,
+  onReject,
+  onPending,
   isDarkMode,
 }) {
-  const { user } = useAuth();
-  const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionForm, setShowRejectionForm] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const commentInputRef = useRef(null);
 
   // Formatage de la date
   const formatDate = (dateString) => {
@@ -56,28 +45,11 @@ export default function PostDetailModal({
     return format(date, 'dd MMMM yyyy à HH:mm', { locale: fr });
   };
 
-  // Gérer la soumission d'un commentaire
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    if (!comment.trim()) return;
-
-    try {
-      setIsSubmitting(true);
-      await onComment(post.id, comment, post.type);
-      setComment('');
-    } catch (err) {
-      console.error('Erreur lors de l\'envoi du commentaire:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Mettre le focus sur le champ de commentaire quand le modal s'ouvre
+  // Réinitialiser le formulaire de rejet quand le modal se ferme
   useEffect(() => {
-    if (isOpen && commentInputRef.current) {
-      setTimeout(() => {
-        commentInputRef.current.focus();
-      }, 100);
+    if (!isOpen) {
+      setRejectionReason('');
+      setShowRejectionForm(false);
     }
   }, [isOpen]);
 
@@ -98,13 +70,43 @@ export default function PostDetailModal({
     }
   };
 
+  // Gestion du rejet
+  const handleRejectClick = () => {
+    setShowRejectionForm(true);
+  };
+
+  const handleCancelReject = () => {
+    setShowRejectionForm(false);
+    setRejectionReason('');
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectionReason.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+      await onReject(post.id, rejectionReason);
+      onClose();
+    } catch (err) {
+      console.error('Erreur lors du rejet:', err);
+    } finally {
+      setIsSubmitting(false);
+      setShowRejectionForm(false);
+    }
+  };
+
   // Afficher l'icône appropriée selon le type de post
   const renderTypeIcon = () => {
-    switch (post.type) {
+    switch (postType) {
+      case 'jobOffer':
       case 'offres-emploi':
+      case 'offres_emploi':
         return <BriefcaseIcon className="h-5 w-5 text-blue-500" />;
+      case 'businessOpportunity':
       case 'opportunites-affaires':
+      case 'opportunites_affaires':
         return <LightBulbIcon className="h-5 w-5 text-yellow-500" />;
+      case 'advertisement':
       case 'publicites':
         return <NewspaperIcon className="h-5 w-5 text-gray-500" />;
       default:
@@ -114,7 +116,7 @@ export default function PostDetailModal({
 
   // Afficher les informations spécifiques selon le type de post
   const renderTypeSpecificInfo = () => {
-    if (post.type === 'offres-emploi') {
+    if (postType === 'jobOffer' || postType === 'offres-emploi' || postType === 'offres_emploi') {
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de l'offre avec titre principal */}
@@ -124,12 +126,12 @@ export default function PostDetailModal({
             </h2>
             <div className="flex items-center mt-1">
               <BuildingOfficeIcon className="h-4 w-4 mr-1 text-primary-500" />
-              <span className="text-sm font-medium">{post.company_name || 'Entreprise non précisée'}</span>
-              {post.location && (
+              <span className="text-sm font-medium">{post.company_name || post.entreprise || 'Entreprise non précisée'}</span>
+              {(post.location || post.lieu) && (
                 <>
                   <span className="mx-2 text-gray-400">•</span>
                   <MapPinIcon className="h-4 w-4 mr-1 text-primary-500" />
-                  <span className="text-sm">{post.location}</span>
+                  <span className="text-sm">{post.location || post.lieu}</span>
                 </>
               )}
             </div>
@@ -154,7 +156,7 @@ export default function PostDetailModal({
                 {/* Département */}
                 <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Département</th>
-                  <td className="px-4 py-2">{post.company_name || 'Non précisé'}</td>
+                  <td className="px-4 py-2">{post.company_name || post.entreprise || 'Non précisé'}</td>
                 </tr>
                 
                 {/* Type de contrat */}
@@ -237,13 +239,7 @@ export default function PostDetailModal({
               {post.email_contact && (
                 <div className="flex items-center">
                   <EnvelopeIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={`mailto:${post.email_contact}`} 
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {post.email_contact}
-                  </a>
+                  <span>{post.email_contact}</span>
                 </div>
               )}
               
@@ -257,49 +253,33 @@ export default function PostDetailModal({
               {post.external_link && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={post.external_link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    En savoir plus
-                  </a>
+                  <span>{post.external_link}</span>
                 </div>
               )}
               
               {post.offer_file_url && (
                 <div className="flex items-center">
                   <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={post.offer_file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                    download
-                  >
-                    Télécharger l'offre complète
-                  </a>
+                  <span>Fichier de l'offre disponible</span>
                 </div>
               )}
             </div>
           </div>
         </div>
       );
-    } else if (post.type === 'opportunites-affaires') {
+    } else if (postType === 'businessOpportunity' || postType === 'opportunites-affaires' || postType === 'opportunites_affaires') {
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          {/* En-tête de l'offre avec titre principal */}
+          {/* En-tête de l'opportunité avec titre principal */}
           <div className="border-b pb-3 mb-4">
+            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {post.titre || post.title}
+            </h2>
             <div className="flex items-center mt-1">
-              <BuildingOfficeIcon className="h-4 w-4 mr-1 text-primary-500" />
-              {post.location && (
+              {(post.location || post.localisation) && (
                 <>
-                  <span className="mx-2 text-gray-400">•</span>
                   <MapPinIcon className="h-4 w-4 mr-1 text-primary-500" />
-                  <span className="text-sm">{post.location}</span>
+                  <span className="text-sm">{post.location || post.localisation}</span>
                 </>
               )}
             </div>
@@ -329,7 +309,7 @@ export default function PostDetailModal({
                 
                 {/* Contacts */}
                 {post.contacts && (
-                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                  <tr>
                     <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Contacts</th>
                     <td className="px-4 py-2">{post.contacts}</td>
                   </tr>
@@ -344,18 +324,20 @@ export default function PostDetailModal({
                 )}
 
                 {/* Investissement requis */}
-                <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                  <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Investissement requis</th>
-                  <td className="px-4 py-2">{post.investissement_requis ? `${post.investissement_requis} ${post.devise}` : 'Non défini'}</td>
-                </tr>
+                {post.investissement_requis && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Investissement requis</th>
+                    <td className="px-4 py-2">{post.investissement_requis} {post.devise}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
           
-          {/* Vue d'ensemble du poste */}
+          {/* Description */}
           {post.description && (
             <div className="mb-4">
-              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>VUE D'ENSEMBLE DU POSTE</h3>
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>DESCRIPTION</h3>
               <p className="text-sm whitespace-pre-line">{post.description}</p>
             </div>
           )}
@@ -363,15 +345,15 @@ export default function PostDetailModal({
           {/* Benefices attendus */}
           {post.benefices_attendus && (
             <div className="mb-4">
-              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Bénéfices attendus</h3>
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>BÉNÉFICES ATTENDUS</h3>
               <p className="text-sm whitespace-pre-line">{post.benefices_attendus}</p>
             </div>
           )}
           
-          {/* Investissement requis */}
+          {/* Conditions de participation */}
           {post.conditions_participation && (
             <div className="mb-4">
-              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Conditions de participation</h3>
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONDITIONS DE PARTICIPATION</h3>
               <p className="text-sm whitespace-pre-line">{post.conditions_participation}</p>
             </div>
           )}
@@ -383,13 +365,7 @@ export default function PostDetailModal({
               {post.email && (
                 <div className="flex items-center">
                   <EnvelopeIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={`mailto:${post.email}`} 
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {post.email}
-                  </a>
+                  <span>{post.email}</span>
                 </div>
               )}
               
@@ -400,50 +376,143 @@ export default function PostDetailModal({
                 </div>
               )}
               
-              {post.external_link && (
+              {post.lien && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={post.external_link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    En savoir plus
-                  </a>
+                  <span>{post.lien}</span>
                 </div>
               )}
-
+              
               {post.opportunity_file_url && (
                 <div className="flex items-center">
                   <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <a 
-                    href={post.opportunity_file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                    download
-                  >
-                    Télécharger l'appel à candidature
-                  </a>
+                  <span>Fichier de l'opportunité disponible</span>
                 </div>
               )}
             </div>
           </div>
         </div>
       );
-    }
-    else if (post.type === 'publicites') {
+    } else if (postType === 'advertisement' || postType === 'publicites') {
       return (
-        <div className={`mt-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          {post.sector && (
-            <div className="flex items-center mb-1">
-              <NewspaperIcon className="h-4 w-4 mr-1" />
-              <span>Publicité</span>
+        <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          {/* En-tête de la publicité avec titre principal */}
+          <div className="border-b pb-3 mb-4">
+            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {post.titre || post.title}
+            </h2>
+            <div className="flex items-center mt-1">
+              <TagIcon className="h-4 w-4 mr-1 text-primary-500" />
+              <span className="text-sm font-medium">
+                {post.categorie === 'produit' ? 'Produit' : 'Service'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Tableau d'informations principales */}
+          <div className={`w-full mb-4 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-md overflow-hidden`}>
+            <table className="w-full text-sm">
+              <tbody>
+                {/* Prix */}
+                <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                  <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Prix</th>
+                  <td className="px-4 py-2">
+                    {post.prix_unitaire_vente ? `${post.prix_unitaire_vente} ${post.devise || ''}` : 'Non précisé'}
+                  </td>
+                </tr>
+                
+                {/* Quantité disponible */}
+                {post.quantite_disponible && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Quantité disponible</th>
+                    <td className="px-4 py-2">{post.quantite_disponible}</td>
+                  </tr>
+                )}
+                
+                {/* Point de vente */}
+                {post.point_vente && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Point de vente</th>
+                    <td className="px-4 py-2">{post.point_vente}</td>
+                  </tr>
+                )}
+                
+                {/* Besoin de livreurs */}
+                {post.besoin_livreurs && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Besoin de livreurs</th>
+                    <td className="px-4 py-2">{post.besoin_livreurs}</td>
+                  </tr>
+                )}
+                
+                {/* Prix de livraison */}
+                {post.besoin_livreurs === 'OUI' && post.prix_unitaire_livraison && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Prix de livraison</th>
+                    <td className="px-4 py-2">{post.prix_unitaire_livraison} {post.devise || ''}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Description */}
+          {post.description && (
+            <div className="mb-4">
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>DESCRIPTION</h3>
+              <p className="text-sm whitespace-pre-line">{post.description}</p>
             </div>
           )}
+          
+          {/* Conditions de livraison */}
+          {post.besoin_livreurs === 'OUI' && post.conditions_livraison && (
+            <div className="mb-4">
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONDITIONS DE LIVRAISON</h3>
+              <ul className="list-disc pl-5 text-sm space-y-1">
+                {Array.isArray(post.conditions_livraison) ? (
+                  post.conditions_livraison.map((condition, index) => (
+                    <li key={index}>{condition}</li>
+                  ))
+                ) : (
+                  <li>{post.conditions_livraison}</li>
+                )}
+              </ul>
+            </div>
+          )}
+          
+          {/* Informations de contact */}
+          <div className="mt-6 pt-4 border-t">
+            <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONTACT</h3>
+            <div className="flex flex-col space-y-2 text-sm">
+              {post.email && (
+                <div className="flex items-center">
+                  <EnvelopeIcon className="h-4 w-4 mr-2 text-primary-500" />
+                  <span>{post.email}</span>
+                </div>
+              )}
+              
+              {post.contacts && (
+                <div className="flex items-center">
+                  <PhoneIcon className="h-4 w-4 mr-2 text-primary-500" />
+                  <span>{post.contacts}</span>
+                </div>
+              )}
+              
+              {post.adresse && (
+                <div className="flex items-center">
+                  <MapPinIcon className="h-4 w-4 mr-2 text-primary-500" />
+                  <span>{post.adresse}</span>
+                </div>
+              )}
+              
+              {post.lien && (
+                <div className="flex items-center">
+                  <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
+                  <span>{post.lien}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       );
     }
@@ -483,7 +552,7 @@ export default function PostDetailModal({
                 <div className="flex h-[80vh] max-h-[800px]">
                   {/* Section gauche: images/vidéo/fichier */}
                   <div className="w-1/2 relative flex items-center justify-center bg-black">
-                    {post.type === 'offres-emploi' && post.offer_file_url ? (
+                    {(postType === 'jobOffer' || postType === 'offres-emploi' || postType === 'offres_emploi') && post.offer_file_url ? (
                       <div className={`flex flex-col items-center justify-center w-full h-full ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
                         <div className="flex flex-col items-center p-8 max-w-md">
                           {/* Icône PDF */}
@@ -522,6 +591,44 @@ export default function PostDetailModal({
                           </a>
                         </div>
                       </div>
+                    ) : (postType === 'businessOpportunity' || postType === 'opportunites-affaires' || postType === 'opportunites_affaires') && post.opportunity_file_url ? (
+                      <div className={`flex flex-col items-center justify-center w-full h-full ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+                        <div className="flex flex-col items-center p-8 max-w-md">
+                          {/* Icône PDF */}
+                          <div className="relative mb-4">
+                            <svg className="w-32 h-32 text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+                              <path fill="currentColor" d="M320 464c8.8 0 16-7.2 16-16V160H256c-17.7 0-32-14.3-32-32V48H64c-8.8 0-16 7.2-16 16V448c0 8.8 7.2 16 16 16H320zM0 64C0 28.7 28.7 0 64 0H229.5c17 0 33.3 6.7 45.3 18.7l90.5 90.5c12 12 18.7 28.3 18.7 45.3V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V64z"/>
+                              <path fill="currentColor" d="M80 224c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H96c-8.8 0-16-7.2-16-16V224zm96 0c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16h-32c-8.8 0-16-7.2-16-16V224zm96 0c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16h-32c-8.8 0-16-7.2-16-16V224z"/>
+                            </svg>
+                            <div className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                              PDF
+                            </div>
+                          </div>
+                          
+                          {/* Titre du fichier */}
+                          <h3 className={`text-lg font-bold mb-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {post.titre || post.title || 'Opportunité d\'affaire'}
+                          </h3>
+                          
+                          {/* Secteur */}
+                          <p className={`text-sm mb-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {post.secteur ? `Secteur: ${post.secteur}` : ''}
+                          </p>
+                          
+                          {/* Bouton de téléchargement */}
+                          <a
+                            href={post.opportunity_file_url}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-center justify-center px-4 py-2 rounded-lg ${isDarkMode ? 'bg-primary-600 hover:bg-primary-700' : 'bg-primary-500 hover:bg-primary-600'} text-white font-medium transition-colors duration-200 mt-2`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
+                            Télécharger le document
+                          </a>
+                        </div>
+                      </div>
                     ) : post.image_url ? (
                       <>
                         <img
@@ -545,9 +652,9 @@ export default function PostDetailModal({
                         <div className={`text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           {renderTypeIcon()}
                           <p className="mt-2">
-                            {post.type === 'offres-emploi' 
+                            {postType === 'jobOffer' || postType === 'offres-emploi' || postType === 'offres_emploi'
                               ? 'Offre d\'emploi' 
-                              : post.type === 'opportunites_affaires' 
+                              : postType === 'businessOpportunity' || postType === 'opportunites-affaires' || postType === 'opportunites_affaires'
                                 ? 'Opportunité d\'affaires' 
                                 : 'Publication'}
                           </p>
@@ -563,27 +670,27 @@ export default function PostDetailModal({
                     </button>
                   </div>
                   
-                  {/* Section droite: détails et commentaires */}
+                  {/* Section droite: détails et actions d'administration */}
                   <div className={`w-1/2 flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     {/* En-tête */}
                     <div className="p-4 border-b flex items-center space-x-3">
-                      {post.user?.picture ? (
+                      {post.user?.picture_url ? (
                         <img
-                          src={post.user.picture}
+                          src={post.user.picture_url}
                           alt={post.user.name}
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
                           <span className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                            {post.page.user?.name?.charAt(0) || 'U'}
+                            {post.user?.name?.charAt(0) || 'U'}
                           </span>
                         </div>
                       )}
                       <div className="flex-1">
                         <div className="flex items-center">
                           <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {post.page.user?.name || 'Utilisateur'}
+                            {post.user?.name || 'Utilisateur'}
                           </h3>
                           {renderTypeIcon()}
                         </div>
@@ -591,15 +698,6 @@ export default function PostDetailModal({
                           {formatDate(post.created_at)}
                         </p>
                       </div>
-                      <button
-                        className={`p-1 rounded-full ${
-                          isDarkMode
-                            ? 'hover:bg-gray-700 text-gray-400'
-                            : 'hover:bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        <EllipsisHorizontalIcon className="h-6 w-6" />
-                      </button>
                     </div>
                     
                     {/* Contenu */}
@@ -615,238 +713,101 @@ export default function PostDetailModal({
                       
                       {renderTypeSpecificInfo()}
                       
-                      {/* Compteurs */}
+                      {/* Statut actuel */}
                       <div className={`mt-4 pt-3 flex justify-between text-sm ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-gray-500 border-gray-200'} border-t`}>
+                        <div className="flex items-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            post.statut === 'en_attente' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : post.statut === 'approuvé' 
+                                ? 'bg-green-100 text-green-800'
+                                : post.statut === 'rejeté'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {post.statut === 'en_attente' 
+                              ? 'En attente' 
+                              : post.statut === 'approuvé' 
+                                ? 'Approuvé'
+                                : post.statut === 'rejeté'
+                                  ? 'Rejeté'
+                                  : post.statut}
+                          </span>
+                        </div>
                         <div>
-                          {post.likes_count > 0 && (
-                            <span>{post.likes_count} {post.likes_count === 1 ? 'j\'aime' : 'j\'aimes'}</span>
-                          )}
-                        </div>
-                        <div className="flex space-x-4">
-                          {post.comments_count > 0 && (
-                            <span>{post.comments_count} {post.comments_count === 1 ? 'commentaire' : 'commentaires'}</span>
-                          )}
-                          {post.shares_count > 0 && (
-                            <span>{post.shares_count} {post.shares_count === 1 ? 'partage' : 'partages'}</span>
-                          )}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            post.etat === 'disponible' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {post.etat === 'disponible' ? 'Disponible' : 'Terminé'}
+                          </span>
                         </div>
                       </div>
                       
-                      {/* Actions */}
-                      <div className={`mt-1 py-2 flex border-y ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                        <button
-                          onClick={() => onLike(post.id, post.type)}
-                          className={`flex items-center justify-center flex-1 py-2 rounded-lg ${
-                            isDarkMode
-                              ? 'hover:bg-gray-700'
-                              : 'hover:bg-gray-100'
-                          } ${
-                            post.is_liked
-                              ? 'text-primary-500'
-                              : isDarkMode
-                                ? 'text-gray-400'
-                                : 'text-gray-500'
-                          }`}
-                        >
-                          {post.is_liked ? (
-                            <HeartIconSolid className="h-5 w-5 mr-2" />
-                          ) : (
-                            <HeartIcon className="h-5 w-5 mr-2" />
-                          )}
-                          <span>J'aime</span>
-                        </button>
-                        <button
-                          onClick={() => commentInputRef.current.focus()}
-                          className={`flex items-center justify-center flex-1 py-2 rounded-lg ${
-                            isDarkMode
-                              ? 'hover:bg-gray-700 text-gray-400'
-                              : 'hover:bg-gray-100 text-gray-500'
-                          }`}
-                        >
-                          <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                          <span>Commenter</span>
-                        </button>
-                        <div className="relative flex-1">
+                      {/* Actions d'administration */}
+                      {!showRejectionForm ? (
+                        <div className="mt-4 flex space-x-2">
                           <button
-                            onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
-                            className={`flex items-center justify-center w-full py-2 rounded-lg ${
-                              isDarkMode
-                                ? 'hover:bg-gray-700 text-gray-400'
-                                : 'hover:bg-gray-100 text-gray-500'
-                            }`}
+                            onClick={() => onApprove(post.id)}
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
                           >
-                            <ShareIcon className="h-5 w-5 mr-2" />
-                            <span>Partager</span>
+                            <CheckCircleIcon className="h-5 w-5 mr-2" />
+                            Approuver
                           </button>
-                          
-                          {/* Menu de partage */}
-                          {isShareMenuOpen && (
-                            <div
-                              className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 rounded-md shadow-lg z-10 ${
-                                isDarkMode ? 'bg-gray-700' : 'bg-white'
-                              } ring-1 ring-black ring-opacity-5`}
-                            >
-                              <div className="py-1">
-                                <button
-                                  onClick={() => {
-                                    onShare(post.id, 'facebook');
-                                    setIsShareMenuOpen(false);
-                                  }}
-                                  className={`block w-full text-left px-4 py-2 text-sm ${
-                                    isDarkMode
-                                      ? 'text-gray-300 hover:bg-gray-600'
-                                      : 'text-gray-700 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  Facebook
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    onShare(post.id, 'twitter');
-                                    setIsShareMenuOpen(false);
-                                  }}
-                                  className={`block w-full text-left px-4 py-2 text-sm ${
-                                    isDarkMode
-                                      ? 'text-gray-300 hover:bg-gray-600'
-                                      : 'text-gray-700 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  Twitter
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    onShare(post.id, 'linkedin');
-                                    setIsShareMenuOpen(false);
-                                  }}
-                                  className={`block w-full text-left px-4 py-2 text-sm ${
-                                    isDarkMode
-                                      ? 'text-gray-300 hover:bg-gray-600'
-                                      : 'text-gray-700 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  LinkedIn
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    onShare(post.id, 'whatsapp');
-                                    setIsShareMenuOpen(false);
-                                  }}
-                                  className={`block w-full text-left px-4 py-2 text-sm ${
-                                    isDarkMode
-                                      ? 'text-gray-300 hover:bg-gray-600'
-                                      : 'text-gray-700 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  WhatsApp
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                          <button
+                            onClick={handleRejectClick}
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                          >
+                            <XCircleIcon className="h-5 w-5 mr-2" />
+                            Rejeter
+                          </button>
+                          <button
+                            onClick={() => onPending(post.id)}
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 transition-colors"
+                          >
+                            <ClockIcon className="h-5 w-5 mr-2" />
+                            En attente
+                          </button>
                         </div>
-                      </div>
-                      
-                      {/* Liste des commentaires */}
-                      {post.comments && post.comments.length > 0 && (
+                      ) : (
                         <div className="mt-4 space-y-3">
-                          {post.comments.map((comment) => (
-                            <div key={comment.id} className="flex">
-                              {comment.user?.picture ? (
-                                <img
-                                  src={comment.user.picture}
-                                  alt={comment.user.name}
-                                  className="h-8 w-8 rounded-full object-cover mr-2 flex-shrink-0"
-                                />
-                              ) : (
-                                <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-2 flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                                    {comment.user?.name?.charAt(0) || 'U'}
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex-1">
-                                <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                                  <div className={`font-medium text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                    {comment.user?.name || 'Utilisateur'}
-                                  </div>
-                                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                    {comment.content}
-                                  </p>
-                                </div>
-                                <div className="flex items-center mt-1 text-xs space-x-3">
-                                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>
-                                    {formatDate(comment.created_at)}
-                                  </span>
-                                  {comment.likes_count > 0 && (
-                                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>
-                                      {comment.likes_count} {comment.likes_count === 1 ? 'j\'aime' : 'j\'aimes'}
-                                    </span>
-                                  )}
-                                  {user?.id === comment.user_id && (
-                                    <button
-                                      onClick={() => onDeleteComment(comment.id, post.id, post.type)}
-                                      className={`font-medium ${
-                                        isDarkMode
-                                          ? 'text-gray-400 hover:text-red-400'
-                                          : 'text-gray-500 hover:text-red-500'
-                                      }`}
-                                    >
-                                      Supprimer
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                          <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            Raison du rejet
+                          </h3>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            className={`w-full px-3 py-2 border rounded-md ${
+                              isDarkMode 
+                                ? 'bg-gray-700 border-gray-600 text-white' 
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 h-32`}
+                            placeholder="Veuillez indiquer la raison du rejet..."
+                          />
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={handleCancelReject}
+                              className={`px-4 py-2 border rounded-md ${
+                                isDarkMode 
+                                  ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              onClick={handleConfirmReject}
+                              disabled={!rejectionReason.trim() || isSubmitting}
+                              className={`px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 ${
+                                !rejectionReason.trim() || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {isSubmitting ? 'Envoi en cours...' : 'Confirmer le rejet'}
+                            </button>
+                          </div>
                         </div>
                       )}
-                    </div>
-                    
-                    {/* Formulaire de commentaire */}
-                    <div className="p-4 border-t">
-                      <form onSubmit={handleSubmitComment} className="flex items-center">
-                        {user?.picture ? (
-                          <img
-                            src={user.picture}
-                            alt="Photo de profil"
-                            className="h-8 w-8 rounded-full object-cover mr-2"
-                          />
-                        ) : (
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                            <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                              {user?.name?.charAt(0) || 'U'}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1 relative">
-                          <input
-                            ref={commentInputRef}
-                            type="text"
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder="Écrire un commentaire..."
-                            className={`w-full py-2 px-3 pr-10 rounded-full ${
-                              isDarkMode
-                                ? 'bg-gray-700 text-white placeholder-gray-400 border-gray-600'
-                                : 'bg-gray-100 text-gray-900 placeholder-gray-500 border-gray-200'
-                            } border focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                          />
-                          <button
-                            type="submit"
-                            disabled={!comment.trim() || isSubmitting}
-                            className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded-full ${
-                              comment.trim() && !isSubmitting
-                                ? isDarkMode
-                                  ? 'text-primary-400 hover:bg-gray-600'
-                                  : 'text-primary-600 hover:bg-gray-200'
-                                : isDarkMode
-                                  ? 'text-gray-500'
-                                  : 'text-gray-400'
-                            }`}
-                          >
-                            <PaperAirplaneIcon className="h-5 w-5 rotate-90" />
-                          </button>
-                        </div>
-                      </form>
                     </div>
                   </div>
                 </div>

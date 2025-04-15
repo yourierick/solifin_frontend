@@ -129,6 +129,7 @@ function App() {
               <Route path="mespacks" element={<MesPacks />} />
               <Route path="packs/add" element={<AddPack />} />
               <Route path="packs/edit/:id" element={<EditPack />} />
+              <Route path="validations" element={<AdvertisementValidation />} />
               <Route path="settings" element={<div>Paramètres (à venir)</div>} />
             </Route>
         
