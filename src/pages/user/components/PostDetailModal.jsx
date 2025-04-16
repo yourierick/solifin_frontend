@@ -28,6 +28,13 @@ import {
   DocumentArrowDownIcon,
   TagIcon,
   StarIcon,
+  TruckIcon,
+  ShoppingBagIcon,
+  HomeIcon,
+  InformationCircleIcon,
+  ReceiptPercentIcon,
+  ArchiveBoxIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -288,7 +295,7 @@ export default function PostDetailModal({
           </div>
         </div>
       );
-    } else if (post.type === 'opportunitesaffaires') {
+    } else if (post.type === 'opportunites-affaires') {
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de l'offre avec titre principal */}
@@ -437,11 +444,142 @@ export default function PostDetailModal({
     }
     else if (post.type === 'publicites') {
       return (
-        <div className={`mt-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          {post.sector && (
-            <div className="flex items-center mb-1">
-              <NewspaperIcon className="h-4 w-4 mr-1" />
-              <span>Publicité</span>
+        <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          {/* En-tête de la publicité avec titre principal */}
+          <div className="border-b pb-3 mb-4">
+            <div className="flex items-center mt-1">
+              <NewspaperIcon className="h-4 w-4 mr-1 text-primary-500" />
+              {post.categorie && (
+                <>
+                  <span className="text-sm">{post.categorie}</span>
+                  <span className="mx-2 text-gray-400">•</span>
+                </>  
+              )}
+              {post.adresse && (
+                <>
+                  <MapPinIcon className="h-4 w-4 mr-1 text-primary-500" />
+                  <span className="text-sm">{post.adresse}</span>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Tableau d'informations principales */}
+          <div className={`w-full mb-4 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-md overflow-hidden`}>
+            <table className="w-full text-sm">
+              <tbody>
+                {/* Catégorie */}
+                {post.categorie && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Catégorie</th>
+                    <td className="px-4 py-2">{post.categorie}</td>
+                  </tr>
+                )}
+                
+                {/* Prix unitaire */}
+                {post.prix_unitaire_vente && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Prix unitaire</th>
+                    <td className="px-4 py-2">{post.prix_unitaire_vente} {post.devise || ''}</td>
+                  </tr>
+                )}
+                
+                {/* Quantité disponible */}
+                {post.quantite_disponible && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Quantité disponible</th>
+                    <td className="px-4 py-2">{post.quantite_disponible}</td>
+                  </tr>
+                )}
+                
+                {/* Point de vente */}
+                {post.point_vente && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Point de vente</th>
+                    <td className="px-4 py-2">{post.point_vente}</td>
+                  </tr>
+                )}
+                
+                {/* Besoin de livreurs */}
+                {post.besoin_livreurs !== undefined && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Besoin de livreurs</th>
+                    <td className="px-4 py-2">{post.besoin_livreurs === true ? 'Oui' : 'Non'}</td>
+                  </tr>
+                )}
+                
+                {/* Prix unitaire livraison */}
+                {post.prix_unitaire_livraison && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Prix unitaire livraison</th>
+                    <td className="px-4 py-2">{post.prix_unitaire_livraison} {post.devise || ''}</td>
+                  </tr>
+                )}
+                
+                {/* Commission livraison */}
+                {post.commission_livraison && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Commission livraison</th>
+                    <td className="px-4 py-2">{post.commission_livraison}</td>
+                  </tr>
+                )}
+                
+                {/* Email */}
+                {post.email && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Email</th>
+                    <td className="px-4 py-2">
+                      <a 
+                        href={`mailto:${post.email}`} 
+                        className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                      >
+                        {post.email}
+                      </a>
+                    </td>
+                  </tr>
+                )}
+                
+                {/* Contacts */}
+                {post.contacts && (
+                  <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Contacts</th>
+                    <td className="px-4 py-2">{post.contacts}</td>
+                  </tr>
+                )}
+                
+                {/* Lien */}
+                {post.lien && (
+                  <tr>
+                    <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Lien</th>
+                    <td className="px-4 py-2">
+                      <a 
+                        href={post.lien.startsWith('http') ? post.lien : `https://${post.lien}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                      >
+                        {post.lien}
+                      </a>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Description */}
+          {post.description && (
+            <div className="mb-4">
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>DESCRIPTION</h3>
+              <p className="text-sm whitespace-pre-line">{post.description}</p>
+            </div>
+          )}
+          
+          {/* Conditions de livraison */}
+          {post.conditions_livraison && (
+            <div className="mb-4">
+              <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONDITIONS DE LIVRAISON</h3>
+              <p className="text-sm whitespace-pre-line">{post.conditions_livraison}</p>
             </div>
           )}
         </div>

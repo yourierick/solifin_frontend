@@ -64,8 +64,25 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
   const [imageError, setImageError] = useState('');
   const [videoError, setVideoError] = useState('');
   const [pdfError, setPdfError] = useState('');
-  const [conditionsLivraison, setConditionsLivraison] = useState([]);
+  const [conditionsLivraison, setConditionsLivraison] = useState(
+    isEditMode && initialData && initialData.conditions_livraison ? 
+      (typeof initialData.conditions_livraison === 'string' ? 
+        JSON.parse(initialData.conditions_livraison) : 
+        initialData.conditions_livraison) : 
+      []
+  );
   const [phoneCode, setPhoneCode] = useState(initialPhoneCode);
+  
+  // Mettre à jour le champ caché conditions_livraison lorsque l'état change
+  useEffect(() => {
+    if (conditionsLivraison && conditionsLivraison.length > 0) {
+      // Filtrer les conditions vides
+      const filteredConditions = conditionsLivraison.filter(condition => condition.trim() !== '');
+      setValue('conditions_livraison', JSON.stringify(filteredConditions));
+    } else {
+      setValue('conditions_livraison', JSON.stringify([]));
+    }
+  }, [conditionsLivraison, setValue]);
 
   const { user } = useAuth();
   const { isActive: isPackActive, packInfo } = usePublicationPack();
@@ -571,6 +588,21 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
     // Vérifier si le pack est actif avant de soumettre (sauf en mode édition)
     if (!isPackActive && !isEditMode) {
       return;
+    }
+    
+    // Traiter explicitement les conditions de livraison
+    if (conditionsLivraison && conditionsLivraison.length > 0) {
+      // Filtrer les conditions vides
+      const filteredConditions = conditionsLivraison.filter(condition => condition.trim() !== '');
+      
+      // Assigner directement les conditions filtrées au formulaire
+      if (filteredConditions.length > 0) {
+        data.conditions_livraison = JSON.stringify(filteredConditions);
+      } else {
+        data.conditions_livraison = JSON.stringify([]);
+      }
+    } else {
+      data.conditions_livraison = JSON.stringify([]);
     }
     
     try {
@@ -1163,6 +1195,7 @@ export default function PublicationForm({ type, onSubmit, onCancel, initialData,
                     type="hidden"
                     id={field.name}
                     {...register(field.name)}
+                    value={JSON.stringify(conditionsLivraison)}
                     style={{ display: 'none' }}
                   />
                   {/* Mettre à jour la valeur du champ caché lorsque les conditions changent */}

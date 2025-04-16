@@ -456,7 +456,7 @@ export default function AdminProfile() {
                       >
                         <option value="">Sélectionner un pays</option>
                         {countries.map(pays => (
-                          <option selected={formData.pays === pays.name} key={pays.code} value={pays.name}>
+                          <option key={pays.code} value={pays.name}>
                             {pays.name}
                           </option>
                         ))}

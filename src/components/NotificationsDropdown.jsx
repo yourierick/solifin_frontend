@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 
+
 export default function NotificationsDropdown() {
   const { isDarkMode } = useTheme();
   const { user } = useAuth();
@@ -26,7 +27,6 @@ export default function NotificationsDropdown() {
       setNotifications(response.data.data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des notifications:', error);
-      showToast('Impossible de charger les notifications', 'error');
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,6 @@ export default function NotificationsDropdown() {
       }
     } catch (error) {
       console.error('Erreur lors du marquage de la notification comme lue:', error);
-      showToast('Impossible de marquer la notification comme lue', 'error');
     }
   };
 
@@ -53,10 +52,8 @@ export default function NotificationsDropdown() {
     try {
       await axios.post('/api/notifications/mark-all-read');
       setNotifications([]);
-      showToast('Toutes les notifications ont été marquées comme lues', 'success');
     } catch (error) {
       console.error('Erreur lors du marquage de toutes les notifications comme lues:', error);
-      showToast('Impossible de marquer toutes les notifications comme lues', 'error');
     }
   };
 
@@ -215,7 +212,7 @@ export default function NotificationsDropdown() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {notification.data?.user_name || 'Notification'}
+                              {notification.data?.titre || 'Notification'}
                             </p>
                             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                               {notification.data?.message || notification.data?.content || ''}

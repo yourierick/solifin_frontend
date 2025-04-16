@@ -141,9 +141,9 @@ export default function PostCard({
       {/* En-tête du post */}
       <div className="p-4 flex justify-between items-start">
         <div className="flex items-center space-x-3">
-          {post.user?.picture ? (
+          {post.user?.picture_url ? (
             <img
-              src={post.user.picture}
+              src={post.user.picture_url}
               alt={post.user.name}
               className="h-10 w-10 rounded-full object-cover"
             />
