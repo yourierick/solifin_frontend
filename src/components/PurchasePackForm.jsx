@@ -10,13 +10,132 @@ import {
   Radio,
   InputAdornment,
   Alert,
-  CircularProgress
+  CircularProgress,
+  MenuItem
 } from '@mui/material';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from '../utils/axios';
 import { useToast } from '../contexts/ToastContext';
 import Notification from './Notification';
+import { CURRENCIES } from '../config';
+
+// Style CSS pour la barre de défilement personnalisée et les animations
+const customStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  
+  .slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+  
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  
+  .method-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .method-card:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .method-card.selected {
+    border-color: #1976d2;
+    background-color: rgba(25, 118, 210, 0.05);
+  }
+  
+  .dark .method-card:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .dark .method-card.selected {
+    border-color: #90caf9;
+    background-color: rgba(144, 202, 249, 0.1);
+  }
+  
+  .summary-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    backdrop-filter: blur(5px);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+  
+  .dark .summary-card {
+    background: linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.7) 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+  
+  .dark .summary-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Styles pour le menu déroulant en mode sombre */
+  .MuiPaper-root.MuiMenu-paper.MuiPopover-paper.MuiPaper-elevation {
+    background-color: #fff;
+  }
+  
+  .dark .MuiPaper-root.MuiMenu-paper.MuiPopover-paper.MuiPaper-elevation {
+    background-color: #1e283b !important;
+    color: white;
+  }
+  
+  .dark .MuiMenuItem-root:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+`;
 
 const paymentMethods = [
   {
@@ -73,10 +192,16 @@ export default function PurchasePackForm({ open, onClose, pack }) {
   const [totalAmount, setTotalAmount] = useState(0);
   const [selectedMobileOption, setSelectedMobileOption] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [transactionFees, setTransactionFees] = useState(0);
+  const [feePercentage, setFeePercentage] = useState(3.5);
+  const [convertedAmount, setConvertedAmount] = useState(0);
+  const [formIsValid, setFormIsValid] = useState(false);
 
   useEffect(() => {
     if (pack) {
       setTotalAmount(pack.price * months);
+      setConvertedAmount(pack.price * months);
     }
   }, [pack, months]);
 
@@ -89,6 +214,21 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     setFormFields({});
     setSelectedMobileOption('');
   }, [paymentMethod]);
+
+  useEffect(() => {
+    // Seulement pour les méthodes de paiement credit-card et mobile-money
+    if ((paymentMethod === 'credit-card' || paymentMethod === 'mobile-money') && totalAmount > 0) {
+      convertCurrency();
+    } else {
+      // Pour wallet, on utilise USD directement
+      setConvertedAmount(totalAmount);
+      fetchTransactionFees(totalAmount, paymentMethod, 'USD');
+    }
+  }, [selectedCurrency, totalAmount, paymentMethod]);
+
+  useEffect(() => {
+    validateForm();
+  }, [paymentMethod, formFields, selectedMobileOption, months, totalAmount, referralCode]);
 
   const fetchWalletBalance = async () => {
     try {
@@ -150,14 +290,17 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     }
 
     try {
-      const response = await axios.post('/api/packs/purchase_a_new_pack', {
-        pack_id: pack.id,
-        payment_method: paymentMethod,
-        duration_months: months,
-        amount: totalAmount,
-        payment_details: formFields,
-        referral_code: referralCode.trim()
-      });
+      const payload = {
+        ...formFields,
+        months,
+        paymentMethod,
+        referralCode,
+        currency: paymentMethod === 'wallet' ? 'USD' : selectedCurrency,
+        amount: paymentMethod === 'wallet' ? totalAmount : convertedAmount,
+        fees: transactionFees,
+        packId: pack?.id,
+      };
+      const response = await axios.post('/api/packs/purchase_a_new_pack', payload);
 
       if (response.data.success) {
         Notification.success('Achat effectué avec succès');
@@ -230,111 +373,284 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     );
   };
 
+  const fetchTransactionFees = async (amount, method, currency) => {
+    try {
+      const response = await axios.post('/api/transaction-fees/calculate-pack-purchase', {
+        amount: amount,
+        payment_method: method,
+        currency: currency
+      });
+      
+      if (response.data.status === 'success') {
+        setTransactionFees(response.data.data.fee);
+        setFeePercentage(response.data.data.fee_percentage);
+      } else {
+        console.error('Erreur lors de la récupération des frais:', response.data.message);
+        // Fallback sur le calcul local
+        const fees = amount * 0.035;
+        setTransactionFees(parseFloat(fees.toFixed(2)));
+        setFeePercentage(3.5);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des frais:', error);
+      // Fallback sur le calcul local
+      const fees = amount * 0.035;
+      setTransactionFees(parseFloat(fees.toFixed(2)));
+      setFeePercentage(3.5);
+    }
+  };
+
+  const convertCurrency = async () => {
+    try {
+      setLoading(true);
+      console.log('Envoi de la requête de conversion avec les données:', {
+        amount: totalAmount,
+        from: 'USD',
+        to: selectedCurrency
+      });
+      
+      const response = await axios.post('/api/currency/convert', {
+        amount: totalAmount,
+        from: 'USD',
+        to: selectedCurrency
+      });
+      
+      if (response.data.success) {
+        console.log('Conversion réussie:', response.data);
+        const convertedAmt = response.data.convertedAmount;
+        setConvertedAmount(convertedAmt);
+        
+        // Récupérer les frais de transaction pour le montant converti
+        fetchTransactionFees(convertedAmt, paymentMethod, selectedCurrency);
+      } else {
+        console.error('Erreur lors de la conversion:', response.data.message);
+        // En cas d'erreur, on utilise le montant original
+        setConvertedAmount(totalAmount);
+        fetchTransactionFees(totalAmount, paymentMethod, 'USD');
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur lors de la conversion:', error);
+      console.error('Détails de l\'erreur:', error.response?.data || 'Pas de détails disponibles');
+      setConvertedAmount(totalAmount);
+      fetchTransactionFees(totalAmount, paymentMethod, 'USD');
+      setLoading(false);
+    }
+  };
+
+  // Vérifier si le formulaire est valide
+  const validateForm = () => {
+    // Vérifier si tous les champs requis sont remplis
+    let isValid = true;
+
+    // Vérifier que le code de parrainage est renseigné (obligatoire)
+    isValid = isValid && referralCode && referralCode.trim() !== '';
+
+    // Vérifier les champs selon la méthode de paiement
+    if (paymentMethod === 'wallet') {
+      // Pour le wallet, vérifier si le solde est suffisant
+      isValid = isValid && totalAmount <= walletBalance;
+    } else if (paymentMethod === 'credit-card') {
+      // Pour la carte de crédit, vérifier tous les champs requis
+      const requiredFields = ['cardNumber', 'cardHolder', 'expiryDate', 'cvv'];
+      isValid = isValid && requiredFields.every(field => formFields[field] && formFields[field].trim() !== '');
+    } else if (paymentMethod === 'mobile-money') {
+      // Pour le mobile money, vérifier l'option sélectionnée et le numéro de téléphone
+      isValid = isValid && selectedMobileOption !== '' && formFields.phoneNumber && formFields.phoneNumber.trim() !== '';
+    }
+
+    // Vérifier que le montant est positif
+    isValid = isValid && totalAmount > 0;
+
+    setFormIsValid(isValid);
+  };
+
   if (!open) return null;
 
   return (
-    <div className={`rounded-lg shadow-xl overflow-hidden ${
-      isDarkMode ? 'bg-gray-800' : 'bg-white'
-    }`} style={{  margin: 'auto' }}>
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-3">
-          <Typography variant="h6" component="h2">
-            Acheter {pack?.name}
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ${isDarkMode ? 'dark' : ''}`}>
+      <style>{customStyles}</style>
+      <div className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+        {/* En-tête avec dégradé */}
+        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-900' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} text-white`}>
+          <div className="flex items-center justify-between">
+            <Typography variant="h5" component="h2" className="font-bold">
+              Acheter {pack?.name}
+            </Typography>
+            <IconButton onClick={onClose} size="small" className="text-white hover:bg-white/20 transition-colors">
+              <XMarkIcon className="h-5 w-5" />
+            </IconButton>
+          </div>
+          <Typography variant="body2" className="mt-1 opacity-80">
+            Complétez les informations ci-dessous pour finaliser votre achat
           </Typography>
-          <IconButton onClick={onClose} size="small">
-            <XMarkIcon className="h-5 w-5" />
-          </IconButton>
         </div>
 
         {error && (
-          <Alert severity="error" className="mb-3">
+          <Alert severity="error" className="mx-6 mt-4 mb-0">
             {error}
           </Alert>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Colonne de gauche */}
-            <div className="space-y-3">
-              <div>
-                <Typography variant="subtitle2" gutterBottom>
-                  Durée de souscription
-                </Typography>
-                <TextField
-                  type="number"
-                  value={months}
-                  onChange={(e) => setMonths(Math.max(1, parseInt(e.target.value) || 1))}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">mois</InputAdornment>,
-                  }}
-                  fullWidth
-                  inputProps={{ min: 1 }}
-                  size="small"
-                />
+          <div className="max-h-[60vh] overflow-y-auto p-6 pt-4 custom-scrollbar">
+            {/* Section durée et montant */}
+            <div className="summary-card mb-6 fade-in" style={{ animationDelay: '0.1s' }}>
+              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
+                Détails de l'abonnement
+              </Typography>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
+                    Durée de souscription
+                  </Typography>
+                  <TextField
+                    type="number"
+                    value={months}
+                    onChange={(e) => setMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">mois</InputAdornment>,
+                    }}
+                    fullWidth
+                    inputProps={{ min: 1 }}
+                    size="small"
+                  />
+                </div>
+                
+                {(paymentMethod === 'credit-card' || paymentMethod === 'mobile-money') && (
+                  <div>
+                    <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
+                      Devise
+                    </Typography>
+                    <TextField
+                      select
+                      value={selectedCurrency}
+                      onChange={(e) => setSelectedCurrency(e.target.value)}
+                      fullWidth
+                      size="small"
+                      SelectProps={{
+                        MenuProps: {
+                          PaperProps: {
+                            sx: {
+                              bgcolor: isDarkMode ? '#1e283b' : 'white',
+                              color: isDarkMode ? 'white' : 'inherit',
+                              '& .MuiMenuItem-root:hover': {
+                                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+                              }
+                            }
+                          }
+                        }
+                      }}
+                    >
+                      {Object.keys(CURRENCIES).map((currencyCode) => (
+                        <MenuItem key={currencyCode} value={currencyCode}
+                        >
+                          {currencyCode} ({CURRENCIES[currencyCode].symbol}) - {CURRENCIES[currencyCode].name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </div>
+                )}
               </div>
-
-              <div>
-                <Typography variant="subtitle2" gutterBottom>
-                  Montant total
-                </Typography>
-                <Typography variant="h6" color="primary" className="font-bold">
-                  {totalAmount} $
-                </Typography>
-              </div>
-
-              <div>
-                <Typography variant="subtitle2" gutterBottom>
-                  Code de parrainage
-                </Typography>
-                <TextField
-                  type="text"
-                  value={referralCode}
-                  onChange={(e) => setReferralCode(e.target.value)}
-                  fullWidth
-                  size="small"
-                  placeholder="Entrez le code"
-                />
+              
+              <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <div className="flex justify-between items-center">
+                  <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300">
+                    Montant de base
+                  </Typography>
+                  <Typography variant="body2">
+                    {paymentMethod === 'wallet' ? totalAmount : convertedAmount} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                  </Typography>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300">
+                    Frais ({feePercentage.toFixed(1)}%)
+                  </Typography>
+                  <Typography variant="body2">
+                    {transactionFees} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                  </Typography>
+                </div>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <Typography variant="subtitle1" className="font-bold">
+                    Total
+                  </Typography>
+                  <Typography variant="subtitle1" color="primary" className="font-bold">
+                    {(paymentMethod === 'wallet' ? totalAmount : convertedAmount) + transactionFees} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                  </Typography>
+                </div>
               </div>
             </div>
-
-            {/* Colonne de droite */}
-            <div>
-              <Typography variant="subtitle2" gutterBottom>
+            
+            {/* Section méthode de paiement */}
+            <div className="slide-in" style={{ animationDelay: '0.2s' }}>
+              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
                 Méthode de paiement
               </Typography>
-              <RadioGroup
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="space-y-1"
-              >
+              
+              <div className="grid grid-cols-1 gap-3">
                 {paymentMethods.map((method) => (
-                  <FormControlLabel
+                  <div 
                     key={method.id}
-                    value={method.id}
-                    control={<Radio size="small" />}
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem' }}>
-                        {method.name}
+                    className={`method-card cursor-pointer ${paymentMethod === method.id ? 'selected' : ''}`}
+                    onClick={() => setPaymentMethod(method.id)}
+                  >
+                    <div className="flex items-center">
+                      <Radio 
+                        checked={paymentMethod === method.id} 
+                        onChange={() => setPaymentMethod(method.id)}
+                        size="small"
+                      />
+                      <div className="ml-2">
+                        <Typography variant="subtitle2">{method.name}</Typography>
                         {method.id === 'wallet' && (
-                          <Typography variant="body2" color="textSecondary" sx={{ ml: 1, fontSize: '0.8rem' }}>
-                            (Solde: {walletBalance} $)
+                          <Typography variant="caption" color="textSecondary">
+                            Solde disponible: {walletBalance} USD
                           </Typography>
                         )}
-                      </Box>
-                    }
-                  />
+                        {method.id === 'credit-card' && (
+                          <Typography variant="caption" color="textSecondary">
+                            Visa, Mastercard, American Express
+                          </Typography>
+                        )}
+                        {method.id === 'mobile-money' && (
+                          <Typography variant="caption" color="textSecondary">
+                            Orange Money, Airtel Money, M-Pesa
+                          </Typography>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </RadioGroup>
+              </div>
+            </div>
+            
+            {/* Champs de paiement */}
+            <div className="mt-4 fade-in" style={{ animationDelay: '0.3s' }}>
+              {renderPaymentFields()}
+            </div>
+            
+            {/* Code de parrainage */}
+            <div className="mt-6 slide-in" style={{ animationDelay: '0.4s' }}>
+              <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
+                Code de parrainage <span className="text-red-500">*</span>
+              </Typography>
+              <TextField
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                fullWidth
+                size="small"
+                placeholder="Entrez le code"
+                required
+                error={!referralCode && formFields.cardNumber}
+                helperText={!referralCode && formFields.cardNumber ? "Le code de parrainage est obligatoire" : ""}
+              />
             </div>
           </div>
 
-          {/* Champs de paiement */}
-          <div className="mt-3">
-            {renderPaymentFields()}
-          </div>
-
-          {/* Bouton de paiement */}
-          <div className="mt-4 flex items-center justify-between">
+          {/* Bouton de paiement - en dehors de la zone scrollable */}
+          <div className="p-6 pt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
             <Typography variant="body2" color="textSecondary">
               {paymentMethod === 'wallet' ? 'Paiement direct depuis votre wallet' : 'Procédez au paiement sécurisé'}
             </Typography>
@@ -342,8 +658,15 @@ export default function PurchasePackForm({ open, onClose, pack }) {
               type="submit"
               variant="contained"
               color="primary"
-              disabled={loading}
-              sx={{ minWidth: 150 }}
+              disabled={loading || !formIsValid}
+              className={`${loading || !formIsValid ? '' : 'pulse'}`}
+              sx={{ 
+                minWidth: 150,
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+              }}
             >
               {loading ? (
                 <CircularProgress size={24} color="inherit" />

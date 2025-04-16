@@ -57,6 +57,7 @@ import VerificationError from './pages/VerificationError';
 import BuyPack from './pages/user/Packs';
 import Stats from './pages/user/Stats';
 import WithdrawalRequests from './components/WithdrawalRequests';
+import Settings from './pages/admin/Settings';
 
 function App() {
   return (
@@ -130,7 +131,7 @@ function App() {
               <Route path="packs/add" element={<AddPack />} />
               <Route path="packs/edit/:id" element={<EditPack />} />
               <Route path="validations" element={<AdvertisementValidation />} />
-              <Route path="settings" element={<div>Paramètres (à venir)</div>} />
+              <Route path="settings" element={<Settings />} />
             </Route>
         
             <Route path="/dashboard/*"
