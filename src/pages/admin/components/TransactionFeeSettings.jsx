@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
+import Notification from '../../../components/Notification';
 import {
   Dialog,
   DialogTitle,
@@ -11,7 +12,6 @@ import {
   Select,
   MenuItem,
   Grid,
-  Snackbar,
   Alert,
   CircularProgress,
   Switch,
@@ -26,7 +26,7 @@ import {
   NoSymbolIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
-import { API_URL } from '../../../config';
+import { API_URL, PAYMENT_TYPES, PAYMENT_METHODS } from '../../../config';
 
 const TransactionFeeSettings = () => {
   const { isDarkMode } = useTheme();
@@ -35,31 +35,34 @@ const TransactionFeeSettings = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState('add'); // 'add' ou 'edit'
   const [currentFee, setCurrentFee] = useState({
+    payment_type: '',
     payment_method: '',
-    provider: '',
     transfer_fee_percentage: 0,
     withdrawal_fee_percentage: 0,
-    purchase_fee_percentage: 0,
-    min_fee_amount: 0,
-    max_fee_amount: null,
-    currency: 'CDF',
+    fee_fixed: 0,
+    fee_cap: '',
     is_active: true
   });
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
   const [updatingFromApi, setUpdatingFromApi] = useState(false);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState([]);
 
   useEffect(() => {
     fetchTransactionFees();
   }, []);
 
+  // Mettre à jour les méthodes de paiement disponibles lorsque le type de paiement change
+  useEffect(() => {
+    if (currentFee.payment_type && PAYMENT_METHODS[currentFee.payment_type]) {
+      setAvailablePaymentMethods(PAYMENT_METHODS[currentFee.payment_type]);
+    } else {
+      setAvailablePaymentMethods([]);
+    }
+  }, [currentFee.payment_type]);
+
   const fetchTransactionFees = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/admin/transaction-fees`, {
+      const response = await axios.get('/api/admin/transaction-fees', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -69,11 +72,7 @@ const TransactionFeeSettings = () => {
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des frais de transaction:', error);
-      setSnackbar({
-        open: true,
-        message: 'Erreur lors de la récupération des frais de transaction',
-        severity: 'error'
-      });
+      Notification.error('Erreur lors de la récupération des frais de transaction');
     } finally {
       setLoading(false);
     }
@@ -84,20 +83,24 @@ const TransactionFeeSettings = () => {
     if (mode === 'edit' && fee) {
       setCurrentFee({
         ...fee,
-        max_fee_amount: fee.max_fee_amount || ''
+        fee_cap: fee.fee_cap || ''
       });
+      
+      // Assurez-vous que les méthodes de paiement sont chargées immédiatement
+      if (fee.payment_type && PAYMENT_METHODS[fee.payment_type]) {
+        setAvailablePaymentMethods(PAYMENT_METHODS[fee.payment_type]);
+      }
     } else {
       setCurrentFee({
+        payment_type: '',
         payment_method: '',
-        provider: '',
         transfer_fee_percentage: 0,
         withdrawal_fee_percentage: 0,
-        purchase_fee_percentage: 0,
-        min_fee_amount: 0,
-        max_fee_amount: '',
-        currency: 'CDF',
+        fee_fixed: 0,
+        fee_cap: '',
         is_active: true
       });
+      setAvailablePaymentMethods([]);
     }
     setOpenDialog(true);
   };
@@ -111,9 +114,9 @@ const TransactionFeeSettings = () => {
     
     if (type === 'checkbox') {
       setCurrentFee({ ...currentFee, [name]: checked });
-    } else if (['transfer_fee_percentage', 'withdrawal_fee_percentage', 'purchase_fee_percentage', 'min_fee_amount', 'max_fee_amount'].includes(name)) {
-      // Convertir en nombre ou laisser vide pour max_fee_amount
-      const numValue = value === '' ? (name === 'max_fee_amount' ? '' : 0) : parseFloat(value);
+    } else if (['transfer_fee_percentage', 'withdrawal_fee_percentage', 'fee_fixed', 'fee_cap'].includes(name)) {
+      // Convertir en nombre ou laisser vide pour fee_cap
+      const numValue = value === '' ? (name === 'fee_cap' ? '' : 0) : parseFloat(value);
       setCurrentFee({ ...currentFee, [name]: numValue });
     } else {
       setCurrentFee({ ...currentFee, [name]: value });
@@ -125,18 +128,18 @@ const TransactionFeeSettings = () => {
       // Préparer les données à envoyer
       const dataToSend = {
         ...currentFee,
-        max_fee_amount: currentFee.max_fee_amount === '' ? null : currentFee.max_fee_amount
+        fee_cap: currentFee.fee_cap === '' ? null : currentFee.fee_cap
       };
 
       let response;
       if (dialogMode === 'add') {
-        response = await axios.post(`${API_URL}/admin/transaction-fees`, dataToSend, {
+        response = await axios.post('/api/admin/transaction-fees', dataToSend, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         });
       } else {
-        response = await axios.put(`${API_URL}/admin/transaction-fees/${currentFee.id}`, dataToSend, {
+        response = await axios.put(`/api/admin/transaction-fees/${currentFee.id}`, dataToSend, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
@@ -144,93 +147,313 @@ const TransactionFeeSettings = () => {
       }
 
       if (response.data.status === 'success') {
-        setSnackbar({
-          open: true,
-          message: dialogMode === 'add' 
-            ? 'Frais de transaction ajoutés avec succès' 
-            : 'Frais de transaction mis à jour avec succès',
-          severity: 'success'
-        });
+        Notification.success(response.data.message);
         fetchTransactionFees();
         handleCloseDialog();
       }
     } catch (error) {
       console.error('Erreur lors de la soumission des frais de transaction:', error);
-      let errorMessage = 'Une erreur est survenue';
-      
-      if (error.response && error.response.data && error.response.data.errors) {
-        const errors = Object.values(error.response.data.errors).flat();
-        errorMessage = errors.join(', ');
-      }
-      
-      setSnackbar({
-        open: true,
-        message: errorMessage,
-        severity: 'error'
-      });
+      Notification.error(error.response?.data?.message || 'Une erreur est survenue');
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ces frais de transaction ?')) {
-      try {
-        const response = await axios.delete(`${API_URL}/admin/transaction-fees/${id}`, {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ces frais de transaction ?')) {
+      return;
+    }
+    
+    try {
+      const response = await axios.delete('/api/admin/transaction-fees/${id}', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.status === 'success') {
+        Notification.success('Frais de transaction supprimés avec succès');
+        fetchTransactionFees();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression des frais de transaction:', error);
+      Notification.error(error.response?.data?.message || 'Une erreur est survenue lors de la suppression');
+    }
+  };
+
+  const handleToggleStatus = async (fee) => {
+    try {
+      const response = await axios.put(`/api/admin/transaction-fees/${fee.id}`, 
+        { 
+          ...fee,
+          is_active: !fee.is_active,
+          fee_cap: fee.fee_cap === '' ? null : fee.fee_cap
+        }, 
+        {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
-        });
-
-        if (response.data.status === 'success') {
-          setSnackbar({
-            open: true,
-            message: 'Frais de transaction supprimés avec succès',
-            severity: 'success'
-          });
-          fetchTransactionFees();
         }
-      } catch (error) {
-        console.error('Erreur lors de la suppression des frais de transaction:', error);
-        setSnackbar({
-          open: true,
-          message: 'Erreur lors de la suppression des frais de transaction',
-          severity: 'error'
-        });
+      );
+      
+      if (response.data.status === 'success') {
+        Notification.success(`Frais de transaction ${fee.is_active ? 'désactivés' : 'activés'} avec succès`);
+        fetchTransactionFees();
       }
+    } catch (error) {
+      console.error('Erreur lors du changement de statut des frais de transaction:', error);
+      Notification.error(error.response?.data?.message || 'Une erreur est survenue lors du changement de statut');
     }
   };
 
   const handleUpdateFromApi = async () => {
     setUpdatingFromApi(true);
     try {
-      const response = await axios.post(`${API_URL}/admin/transaction-fees/update-from-api`, {}, {
+      const response = await axios.post('/app/admin/transaction-fees/update-from-api', {}, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
-
+      
       if (response.data.status === 'success') {
-        setSnackbar({
-          open: true,
-          message: 'Frais de transaction mis à jour depuis l\'API avec succès',
-          severity: 'success'
-        });
+        Notification.success('Frais de transaction mis à jour depuis l\'API avec succès'),
         fetchTransactionFees();
       }
     } catch (error) {
       console.error('Erreur lors de la mise à jour depuis l\'API:', error);
-      setSnackbar({
-        open: true,
-        message: 'Erreur lors de la mise à jour depuis l\'API',
-        severity: 'error'
-      });
+      Notification.error(error.response?.data?.message || 'Une erreur est survenue lors de la mise à jour depuis l\'API');
     } finally {
       setUpdatingFromApi(false);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+
+  // Fonction pour obtenir le nom d'affichage d'une méthode de paiement
+  const getPaymentMethodName = (type, methodId) => {
+    if (!type || !methodId) return methodId;
+    
+    const methods = PAYMENT_METHODS[type] || [];
+    const method = methods.find(m => m.id === methodId);
+    return method ? method.name : methodId;
   };
+
+  // Fonction pour obtenir le nom d'affichage d'un type de paiement
+  const getPaymentTypeName = (type) => {
+    switch(type) {
+      case PAYMENT_TYPES.MOBILE_MONEY: return 'Mobile Money';
+      case PAYMENT_TYPES.CREDIT_CARD: return 'Carte de crédit';
+      case PAYMENT_TYPES.BANK_TRANSFER: return 'Transfert bancaire';
+      case PAYMENT_TYPES.CASH: return 'Espèces';
+      case PAYMENT_TYPES.WALLET: return 'Portefeuille';
+      case PAYMENT_TYPES.MONEY_TRANSFER: return 'Transfert d\'argent';
+      default: return type;
+    }
+  };
+
+  const renderFormFields = () => (
+    <Grid container spacing={2} sx={{ mt: 1 }}>
+      <Grid item xs={12} sm={6}>
+        <FormControl fullWidth required>
+          <InputLabel>Type de paiement</InputLabel>
+          <Select
+            value={currentFee.payment_type}
+            onChange={(e) => setCurrentFee({ ...currentFee, payment_type: e.target.value, payment_method: '' })}
+            label="Type de paiement"
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  bgcolor: isDarkMode ? '#1e283b' : 'white',
+                  color: isDarkMode ? 'white' : 'inherit',
+                  '& .MuiMenuItem-root': {
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }
+                }
+              }
+            }}
+          >
+            {Object.values(PAYMENT_TYPES).map((type) => (
+              <MenuItem key={type} value={type}>
+                {getPaymentTypeName(type)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <FormControl fullWidth required disabled={!currentFee.payment_type}>
+          <InputLabel>Méthode de paiement</InputLabel>
+          <Select
+            value={currentFee.payment_method}
+            onChange={(e) => setCurrentFee({ ...currentFee, payment_method: e.target.value })}
+            label="Méthode de paiement"
+            disabled={!currentFee.payment_type}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  bgcolor: isDarkMode ? '#1e283b' : 'white',
+                  color: isDarkMode ? 'white' : 'inherit',
+                  '& .MuiMenuItem-root': {
+                    '&:hover': {
+                      bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }
+                }
+              }
+            }}
+          >
+            {availablePaymentMethods.map((method) => (
+              <MenuItem key={method.id} value={method.id}>
+                {method.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField
+          label="Frais de transfert (%)"
+          type="number"
+          fullWidth
+          value={currentFee.transfer_fee_percentage}
+          onChange={(e) => setCurrentFee({ ...currentFee, transfer_fee_percentage: parseFloat(e.target.value) })}
+          inputProps={{ min: 0, max: 100, step: 0.01 }}
+          required
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField
+          label="Frais de retrait (%)"
+          type="number"
+          fullWidth
+          value={currentFee.withdrawal_fee_percentage}
+          onChange={(e) => setCurrentFee({ ...currentFee, withdrawal_fee_percentage: parseFloat(e.target.value) })}
+          inputProps={{ min: 0, max: 100, step: 0.01 }}
+          required
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField
+          label="Frais fixes"
+          type="number"
+          fullWidth
+          value={currentFee.fee_fixed}
+          onChange={(e) => setCurrentFee({ ...currentFee, fee_fixed: parseFloat(e.target.value) })}
+          inputProps={{ min: 0, step: 0.01 }}
+          required
+          helperText="Montant minimum des frais appliqués"
+        />
+      </Grid>
+      <Grid item xs={12} sm={6}>
+        <TextField
+          label="Plafond des frais"
+          type="number"
+          fullWidth
+          value={currentFee.fee_cap}
+          onChange={(e) => setCurrentFee({ ...currentFee, fee_cap: e.target.value ? parseFloat(e.target.value) : '' })}
+          inputProps={{ min: 0, step: 0.01 }}
+          helperText="Montant maximum des frais (laisser vide pour aucun plafond)"
+        />
+      </Grid>
+      <Grid item xs={12}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={currentFee.is_active}
+              onChange={(e) => setCurrentFee({ ...currentFee, is_active: e.target.checked })}
+              color="primary"
+            />
+          }
+          label="Actif"
+        />
+      </Grid>
+    </Grid>
+  );
+
+  const renderTransactionFeeTable = () => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Méthode</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de transfert</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de retrait</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais fixes</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Plafond</th>
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
+            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          {loading ? (
+            <tr>
+              <td colSpan={8} className="px-6 py-4 text-center">
+                <CircularProgress size={40} />
+              </td>
+            </tr>
+          ) : transactionFees.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                Aucun frais de transaction configuré
+              </td>
+            </tr>
+          ) : (
+            transactionFees.map((fee) => (
+              <tr key={fee.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  {getPaymentTypeName(fee.payment_type)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  {getPaymentMethodName(fee.payment_type, fee.payment_method)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.transfer_fee_percentage}%</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.withdrawal_fee_percentage}%</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_fixed} $</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_cap || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  {fee.is_active ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                      <CheckCircleIcon className="h-4 w-4 mr-1" />
+                      Actif
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+                      <NoSymbolIcon className="h-4 w-4 mr-1" />
+                      Inactif
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    onClick={() => handleOpenDialog('edit', fee)}
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
+                  >
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(fee.id)}
+                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-3"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleToggleStatus(fee)}
+                    className={`text-${fee.is_active ? 'red' : 'green'}-600 dark:text-${fee.is_active ? 'red' : 'green'}-400 hover:text-${fee.is_active ? 'red' : 'green'}-900 dark:hover:text-${fee.is_active ? 'red' : 'green'}-300`}
+                  >
+                    {fee.is_active ? (
+                      <NoSymbolIcon className="h-5 w-5" />
+                    ) : (
+                      <CheckCircleIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className="text-gray-900 dark:text-white w-full">
@@ -261,75 +484,7 @@ const TransactionFeeSettings = () => {
       </div>
 
       <div className='bg-white dark:bg-[#1e283b] rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700'>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-gray-900 dark:text-white">
-            <thead className="bg-gray-50 dark:bg-[#1e293b]/80 border-b border-gray-200 dark:border-gray-700">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Moyen de paiement</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fournisseur</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Frais de transfert (%)</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Frais de retrait (%)</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Frais d'achat (%)</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Min. frais</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Max. frais</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Devise</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-[#2d3748] bg-white dark:bg-[#1e293b]">
-              {loading ? (
-                <tr>
-                  <td colSpan={10} className="px-3 py-4 text-center">
-                    <CircularProgress />
-                  </td>
-                </tr>
-              ) : transactionFees.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-3 py-4 text-center">
-                    Aucun frais de transaction configuré
-                  </td>
-                </tr>
-              ) : (
-                transactionFees.map((fee) => (
-                  <tr key={fee.id} className="hover:bg-gray-50 dark:hover:bg-[#2d3748]/50 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                    <td className="px-3 py-4 whitespace-nowrap">{getPaymentMethodLabel(fee.payment_method)}</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.provider}</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.transfer_fee_percentage}%</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.withdrawal_fee_percentage}%</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.purchase_fee_percentage}%</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.min_fee_amount}</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.max_fee_amount}</td>
-                    <td className="px-3 py-4 whitespace-nowrap">{fee.currency}</td>
-                    <td className="px-3 py-4 whitespace-nowrap">
-                      {fee.is_active ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">Actif</span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">Inactif</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap">
-                      <div className="flex space-x-1 justify-end">
-                        <button 
-                          onClick={() => handleOpenDialog('edit', fee)}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-1"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleToggleStatus(fee)}
-                          className={`${fee.is_active ? 'text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300' : 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300'} p-1`}
-                        >
-                          {fee.is_active ? <NoSymbolIcon className="h-5 w-5" /> : <CheckCircleIcon className="h-5 w-5" />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {renderTransactionFeeTable()}
       </div>
 
       {/* Dialog pour ajouter/modifier des frais */}
@@ -350,153 +505,7 @@ const TransactionFeeSettings = () => {
           {dialogMode === 'add' ? 'Ajouter des frais de transaction' : 'Modifier des frais de transaction'}
         </DialogTitle>
         <DialogContent className="pt-4 bg-white dark:bg-[#1e283b] text-gray-900 dark:text-white">
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="payment_method"
-                label="Moyen de paiement"
-                value={currentFee.payment_method}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="provider"
-                label="Fournisseur"
-                value={currentFee.provider}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal" className="dark:bg-[#1e283b] dark:text-white">
-                <InputLabel className="dark:text-gray-300">Devise</InputLabel>
-                <Select
-                  name="currency"
-                  value={currentFee.currency}
-                  onChange={handleInputChange}
-                  label="Devise"
-                  className="dark:bg-[#1e283b] dark:text-white"
-                  MenuProps={{
-                    classes: {
-                      paper: 'dark:bg-[#1e283b] dark:text-white'
-                    }
-                  }}
-                >
-                  <MenuItem value="CDF">CDF (Franc Congolais)</MenuItem>
-                  <MenuItem value="XOF">XOF (Franc CFA BCEAO)</MenuItem>
-                  <MenuItem value="XAF">XAF (Franc CFA BEAC)</MenuItem>
-                  <MenuItem value="EUR">EUR (Euro)</MenuItem>
-                  <MenuItem value="USD">USD (Dollar américain)</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="transfer_fee_percentage"
-                label="Frais de transfert (%)"
-                value={currentFee.transfer_fee_percentage}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                type="number"
-                inputProps={{ min: 0, max: 100, step: 0.01 }}
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="withdrawal_fee_percentage"
-                label="Frais de retrait (%)"
-                value={currentFee.withdrawal_fee_percentage}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                type="number"
-                inputProps={{ min: 0, max: 100, step: 0.01 }}
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                name="purchase_fee_percentage"
-                label="Frais d'achat (%)"
-                value={currentFee.purchase_fee_percentage}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                type="number"
-                inputProps={{ min: 0, max: 100, step: 0.01 }}
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="min_fee_amount"
-                label="Montant minimum des frais"
-                value={currentFee.min_fee_amount}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                type="number"
-                inputProps={{ min: 0, step: 1 }}
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="max_fee_amount"
-                label="Montant maximum des frais (optionnel)"
-                value={currentFee.max_fee_amount}
-                onChange={handleInputChange}
-                fullWidth
-                type="number"
-                inputProps={{ min: 0, step: 1 }}
-                margin="normal"
-                className="dark:bg-[#1e283b] dark:text-white"
-                InputLabelProps={{ className: 'dark:text-gray-300' }}
-                InputProps={{ className: 'dark:bg-[#1e283b] dark:text-white' }}
-                helperText="Laissez vide pour ne pas définir de maximum"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    name="is_active"
-                    checked={currentFee.is_active}
-                    onChange={handleInputChange}
-                    color="primary"
-                  />
-                }
-                label="Actif"
-              />
-            </Grid>
-          </Grid>
+          {renderFormFields()}
         </DialogContent>
         <DialogActions className="border-t border-gray-200 dark:border-gray-700 py-3 px-4">
           <button 
@@ -513,17 +522,6 @@ const TransactionFeeSettings = () => {
           </button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </div>
   );
 };

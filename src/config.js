@@ -51,12 +51,45 @@ export const PAGINATION = {
   options: [5, 10, 25, 50, 100]
 };
 
-// Configuration des moyens de paiement
-export const PAYMENT_METHODS = {
+// Configuration des types de paiement
+export const PAYMENT_TYPES = {
   MOBILE_MONEY: 'mobile-money',
-  TRANSFER: 'transfer',
+  CREDIT_CARD: 'credit-card',
   BANK_TRANSFER: 'bank-transfer',
-  CREDIT_CARD: 'credit-card'
+  CASH: 'cash',
+  WALLET: 'wallet',
+  MONEY_TRANSFER: 'money-transfer'
+};
+
+// Configuration détaillée des méthodes de paiement par type
+export const PAYMENT_METHODS = {
+  [PAYMENT_TYPES.MOBILE_MONEY]: [
+    { id: 'orange-money', name: 'Orange Money' },
+    { id: 'm-pesa', name: 'M-Pesa' },
+    { id: 'afrimoney', name: 'Afrimoney' },
+    { id: 'airtel-money', name: 'Airtel Money' },
+    { id: 'mtn-mobile-money', name: 'MTN Mobile Money' },
+    { id: 'moov-money', name: 'Moov Money' }
+  ],
+  [PAYMENT_TYPES.CREDIT_CARD]: [
+    { id: 'visa', name: 'Visa' },
+    { id: 'mastercard', name: 'Mastercard' },
+    { id: 'american-express', name: 'American Express' }
+  ],
+  [PAYMENT_TYPES.BANK_TRANSFER]: [
+    { id: 'bank-transfer', name: 'Virement bancaire' }
+  ],
+  [PAYMENT_TYPES.CASH]: [
+    { id: 'cash', name: 'Espèces' }
+  ],
+  [PAYMENT_TYPES.WALLET]: [
+    { id: 'solifin-wallet', name: 'Portefeuille Solifin' }
+  ],
+  [PAYMENT_TYPES.MONEY_TRANSFER]: [
+    { id: 'western-union', name: 'Western Union' },
+    { id: 'moneygram', name: 'MoneyGram' },
+    { id: 'ria', name: 'Ria Money Transfer' }
+  ]
 };
 
 export default {
@@ -65,5 +98,6 @@ export default {
   DATE_FORMAT,
   CURRENCIES,
   PAGINATION,
+  PAYMENT_TYPES,
   PAYMENT_METHODS
 };

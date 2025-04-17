@@ -62,6 +62,9 @@ const PurchasePack = () => {
       const registrationDataWithPayment = {
         ...registrationDataFromLocation,
         duration_months: paymentData.duration_months,
+        currency: paymentData.currency,
+        fees: paymentData.fees,
+        amount: paymentData.amount,
         payment_method: paymentData.payment_method,
         payment_details: paymentData.payment_details,
         mobile_option: paymentData.mobile_option,

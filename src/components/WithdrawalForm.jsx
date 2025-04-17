@@ -648,7 +648,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
                 <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage}%):</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
                   <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
                     {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
                   </span>
@@ -845,7 +845,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
                 <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage}%):</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
                   <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
                     {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
                   </span>
@@ -1046,7 +1046,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
                 <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage}%):</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
                   <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
                     {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
                   </span>
@@ -1263,7 +1263,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                 </div>
                 <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
                 <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage}%):</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
                   <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
                     {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
                   </span>
@@ -1528,7 +1528,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Frais ({feePercentage}%):</span>
+                        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Frais ({feePercentage.toFixed(1)}%):</span>
                         <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                           {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)} {walletCurrency}
                         </span>

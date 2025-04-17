@@ -717,6 +717,7 @@ const MyPacks = () => {
                       variant="outlined"
                       startIcon={<ArrowDownTrayIcon className="h-5 w-5" />}
                       onClick={() => handleDownload(userPack.pack.id)}
+                      placeholder = "Télécharger le fichier lié au pack"
                       sx={{
                         color: isDarkMode ? 'grey.300' : 'primary.main',
                         borderColor: isDarkMode ? 'grey.700' : 'primary.main',
@@ -726,7 +727,6 @@ const MyPacks = () => {
                         }
                       }}
                     >
-                      Télécharger
                     </Button>
 
                     <Tooltip 
