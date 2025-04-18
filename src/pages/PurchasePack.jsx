@@ -66,6 +66,7 @@ const PurchasePack = () => {
         fees: paymentData.fees,
         amount: paymentData.amount,
         payment_method: paymentData.payment_method,
+        payment_type: paymentData.payment_type,
         payment_details: paymentData.payment_details,
         mobile_option: paymentData.mobile_option,
       };

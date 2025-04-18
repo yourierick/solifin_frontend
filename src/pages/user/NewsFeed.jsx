@@ -155,6 +155,7 @@ export default function NewsFeed() {
     try {
       const response = await axios.get('/api/pages/recommended');
       
+      console.log(response);
       // Filtrer les pages recommandées pour exclure la page de l'utilisateur actuel
       const filteredPages = (response.data.pages || []).filter(page => {
         // Vérifier si la page appartient à l'utilisateur actuel
@@ -957,7 +958,7 @@ export default function NewsFeed() {
                           {page.user?.profile_picture ? (
                             <img
                               src={page.user.profile_picture}
-                              alt={page.name}
+                              alt={page.user.name}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
@@ -969,7 +970,7 @@ export default function NewsFeed() {
                           )}
                           <div>
                             <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {page.name || 'Page'}
+                              {page.user.name || 'Page'}
                             </h3>
                             <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                               {page.nombre_abonnes} abonnés
@@ -1008,7 +1009,7 @@ export default function NewsFeed() {
                           {page.user?.profile_picture ? (
                             <img
                               src={page.user.profile_picture}
-                              alt={page.name}
+                              alt={page.user.name}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
@@ -1020,7 +1021,7 @@ export default function NewsFeed() {
                           )}
                           <div>
                             <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {page.name || 'Page'}
+                              {page.user.name || 'Page'}
                             </h3>
                             <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                               {page.nombre_abonnes} abonnés

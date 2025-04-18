@@ -16,9 +16,8 @@ import {
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from '../utils/axios';
-import { useToast } from '../contexts/ToastContext';
 import Notification from './Notification';
-import { CURRENCIES } from '../config';
+import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from '../config';
 
 // Style CSS pour les animations et effets visuels
 const customStyles = `
@@ -139,16 +138,18 @@ const customStyles = `
 
 const paymentMethods = [
   {
-    id: 'wallet',
+    id: PAYMENT_TYPES.WALLET,
     name: 'Mon Wallet',
     icon: 'wallet',
-    category: 'direct'
+    category: 'direct',
+    options: PAYMENT_METHODS[PAYMENT_TYPES.WALLET]
   },
   {
-    id: 'credit-card',
+    id: PAYMENT_TYPES.CREDIT_CARD,
     name: 'Carte de crédit',
     icon: 'credit-card',
     category: 'card',
+    options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD],
     fields: [
       { name: 'cardNumber', label: 'Numéro de carte', type: 'text', required: true, maxLength: 19, 
         format: (value) => value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim() },
@@ -165,15 +166,11 @@ const paymentMethods = [
     ]
   },
   {
-    id: 'mobile-money',
+    id: PAYMENT_TYPES.MOBILE_MONEY,
     name: 'Mobile Money',
     icon: 'phone',
     category: 'mobile',
-    options: [
-      { id: 'orange-money', name: 'Orange Money' },
-      { id: 'airtel-money', name: 'Airtel Money' },
-      { id: 'm-pesa', name: 'M-Pesa' }
-    ],
+    options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY],
     fields: [
       { name: 'phoneNumber', label: 'Numéro de téléphone', type: 'tel', required: true }
     ]
@@ -182,20 +179,21 @@ const paymentMethods = [
 
 export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   const { isDarkMode } = useTheme();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('wallet');
+  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_TYPES.WALLET);
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState('');
   const [formFields, setFormFields] = useState({});
   const [months, setMonths] = useState(1);
   const [walletBalance, setWalletBalance] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [selectedMobileOption, setSelectedMobileOption] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [transactionFees, setTransactionFees] = useState(0);
-  const [feePercentage, setFeePercentage] = useState(3.5);
+  const [feePercentage, setFeePercentage] = useState(null);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [formIsValid, setFormIsValid] = useState(false);
+  const [loadingFees, setLoadingFees] = useState(false);
+  const [feesError, setFeesError] = useState(false);
 
   useEffect(() => {
     if (pack) {
@@ -205,29 +203,67 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   }, [pack, months]);
 
   useEffect(() => {
-    fetchWalletBalance();
-  }, []);
+    if (open) {
+      fetchWalletBalance();
+    }
+  }, [open]);
 
   useEffect(() => {
-    // Réinitialiser les champs du formulaire et l'option mobile lors du changement de méthode
+    // Réinitialiser les champs du formulaire et l'option de paiement lors du changement de méthode
     setFormFields({});
-    setSelectedMobileOption('');
+    setSelectedPaymentOption('');
+    setFeesError(false);
+    
+    // Pour le wallet, définir automatiquement l'option solifin-wallet
+    if (paymentMethod === PAYMENT_TYPES.WALLET) {
+      setSelectedPaymentOption('solifin-wallet');
+      // Déclencher immédiatement le calcul des frais pour le wallet
+      setTimeout(() => {
+        calculateFees();
+      }, 0);
+    }
   }, [paymentMethod]);
 
   useEffect(() => {
-    // Seulement pour les méthodes de paiement credit-card et mobile-money
-    if ((paymentMethod === 'credit-card' || paymentMethod === 'mobile-money') && totalAmount > 0) {
-      convertCurrency();
-    } else {
-      // Pour wallet, on utilise USD directement
-      setConvertedAmount(totalAmount);
-      calculateLocalFees(totalAmount, paymentMethod, 'USD');
+    // Calculer le montant total en fonction du nombre de mois
+    if (pack) {
+      const newTotal = pack.price * months;
+      setTotalAmount(newTotal);
+      
+      // Pour le wallet, recalculer les frais chaque fois que le montant change
+      if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
+        setTimeout(() => {
+          calculateFees();
+        }, 0);
+      }
     }
-  }, [selectedCurrency, totalAmount, paymentMethod]);
+  }, [pack, months]);
+
+  useEffect(() => {
+    // Lorsque le montant total change, effectuer la conversion si nécessaire
+    if (totalAmount > 0) {
+      if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
+        // Pour les méthodes autres que wallet, convertir d'abord la devise
+        convertCurrency();
+      } else if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
+        // Pour wallet, utiliser USD directement et calculer les frais si une méthode est sélectionnée
+        setConvertedAmount(totalAmount);
+        calculateFees();
+      }
+    }
+  }, [totalAmount, paymentMethod, selectedCurrency]);
+
+  useEffect(() => {
+    // Calculer les frais lorsque la méthode de paiement spécifique change ou après une conversion de devise
+    if (selectedPaymentOption && convertedAmount > 0 && 
+        (paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY)) {
+      calculateFees();
+    }
+  }, [selectedPaymentOption, convertedAmount]);
 
   useEffect(() => {
     validateForm();
-  }, [paymentMethod, formFields, selectedMobileOption, months, totalAmount]);
+  }, [paymentMethod, formFields, selectedPaymentOption, months, totalAmount, feesError]);
 
   const fetchWalletBalance = async () => {
     try {
@@ -244,12 +280,6 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchWalletBalance();
-    }
-  }, [open]);
-
   const handleFieldChange = (fieldName, value) => {
     const selectedMethod = paymentMethods.find(m => m.id === paymentMethod);
     const field = selectedMethod?.fields?.find(f => f.name === fieldName);
@@ -263,52 +293,61 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     }));
   };
 
-  const calculateLocalFees = (amount, method, currency) => {
-    // Taux de frais par défaut
-    let rate = 0.035; // 3.5%
+  const calculateFees = async () => {
+    setLoadingFees(true);
+    setFeesError(false);
     
-    // Ajuster le taux selon la méthode de paiement
-    if (method === 'wallet') {
-      rate = 0.02; // 2% pour le wallet
-    } else if (method === 'credit-card') {
-      rate = 0.04; // 4% pour les cartes
-    } else if (method === 'mobile-money') {
-      rate = 0.035; // 3.5% pour mobile money
-    }
-    
-    const fees = amount * rate;
-    setTransactionFees(parseFloat(fees.toFixed(2)));
-    setFeePercentage(rate * 100);
-  };
-
-  const fetchTransactionFees = async (amount, method, currency) => {
     try {
-      const response = await axios.post('/api/transaction-fees/calculate-pack-renewal', {
+      const amount = paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount;
+      const currency = paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency;
+      
+      // Déterminer l'option de paiement spécifique à utiliser
+      let paymentOption = '';
+      
+      if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        paymentOption = 'solifin-wallet';
+      } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
+        // Utiliser l'option de carte spécifique ou par défaut 'visa'
+        paymentOption = selectedPaymentOption || 'visa';
+      } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
+        // Utiliser l'option mobile spécifique ou par défaut 'm-pesa'
+        paymentOption = selectedPaymentOption || 'm-pesa';
+      }
+      
+      // Vérifier que les valeurs sont valides avant de faire l'appel API
+      if (!paymentOption || !amount || amount <= 0) {
+        setLoadingFees(false);
+        return;
+      }
+      
+      const response = await axios.post('/api/transaction-fees/transfer', {
         amount: amount,
-        payment_method: method,
-        currency: currency,
-        pack_id: pack?.id
+        payment_method: paymentOption, // Envoyer la méthode spécifique (visa, m-pesa, solifin-wallet, etc.)
+        currency: currency
       });
       
-      if (response.data.status === 'success') {
-        setTransactionFees(response.data.data.fee);
-        setFeePercentage(response.data.data.fee_percentage);
+      if (response.data.success) {
+        setTransactionFees(response.data.fee);
+        setFeePercentage(response.data.percentage);
+        setFeesError(false);
       } else {
-        console.error('Erreur lors de la récupération des frais:', response.data.message);
-        // Fallback sur le calcul local
-        calculateLocalFees(amount, method, currency);
+        setFeesError(true);
+        setTransactionFees(0);
+        setFeePercentage(0);
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des frais:', error);
-      // Fallback sur le calcul local
-      calculateLocalFees(amount, method, currency);
+      console.error('Erreur lors du calcul des frais:', error);
+      setFeesError(true);
+      setTransactionFees(0);
+      setFeePercentage(0);
+    } finally {
+      setLoadingFees(false);
     }
   };
 
   const convertCurrency = async () => {
     try {
       setLoading(true);
-      
       const response = await axios.post('/api/currency/convert', {
         amount: totalAmount,
         from: 'USD',
@@ -318,21 +357,19 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
       if (response.data.success) {
         const convertedAmt = response.data.convertedAmount;
         setConvertedAmount(convertedAmt);
-        
-        // Récupérer les frais de transaction pour le montant converti
-        calculateLocalFees(convertedAmt, paymentMethod, selectedCurrency);
+        // Le calcul des frais sera déclenché par l'effet qui surveille convertedAmount
       } else {
         console.error('Erreur lors de la conversion:', response.data.message);
         // En cas d'erreur, on utilise le montant original
         setConvertedAmount(totalAmount);
-        calculateLocalFees(totalAmount, paymentMethod, 'USD');
+        setFeesError(true);
       }
-      setLoading(false);
     } catch (error) {
       console.error('Erreur lors de la conversion:', error);
       console.error('Détails de l\'erreur:', error.response?.data || 'Pas de détails disponibles');
       setConvertedAmount(totalAmount);
-      calculateLocalFees(totalAmount, paymentMethod, 'USD');
+      setFeesError(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -341,24 +378,44 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   const validateForm = () => {
     // Vérifier si tous les champs requis sont remplis
     let isValid = true;
-
+    
+    // Vérifier si le nombre de mois est valide
+    isValid = isValid && months > 0;
+    
     // Vérifier les champs selon la méthode de paiement
-    if (paymentMethod === 'wallet') {
-      // Pour le wallet, vérifier si le solde est suffisant
-      isValid = isValid && totalAmount <= walletBalance;
-    } else if (paymentMethod === 'credit-card') {
+    if (paymentMethod === PAYMENT_TYPES.WALLET) {
+      // Pour le wallet, on n'a pas besoin de vérifier les champs de formulaire supplémentaires
+      // mais on doit s'assurer que le calcul des frais n'est pas en cours et qu'il n'y a pas d'erreur
+      isValid = isValid && !loadingFees && !feesError;
+      
+      // Vérifier que le solde du wallet est suffisant
+      isValid = isValid && walletBalance >= (totalAmount + (transactionFees || 0));
+      
+      // Pour le wallet, on vérifie que selectedPaymentOption est défini
+      isValid = isValid && (selectedPaymentOption !== '' || paymentMethod === PAYMENT_TYPES.WALLET);
+    } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
       // Pour la carte de crédit, vérifier tous les champs requis
       const requiredFields = ['cardNumber', 'cardHolder', 'expiryDate', 'cvv'];
       isValid = isValid && requiredFields.every(field => formFields[field] && formFields[field].trim() !== '');
-    } else if (paymentMethod === 'mobile-money') {
-      // Pour le mobile money, vérifier l'option sélectionnée et le numéro de téléphone
-      isValid = isValid && selectedMobileOption !== '' && formFields.phoneNumber && formFields.phoneNumber.trim() !== '';
+      
+      // Pour la carte de crédit, on n'exige pas que selectedPaymentOption soit défini
+      // car il sera défini par défaut à 'visa' lors de la soumission
+    } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
+      // Pour le mobile money, vérifier le numéro de téléphone
+      isValid = isValid && formFields.phoneNumber && formFields.phoneNumber.trim() !== '';
+      
+      // Pour le mobile money, on vérifie que selectedPaymentOption est défini
+      isValid = isValid && selectedPaymentOption !== '';
     }
-
+    
     // Vérifier que le montant est positif
     isValid = isValid && totalAmount > 0;
-
+    
+    // Vérifier qu'il n'y a pas d'erreur de calcul des frais
+    isValid = isValid && !feesError;
+    
     setFormIsValid(isValid);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
@@ -366,44 +423,54 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     setError('');
     setLoading(true);
 
-    if (paymentMethod === 'wallet' && totalAmount > walletBalance) {
-      setError('Solde insuffisant dans votre wallet');
-      setLoading(false);
-      return;
-    }
-
-    // Vérifier que tous les champs requis sont remplis
-    const selectedMethod = paymentMethods.find(m => m.id === paymentMethod);
-    if (selectedMethod?.fields) {
-      const missingFields = selectedMethod.fields
-        .filter(field => field.required && !formFields[field.name])
-        .map(field => field.label);
-
-      if (missingFields.length > 0) {
-        setError(`Veuillez remplir les champs suivants : ${missingFields.join(', ')}`);
+    if (paymentMethod === PAYMENT_TYPES.WALLET) {
+      const totalWithFees = totalAmount + (transactionFees || 0);
+      if (totalWithFees > walletBalance) {
+        setError('Solde insuffisant dans votre wallet');
         setLoading(false);
         return;
       }
     }
 
     try {
-      // Appel à la fonction de renouvellement fournie par le parent
-      if (onRenew) {
-        await onRenew({
-          duration_months: months,
-          payment_method: paymentMethod,
-          payment_details: formFields,
-          amount: paymentMethod === 'wallet' ? totalAmount : convertedAmount,
-          currency: paymentMethod === 'wallet' ? 'USD' : selectedCurrency,
-          fees: transactionFees
-        });
+      // Déterminer la méthode spécifique de paiement
+      let specificPaymentMethod = selectedPaymentOption;
+      
+      // Si aucune méthode spécifique n'est sélectionnée, utiliser une valeur par défaut selon le type
+      if (!specificPaymentMethod) {
+        if (paymentMethod === PAYMENT_TYPES.WALLET) {
+          specificPaymentMethod = 'solifin-wallet';
+        } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
+          specificPaymentMethod = 'visa';
+        } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
+          specificPaymentMethod = 'm-pesa';
+        }
       }
       
-      Notification.success('Renouvellement effectué avec succès');
-      setLoading(false);
-      onClose();
+      // Préparer les données à envoyer
+      const paymentData = {
+        payment_method: specificPaymentMethod, // Méthode spécifique (visa, mastercard, m-pesa, etc.)
+        payment_type: paymentMethod, // Type générique (wallet, credit-card, mobile-money)
+        payment_details: formFields,
+        duration_months: months,
+        amount: paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount,
+        currency: paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency,
+        fees: transactionFees || 0
+      };
+      
+      // Appel à l'API pour renouveler le pack
+      const response = await axios.post(`/api/packs/${pack.id}/renew`, paymentData);
+      
+      if (response.data.success) {
+        Notification.success('Pack renouvelé avec succès!');
+        onClose();
+      } else {
+        setError(response.data.message || 'Une erreur est survenue lors du renouvellement du pack');
+      }
     } catch (error) {
-      Notification.error(error.response?.data?.message || 'Une erreur est survenue');
+      console.error('Erreur lors du renouvellement du pack:', error);
+      setError(error.response?.data?.message || 'Une erreur est survenue lors du renouvellement du pack');
+    } finally {
       setLoading(false);
     }
   };
@@ -414,15 +481,15 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
 
     return (
       <div className="space-y-2">
-        {paymentMethod === 'mobile-money' && (
+        {(paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) && (
           <div className="mb-2">
             <Typography variant="subtitle2" gutterBottom>
               Choisissez votre opérateur
             </Typography>
             <RadioGroup
               row
-              value={selectedMobileOption}
-              onChange={(e) => setSelectedMobileOption(e.target.value)}
+              value={selectedPaymentOption}
+              onChange={(e) => setSelectedPaymentOption(e.target.value)}
               className="gap-4"
             >
               {selectedMethod.options.map((option) => (
@@ -437,8 +504,31 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
           </div>
         )}
 
-        {(paymentMethod !== 'mobile-money' || selectedMobileOption) && (
-          <div className={paymentMethod === 'credit-card' ? 'grid grid-cols-2 gap-2' : ''}>
+        {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD) && (
+          <div className="mb-2">
+            <Typography variant="subtitle2" gutterBottom>
+              Choisissez votre type de carte
+            </Typography>
+            <RadioGroup
+              row
+              value={selectedPaymentOption}
+              onChange={(e) => setSelectedPaymentOption(e.target.value)}
+              className="gap-4"
+            >
+              {selectedMethod.options.map((option) => (
+                <FormControlLabel
+                  key={option.id}
+                  value={option.id}
+                  control={<Radio size="small" />}
+                  label={option.name}
+                />
+              ))}
+            </RadioGroup>
+          </div>
+        )}
+
+        {((paymentMethod !== PAYMENT_TYPES.MOBILE_MONEY && paymentMethod !== PAYMENT_TYPES.CREDIT_CARD) || selectedPaymentOption) && (
+          <div className={paymentMethod === PAYMENT_TYPES.CREDIT_CARD ? 'grid grid-cols-2 gap-2' : ''}>
             {selectedMethod.fields.map((field) => (
               <TextField
                 key={field.name}
@@ -495,6 +585,54 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
 
         <form onSubmit={handleSubmit}>
           <div className="max-h-[60vh] overflow-y-auto p-6 pt-4 custom-scrollbar">
+            {/* Section méthode de paiement */}
+            <div className="slide-in" style={{ animationDelay: '0.2s' }}>
+              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
+                Méthode de paiement
+              </Typography>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {paymentMethods.map((method) => (
+                  <div 
+                    key={method.id}
+                    className={`method-card cursor-pointer ${paymentMethod === method.id ? 'selected' : ''}`}
+                    onClick={() => setPaymentMethod(method.id)}
+                  >
+                    <div className="flex items-center">
+                      <Radio 
+                        checked={paymentMethod === method.id} 
+                        onChange={() => setPaymentMethod(method.id)}
+                        size="small"
+                      />
+                      <div className="ml-2">
+                        <Typography variant="subtitle2">{method.name}</Typography>
+                        {method.id === PAYMENT_TYPES.WALLET && (
+                          <Typography variant="caption" color="textSecondary">
+                            Solde disponible: {walletBalance} USD
+                          </Typography>
+                        )}
+                        {method.id === PAYMENT_TYPES.CREDIT_CARD && (
+                          <Typography variant="caption" color="textSecondary">
+                            Visa, Mastercard, American Express
+                          </Typography>
+                        )}
+                        {method.id === PAYMENT_TYPES.MOBILE_MONEY && (
+                          <Typography variant="caption" color="textSecondary">
+                            Orange Money, Airtel Money, M-Pesa
+                          </Typography>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Champs de paiement */}
+            <div className="mt-4 fade-in" style={{ animationDelay: '0.3s' }}>
+              {renderPaymentFields()}
+            </div>
+
             {/* Section durée et montant */}
             <div className="summary-card mb-6 fade-in" style={{ animationDelay: '0.1s' }}>
               <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
@@ -519,7 +657,7 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
                   />
                 </div>
                 
-                {(paymentMethod === 'credit-card' || paymentMethod === 'mobile-money') && (
+                {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) && (
                   <div>
                     <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
                       Devise
@@ -561,88 +699,65 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
                     Montant de base
                   </Typography>
                   <Typography variant="body2">
-                    {paymentMethod === 'wallet' ? totalAmount : convertedAmount} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                    {paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount} {paymentMethod === PAYMENT_TYPES.WALLET ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
                   </Typography>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300">
-                    Frais ({feePercentage.toFixed(1)}%)
+                    Frais ({(feePercentage || 0).toFixed(1)}%)
                   </Typography>
                   <Typography variant="body2">
-                    {transactionFees} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                    {transactionFees || 0} {paymentMethod === PAYMENT_TYPES.WALLET ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
                   </Typography>
                 </div>
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                   <Typography variant="subtitle1" className="font-bold">
                     Total
                   </Typography>
-                  <Typography variant="subtitle1" color="primary" className="font-bold">
-                    {(paymentMethod === 'wallet' ? totalAmount : convertedAmount) + transactionFees} {paymentMethod === 'wallet' ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
-                  </Typography>
+                  <div className="flex items-center">
+                    {feesError ? (
+                      <IconButton 
+                        size="small" 
+                        color="primary" 
+                        onClick={calculateFees} 
+                        className="mr-2"
+                        title="Recalculer les frais"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </IconButton>
+                    ) : loadingFees ? (
+                      <CircularProgress size={16} className="mr-2" />
+                    ) : null}
+                    <Typography variant="subtitle1" color="primary" className="font-bold">
+                      {((paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount) + (transactionFees || 0)).toFixed(2)} {paymentMethod === PAYMENT_TYPES.WALLET ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                    </Typography>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Section méthode de paiement */}
-            <div className="slide-in" style={{ animationDelay: '0.2s' }}>
-              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
-                Méthode de paiement
-              </Typography>
-              
-              <div className="grid grid-cols-1 gap-3">
-                {paymentMethods.map((method) => (
-                  <div 
-                    key={method.id}
-                    className={`method-card cursor-pointer ${paymentMethod === method.id ? 'selected' : ''}`}
-                    onClick={() => setPaymentMethod(method.id)}
-                  >
-                    <div className="flex items-center">
-                      <Radio 
-                        checked={paymentMethod === method.id} 
-                        onChange={() => setPaymentMethod(method.id)}
-                        size="small"
-                      />
-                      <div className="ml-2">
-                        <Typography variant="subtitle2">{method.name}</Typography>
-                        {method.id === 'wallet' && (
-                          <Typography variant="caption" color="textSecondary">
-                            Solde disponible: {walletBalance} USD
-                          </Typography>
-                        )}
-                        {method.id === 'credit-card' && (
-                          <Typography variant="caption" color="textSecondary">
-                            Visa, Mastercard, American Express
-                          </Typography>
-                        )}
-                        {method.id === 'mobile-money' && (
-                          <Typography variant="caption" color="textSecondary">
-                            Orange Money, Airtel Money, M-Pesa
-                          </Typography>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Champs de paiement */}
-            <div className="mt-4 fade-in" style={{ animationDelay: '0.3s' }}>
-              {renderPaymentFields()}
             </div>
           </div>
 
           {/* Bouton de paiement - en dehors de la zone scrollable */}
           <div className="p-6 pt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
             <Typography variant="body2" color="textSecondary">
-              {paymentMethod === 'wallet' ? 'Paiement direct depuis votre wallet' : 'Procédez au paiement sécurisé'}
+              {paymentMethod === PAYMENT_TYPES.WALLET ? 'Paiement direct depuis votre wallet' : 'Procédez au paiement sécurisé'}
             </Typography>
+            
+            {/* Alerte pour solde insuffisant */}
+            {paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + (transactionFees || 0) > walletBalance && (
+              <Alert severity="error" className="mb-3 absolute bottom-16 left-6 right-6">
+                Solde insuffisant dans votre wallet. Vous avez besoin de {(totalAmount + (transactionFees || 0)).toFixed(2)} USD mais votre solde est de {walletBalance.toFixed(2)} USD.
+              </Alert>
+            )}
+            
             <Button
               type="submit"
               variant="contained"
               color="primary"
-              disabled={loading || !formIsValid}
-              className={`${loading || !formIsValid ? '' : 'pulse'}`}
+              disabled={loading || !formIsValid || feesError || loadingFees}
+              className={`${loading || !formIsValid || feesError || loadingFees ? '' : 'pulse'}`}
               sx={{ 
                 minWidth: 150,
                 borderRadius: '8px',
@@ -654,7 +769,7 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
               {loading ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
-                paymentMethod === 'wallet' ? 'Renouveler maintenant' : 'Procéder au renouvellement'
+                paymentMethod === PAYMENT_TYPES.WALLET ? 'Renouveler maintenant' : 'Procéder au renouvellement'
               )}
             </Button>
           </div>

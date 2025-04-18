@@ -237,6 +237,10 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     // Pour le wallet, définir automatiquement l'option solifin-wallet
     if (paymentMethod === PAYMENT_TYPES.WALLET) {
       setSelectedPaymentOption('solifin-wallet');
+      // Déclencher immédiatement le calcul des frais pour le wallet
+      setTimeout(() => {
+        calculateFees();
+      }, 0);
     }
   }, [paymentMethod]);
 
@@ -245,6 +249,13 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     if (pack) {
       const newTotal = pack.price * months;
       setTotalAmount(newTotal);
+      
+      // Pour le wallet, recalculer les frais chaque fois que le montant change
+      if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
+        setTimeout(() => {
+          calculateFees();
+        }, 0);
+      }
     }
   }, [pack, months]);
 
@@ -254,12 +265,10 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
         // Pour les méthodes autres que wallet, convertir d'abord la devise
         convertCurrency();
-      } else {
+      } else if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
         // Pour wallet, utiliser USD directement et calculer les frais si une méthode est sélectionnée
         setConvertedAmount(totalAmount);
-        if (selectedPaymentOption) {
-          calculateFees();
-        }
+        calculateFees();
       }
     }
   }, [totalAmount, paymentMethod, selectedCurrency]);
@@ -347,10 +356,10 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       };
 
       // Appel API pour effectuer le paiement
-      const response = await axios.post('/api/payments/purchase-pack', paymentData);
+      const response = await axios.post('/api/packs/purchase_a_new_pack', paymentData);
 
       if (response.data.success) {
-        toast.success('Paiement effectué avec succès');
+        Notification.success('Paiement effectué avec succès');
         onClose(true);
       } else {
         setError(response.data.message || 'Une erreur est survenue lors du paiement');
@@ -431,9 +440,14 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     setFeesError(false);
     
     try {
-      console.log("Calcul des frais avec méthode spécifique:", selectedPaymentOption);
       const amount = paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount;
       const currency = paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency;
+      
+      // Vérifier que les valeurs sont valides avant de faire l'appel API
+      if (!selectedPaymentOption || !amount || amount <= 0) {
+        setLoadingFees(false);
+        return;
+      }
       
       const response = await axios.post('/api/transaction-fees/transfer', {
         amount: amount,
@@ -449,7 +463,6 @@ export default function PurchasePackForm({ open, onClose, pack }) {
         setFeesError(true);
       }
     } catch (error) {
-      console.error('Erreur lors du calcul des frais:', error);
       setFeesError(true);
     } finally {
       setLoadingFees(false);
@@ -459,12 +472,6 @@ export default function PurchasePackForm({ open, onClose, pack }) {
   const convertCurrency = async () => {
     try {
       setLoading(true);
-      console.log('Conversion de devise:', {
-        amount: totalAmount,
-        from: 'USD',
-        to: selectedCurrency
-      });
-      
       const response = await axios.post('/api/currency/convert', {
         amount: totalAmount,
         from: 'USD',
@@ -472,7 +479,6 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       });
       
       if (response.data.success) {
-        console.log('Conversion réussie:', response.data);
         const convertedAmt = response.data.convertedAmount;
         setConvertedAmount(convertedAmt);
         // Le calcul des frais sera déclenché par l'effet qui surveille convertedAmount
@@ -508,8 +514,9 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     
     // Vérifier les champs selon la méthode de paiement
     if (paymentMethod === PAYMENT_TYPES.WALLET) {
-      // Pour le wallet, vérifier si le solde est suffisant
-      isValid = isValid && totalAmount <= walletBalance;
+      // Pour le wallet, on n'a pas besoin de vérifier les champs de formulaire supplémentaires
+      // mais on doit s'assurer que le calcul des frais n'est pas en cours et qu'il n'y a pas d'erreur
+      isValid = isValid && !loadingFees && !feesError;
     } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
       // Pour la carte de crédit, vérifier tous les champs requis
       const requiredFields = ['cardNumber', 'cardHolder', 'expiryDate', 'cvv'];
@@ -740,11 +747,19 @@ export default function PurchasePackForm({ open, onClose, pack }) {
             <Typography variant="body2" color="textSecondary">
               {paymentMethod === PAYMENT_TYPES.WALLET ? 'Paiement direct depuis votre wallet' : 'Procédez au paiement sécurisé'}
             </Typography>
+            
+            {/* Alerte pour solde insuffisant */}
+            {paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + (transactionFees || 0) > walletBalance && (
+              <Alert severity="error" className="mb-3 absolute bottom-16 left-6 right-6">
+                Solde insuffisant dans votre wallet. Vous avez besoin de {(totalAmount + (transactionFees || 0)).toFixed(2)} USD mais votre solde est de {walletBalance.toFixed(2)} USD.
+              </Alert>
+            )}
+            
             <Button
               type="submit"
               variant="contained"
               color="primary"
-              disabled={!formIsValid || loading || loadingFees || feesError}
+              disabled={!formIsValid || loading || loadingFees || feesError || (paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + (transactionFees || 0) > walletBalance)}
               className="px-6 py-2"
               startIcon={
                 feesError ? (
