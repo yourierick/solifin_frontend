@@ -10,9 +10,12 @@ import {
   XMarkIcon,
   ArrowPathIcon,
   CheckCircleIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
-import { CURRENCIES } from '../config';
+import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from '../config';
+import { countries } from '../data/countries';
+import CountryCodeSelector from './CountryCodeSelector';
 
 // Style CSS pour les animations et effets visuels
 const customStyles = `
@@ -211,114 +214,154 @@ const customStyles = `
   }
 `;
 
-const paymentMethods = {
-  mobileMoney: {
+// Filtrer les méthodes de paiement pour exclure portefeuille et espèces
+const filteredPaymentTypes = Object.keys(PAYMENT_TYPES)
+  .filter(key => PAYMENT_TYPES[key] !== PAYMENT_TYPES.WALLET && PAYMENT_TYPES[key] !== PAYMENT_TYPES.CASH)
+  .reduce((obj, key) => {
+    obj[key] = PAYMENT_TYPES[key];
+    return obj;
+  }, {});
+
+const paymentMethodsMap = {
+  [PAYMENT_TYPES.MOBILE_MONEY]: {
     name: 'Mobile Money',
     icon: PhoneIcon,
-    options: [
-      { id: 'orange-money', name: 'Orange Money' },
-      { id: 'airtel-money', name: 'Airtel Money' },
-      { id: 'm-pesa', name: 'M-Pesa' },
-      { id: 'afrimoney', name: 'Afrimoney' }
-    ]
+    options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY]
   },
-  cards: {
-    name: 'Carte bancaire',
-    icon: CreditCardIcon
+  [PAYMENT_TYPES.CREDIT_CARD]: {
+    name: 'Carte de crédit',
+    icon: CreditCardIcon,
+    options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD]
   },
-  bankTransfer: {
+  [PAYMENT_TYPES.BANK_TRANSFER]: {
     name: 'Virement bancaire',
-    icon: BanknotesIcon
+    icon: BanknotesIcon,
+    options: PAYMENT_METHODS[PAYMENT_TYPES.BANK_TRANSFER]
   },
-  moneyTransfer: {
+  [PAYMENT_TYPES.MONEY_TRANSFER]: {
     name: 'Transfert d\'argent',
-    icon: ArrowPathIcon,
-    options: [
-      { id: 'western-union', name: 'Western Union' },
-      { id: 'moneygram', name: 'MoneyGram' },
-      { id: 'ria', name: 'Ria Money Transfer' },
-      { id: 'worldremit', name: 'WorldRemit' }
-    ]
-  }
-};
-
-const calculateFees = async (amount, selectedMethod, walletCurrency) => {
-  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-    return { fee: 0, feePercentage: 2.5, feeBreakdown: {}, feeDetails: {} };
-  }
-
-  try {
-    const response = await axios.get('/api/transaction-fees/withdrawal', {
-      params: {
-        amount,
-        payment_method: selectedMethod === 'mobileMoney' ? 'mobile-money' : selectedMethod === 'cards' ? 'card' : selectedMethod === 'bankTransfer' ? 'bank-transfer' : 'money-transfer',
-        currency: walletCurrency // Utiliser la devise du wallet pour le calcul des frais
-      }
-    });
-
-    if (response.data.status === 'success') {
-      return {
-        fee: response.data.data.fee,
-        feePercentage: response.data.data.fee_percentage || 2.5,
-        feeBreakdown: response.data.data.fee_breakdown,
-        feeDetails: response.data.data.fee_details
-      };
-    }
-  } catch (error) {
-    console.error('Erreur lors du calcul des frais:', error);
-    // Fallback sur un calcul simple
-    return {
-      fee: parseFloat(amount) * 0.025,
-      feePercentage: 2.5,
-      feeBreakdown: {},
-      feeDetails: {}
-    };
+    icon: GlobeAltIcon,
+    options: PAYMENT_METHODS[PAYMENT_TYPES.MONEY_TRANSFER]
   }
 };
 
 export default function WithdrawalForm({ walletId, walletType, onClose }) {
   const { isDarkMode } = useTheme();
-  const [selectedMethod, setSelectedMethod] = useState('');
-  const [selectedOption, setSelectedOption] = useState('');
+  const [selectedType, setSelectedType] = useState(null);
+  const [selectedMethod, setSelectedMethod] = useState(null);
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
-    phoneNumber: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardHolderName: '',
-    bankName: '',
     accountNumber: '',
     accountName: '',
+    bankName: '',
     swiftCode: '',
-    bankAddress: '',
-    fullName: '',
-    address: '',
-    city: '',
-    country: '',
-    idNumber: '',
-    idType: 'passport' // passport, id_card, driver_license
+    iban: '',  // Nouveau champ pour virement bancaire
+    phoneNumber: '',
+    phoneCode: '+243', // Indicatif téléphonique par défaut
+    country: 'CD', // Pays par défaut: République Démocratique du Congo
+    fullName: '',  // Nouveau champ pour transfert d'argent
+    recipientCountry: '',  // Nouveau champ pour transfert d'argent
+    recipientCity: '',  // Nouveau champ pour transfert d'argent
+    idType: '',  // Nouveau champ pour transfert d'argent
+    idNumber: '',  // Nouveau champ pour transfert d'argent
+    otpCode: '',
+    currency: 'USD'  // Devise par défaut: USD ($)
   });
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [formIsValid, setFormIsValid] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [walletCurrency, setWalletCurrency] = useState('USD');
+  const [walletData, setWalletData] = useState(null);
   const [withdrawalFee, setWithdrawalFee] = useState(0);
-  const [feePercentage, setFeePercentage] = useState(2.5);
-  const [feeBreakdown, setFeeBreakdown] = useState({});
-  const [feeDetails, setFeeDetails] = useState({});
+  const [feePercentage, setFeePercentage] = useState(0);
+  const [referralCommission, setReferralCommission] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadingFees, setLoadingFees] = useState(false);
+  const [feesError, setFeesError] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [showOtpField, setShowOtpField] = useState(false);
+  const [formIsValid, setFormIsValid] = useState(false);
+  const formRef = useRef(null);
 
-  // Récupérer le solde du wallet et les devises disponibles
+  // Fonction pour formater le numéro de carte de crédit (ajouter des espaces tous les 4 chiffres)
+  const formatCreditCardNumber = (value) => {
+    // Supprimer tous les caractères non numériques
+    const v = value.replace(/\D/g, '');
+    
+    // Ajouter un espace tous les 4 chiffres
+    const matches = v.match(/\d{1,4}/g);
+    const formatted = matches ? matches.join(' ') : '';
+    
+    return formatted;
+  };
+
+  // Fonction pour obtenir l'emoji du drapeau à partir du code pays
+  const getFlagEmoji = (countryCode) => {
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map(char => 127397 + char.charCodeAt());
+    return String.fromCodePoint(...codePoints);
+  };
+
+  // Fonction pour valider le numéro de téléphone en fonction du pays
+  const validatePhoneNumber = (phoneNumber, country) => {
+    // Supprimer tous les caractères non numériques
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // Vérifier que le numéro n'est pas vide
+    if (!cleanNumber) {
+      return false;
+    }
+    
+    // Longueurs attendues pour différents pays (sans l'indicatif)
+    const expectedLengths = {
+      'CD': 9, // RD Congo
+      'CG': 9, // Congo-Brazzaville
+      'CI': 8, // Côte d'Ivoire
+      'CM': 9, // Cameroun
+      'SN': 9, // Sénégal
+      'FR': 9, // France
+      'BE': 9, // Belgique
+      'CA': 10, // Canada
+      'US': 10, // États-Unis
+      'GB': 10, // Royaume-Uni
+      'DE': 10, // Allemagne
+    };
+    
+    // Vérifier la longueur du numéro
+    const expectedLength = expectedLengths[country] || 9; // 9 par défaut
+    
+    return cleanNumber.length === expectedLength;
+  };
+
+  // Fonction pour concaténer l'indicatif téléphonique et le numéro de téléphone
+  const formatFullPhoneNumber = (phoneCode, phoneNumber) => {
+    // Supprimer le + de l'indicatif s'il existe
+    const code = phoneCode.replace('+', '');
+    // Supprimer tous les caractères non numériques du numéro
+    const number = phoneNumber.replace(/\D/g, '');
+    // Si le numéro commence par 0, le supprimer
+    const cleanNumber = number.startsWith('0') ? number.substring(1) : number;
+    // Concaténer l'indicatif et le numéro
+    return `+${code}${cleanNumber}`;
+  };
+
+  // Récupérer les données du portefeuille
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
-        const response = await axios.get(`/api/userwallet/data?wallet_id=${walletId}&wallet_type=${walletType}`);
-        if (response.data.success) {
-          setWalletBalance(parseFloat(response.data.userWallet.balance) || 0);
-          setWalletCurrency(response.data.userWallet.currency || 'USD');
+        const response = await axios.get('/api/userwallet/data');
+        
+        if (response.data.success && response.data.userWallet) {
+          // Convertir les valeurs numériques formatées en nombres
+          const walletData = {
+            ...response.data.userWallet,
+            balance: parseFloat(response.data.userWallet.balance) || 0,
+            total_earned: parseFloat(response.data.userWallet.total_earned) || 0,
+            total_withdrawn: parseFloat(response.data.userWallet.total_withdrawn) || 0
+          };
+          
+          setWalletData(walletData);
+        } else {
+          console.error('Données du portefeuille non disponibles ou format incorrect');
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des données du portefeuille', error);
@@ -328,1060 +371,384 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     fetchWalletData();
   }, [walletId, walletType]);
 
-  // Calculer les frais de retrait lorsque le montant change
-  useEffect(() => {
-    const calculateFeesAsync = async () => {
-      const result = await calculateFees(formData.amount, selectedMethod, walletCurrency);
-      setWithdrawalFee(result.fee);
-      setFeePercentage(result.feePercentage);
-      setFeeBreakdown(result.feeBreakdown);
-      setFeeDetails(result.feeDetails);
-    };
+  // Récupérer les frais de transaction depuis le backend
+  const calculateFeesAsync = async () => {
+    if (!selectedPaymentOption || !formData.amount || parseFloat(formData.amount) <= 0) {
+      setWithdrawalFee(0);
+      setFeePercentage(0);
+      setReferralCommission(0);
+      return;
+    }
 
-    if (selectedMethod && formData.amount) {
-      calculateFeesAsync();
-    }
-  }, [formData.amount, selectedMethod, walletCurrency]);
+    setLoadingFees(true);
+    setFeesError(false);
 
-  // Vérifier la validité du formulaire
-  useEffect(() => {
-    setFormIsValid(isFormValid());
-  }, [selectedMethod, selectedOption, formData, otp, otpSent]);
-
-  const isFormValid = () => {
-    if (!selectedMethod) return false;
-    
-    if (selectedMethod === 'mobileMoney') {
-      if (!selectedOption || !otpSent) return false;
-      return formData.phoneNumber && formData.amount && otp;
-    }
-    
-    if (selectedMethod === 'cards') {
-      if (!otpSent) return false;
-      return formData.cardHolderName && 
-             formData.cardNumber && 
-             formData.expiryDate && 
-             formData.amount &&
-             otp;
-    }
-  
-    if (selectedMethod === 'bankTransfer') {
-      if (!otpSent) return false;
-      return formData.amount && otp && formData.bankName && formData.accountNumber && formData.accountName && formData.swiftCode && formData.bankAddress;
-    }
-  
-    if (selectedMethod === 'moneyTransfer') {
-      if (!selectedOption || !otpSent) return false;
-      return formData.amount && otp && formData.fullName && formData.address && formData.city && formData.country && formData.idNumber;
-    }
-  
-    return false;
-  };
-
-  const handleSendOtp = async () => {
     try {
-      setResendLoading(true);
-      const response = await axios.post('/api/withdrawal/send-otp', {
-        phone_number: selectedMethod === 'mobileMoney' ? formData.phoneNumber : null,
-        payment_method: selectedMethod === 'mobileMoney' ? 'mobile-money' : selectedMethod === 'cards' ? 'card' : selectedMethod === 'bankTransfer' ? 'bank-transfer' : 'money-transfer'
+      const response = await axios.post('/api/transaction-fees/withdrawal', {
+        payment_method: selectedPaymentOption,
+        payment_type: selectedType,
+        amount: parseFloat(formData.amount)
       });
 
-      if (response.data.success) {
-        setOtpSent(true);
-        Notification.success(response.data.message);
+      if (response.data.status === 'success') {
+        const { fee, total } = response.data.data;
+        setWithdrawalFee(fee);
+        setFeePercentage(response.data.data.percentage);
+        
+        // Calculer la commission du parrain (5% du montant demandé)
+        const requestedAmount = parseFloat(formData.amount);
+        const commission = requestedAmount * 0.05;
+        setReferralCommission(commission);
+      } else {
+        setFeesError(true);
+        setNotification({
+          type: 'error',
+          message: 'Erreur lors du calcul des frais'
+        });
       }
     } catch (error) {
-      Notification.error(error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP');
+      console.error('Erreur lors du calcul des frais:', error);
+      setFeesError(true);
+      setNotification({
+        type: 'error',
+        message: error.response?.data?.message || 'Erreur lors du calcul des frais: ' + error.message
+      });
     } finally {
-      setResendLoading(false);
+      setLoadingFees(false);
     }
   };
+
+  // Effet pour calculer les frais lorsque le montant ou la méthode de paiement change
+  useEffect(() => {
+    calculateFeesAsync();
+  }, [formData.amount, selectedPaymentOption]);
+
+  // Fonction pour envoyer le code OTP
+  const handleSendOtp = async () => {
+    if (!isFormValid()) {
+      // Vérifier spécifiquement si le problème est lié au solde insuffisant
+      const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
+      if (formData.amount && totalAmount > walletData?.balance) {
+        setNotification({
+          type: 'error',
+          message: 'Solde insuffisant. Le montant total (montant + frais + commission) dépasse votre solde disponible.'
+        });
+      } else {
+        setNotification({
+          type: 'error',
+          message: 'Veuillez remplir tous les champs obligatoires avant de demander un code OTP'
+        });
+      }
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Préparation des données de base communes à tous les types de paiement
+      const requestData = {
+        payment_method: selectedPaymentOption,
+        payment_type: selectedType,
+        amount: parseFloat(formData.amount),
+        currency: formData.currency,
+        // Résumé de la transaction
+        withdrawal_fee: withdrawalFee,
+        referral_commission: referralCommission,
+        total_amount: parseFloat(formData.amount) + withdrawalFee + referralCommission,
+        fee_percentage: feePercentage,
+        devise: formData.currency,
+        payment_details: {
+        }
+      };
+
+      // Ajout des données spécifiques selon le type de paiement
+      if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
+        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber);
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber),
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER) {
+        requestData.account_number = formData.accountNumber;
+        requestData.account_name = formData.accountName;
+        requestData.bank_name = formData.bankName;
+        requestData.swift_code = formData.swiftCode;
+        requestData.iban = formData.iban;  // Ajout du champ IBAN
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          account_number: formData.accountNumber,
+          account_name: formData.accountName,
+          bank_name: formData.bankName,
+          swift_code: formData.swiftCode,
+          iban: formData.iban,
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD) {
+        requestData.account_number = formData.accountNumber;
+        requestData.account_name = formData.accountName;
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          account_number: formData.accountNumber,
+          account_name: formData.accountName,
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER) {
+        requestData.full_name = formData.fullName;  // Ajout du champ nom complet
+        requestData.recipient_country = formData.country;  // Utiliser le pays sélectionné
+        requestData.recipient_city = formData.recipientCity;  // Ajout du champ ville
+        requestData.id_type = formData.idType;  // Ajout du champ type de pièce d'identité
+        requestData.id_number = formData.idNumber;  // Ajout du champ numéro de pièce d'identité
+        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber); // Ajout du numéro de téléphone
+        requestData.payment_details = {
+          full_name: formData.fullName,
+          recipient_country: formData.country,
+          recipient_city: formData.recipientCity,
+          id_type: formData.idType,
+          id_number: formData.idNumber,
+          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber)
+        };
+      }
+
+      const response = await axios.post('/api/withdrawal/send-otp', requestData);
+      
+      if (response.data.success) {
+        setShowOtpField(true);
+        Notification.success('code OTP envoyé à votre numéro; et sur votre adresse mail, veuillez vérifier vos spam aussi')
+      } else {
+        setNotification({
+          type: 'error',
+          message: response.data.message || 'Erreur lors de l\'envoi du code OTP'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi du code OTP:', error);
+      setNotification({
+        type: 'error',
+        message: error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isFormValid = () => {
+    if (!selectedPaymentOption || !formData.amount || parseFloat(formData.amount) <= 0) {
+      return false;
+    }
+
+    if (feesError) {
+      return false;
+    }
+
+    // Calculer le montant total à débiter (montant demandé + frais + commission)
+    const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
+    
+    // Vérifier si le solde est suffisant pour couvrir le montant total
+    if (totalAmount > walletData?.balance) {
+      return false;
+    }
+
+    // Validation selon le type de paiement sélectionné
+    if (selectedType === PAYMENT_TYPES.MOBILE_MONEY && !formData.phoneNumber) {
+      return false;
+    } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER && 
+               (!formData.accountNumber || !formData.accountName || !formData.bankName)) {
+      return false;
+    } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD && 
+               (!formData.accountNumber || !formData.accountName)) {
+      return false;
+    } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER && 
+               (!formData.fullName || !formData.recipientCountry || !formData.recipientCity || !formData.idType || !formData.idNumber || !formData.phoneNumber)) {
+      return false;
+    }
+
+    if (showOtpField && !formData.otpCode) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Vérifier si le formulaire est valide pour la soumission finale
+  const isSubmitEnabled = () => {
+    // Le bouton ne doit être activé que si le code OTP a été envoyé et renseigné
+    return showOtpField && formData.otpCode && formData.otpCode.trim() !== '';
+  };
+
+  // Vérifier si le formulaire est valide pour l'envoi du code OTP
+  const isOtpEnabled = () => {
+    return isFormValid() && !showOtpField;
+  };
+
+  // Effet pour mettre à jour la validité du formulaire
+  useEffect(() => {
+    setFormIsValid(isFormValid());
+  }, [formData, selectedPaymentOption, selectedType, feesError, showOtpField]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
-    // Vérifier si le montant est valide
-    if (parseFloat(formData.amount) > walletBalance) {
-      Notification.error('Le montant demandé dépasse votre solde disponible');
-      setLoading(false);
+    
+    if (!isSubmitEnabled()) {
+      setNotification({
+        type: 'error',
+        message: 'Veuillez remplir tous les champs obligatoires'
+      });
       return;
     }
-
+    
+    setLoading(true);
+    
     try {
-      let response;
-      if (selectedMethod === 'mobileMoney') {
-        if (!otpSent) {
-          await handleSendOtp();
-          setLoading(false);
-          return;
-        }
-
-        response = await axios.post('/api/withdrawal/request', {
-          wallet_id: walletId,
-          wallet_type: walletType,
-          payment_method: selectedOption,
-          amount: formData.amount,
-          phone_number: formData.phoneNumber,
-          otp: otp,
-          wallet_currency: walletCurrency
-        });
-      } else if (selectedMethod === 'cards') {
-        if (!otpSent) {
-          await handleSendOtp();
-          setLoading(false);
-          return;
-        }
-
-        response = await axios.post('/api/withdrawal/request', {
-          wallet_id: walletId,
-          wallet_type: walletType,
-          payment_method: 'card',
-          amount: formData.amount,
-          card_details: {
-            number: formData.cardNumber,
-            expiry: formData.expiryDate,
-            holder_name: formData.cardHolderName,
-            cvv: formData.cvv
-          },
-          otp: otp,
-          wallet_currency: walletCurrency
-        });
-      } else if (selectedMethod === 'bankTransfer') {
-        if (!otpSent) {
-          await handleSendOtp();
-          setLoading(false);
-          return;
-        }
-
-        response = await axios.post('/api/withdrawal/request', {
-          wallet_id: walletId,
-          wallet_type: walletType,
-          payment_method: 'bank-transfer',
-          amount: formData.amount,
-          bank_details: {
-            bank_name: formData.bankName,
-            account_number: formData.accountNumber,
-            account_name: formData.accountName,
-            swift_code: formData.swiftCode,
-            bank_address: formData.bankAddress
-          },
-          otp: otp,
-          wallet_currency: walletCurrency
-        });
-      } else if (selectedMethod === 'moneyTransfer') {
-        if (!selectedOption || !otpSent) {
-          await handleSendOtp();
-          setLoading(false);
-          return;
-        }
-
-        response = await axios.post('/api/withdrawal/request', {
-          wallet_id: walletId,
-          wallet_type: walletType,
-          payment_method: selectedOption,
-          amount: formData.amount,
-          transfer_details: {
-            full_name: formData.fullName,
-            address: formData.address,
-            city: formData.city,
-            country: formData.country,
-            id_number: formData.idNumber,
-            id_type: formData.idType
-          },
-          otp: otp,
-          wallet_currency: walletCurrency
-        });
+      // Si le code OTP n'a pas encore été envoyé, l'envoyer d'abord
+      if (!showOtpField) {
+        await handleSendOtp();
+        setLoading(false);
+        return;
       }
+      
+      // Préparation des données de base communes à tous les types de paiement
+      const requestData = {
+        amount: parseFloat(formData.amount),
+        payment_method: selectedPaymentOption,
+        payment_type: selectedType,
+        currency: formData.currency,
+        otp: formData.otpCode,
+        // Résumé de la transaction
+        withdrawal_fee: withdrawalFee,
+        referral_commission: referralCommission,
+        total_amount: parseFloat(formData.amount) + withdrawalFee + referralCommission,
+        fee_percentage: feePercentage,
+        payment_details: {
+        }
+      };
 
+      // Ajout des données spécifiques selon le type de paiement
+      if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
+        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber);
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber),
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER) {
+        requestData.account_number = formData.accountNumber;
+        requestData.account_name = formData.accountName;
+        requestData.bank_name = formData.bankName;
+        requestData.swift_code = formData.swiftCode;
+        requestData.iban = formData.iban;  // Ajout du champ IBAN
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          account_number: formData.accountNumber,
+          account_name: formData.accountName,
+          bank_name: formData.bankName,
+          swift_code: formData.swiftCode,
+          iban: formData.iban,
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD) {
+        requestData.account_number = formData.accountNumber;
+        requestData.account_name = formData.accountName;
+        requestData.country = formData.country; // Ajouter le pays sélectionné
+        requestData.payment_details = {
+          account_number: formData.accountNumber,
+          account_name: formData.accountName,
+          country: formData.country
+        };
+      } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER) {
+        requestData.full_name = formData.fullName;  // Ajout du champ nom complet
+        requestData.recipient_country = formData.country;  // Utiliser le pays sélectionné
+        requestData.recipient_city = formData.recipientCity;  // Ajout du champ ville
+        requestData.id_type = formData.idType;  // Ajout du champ type de pièce d'identité
+        requestData.id_number = formData.idNumber;  // Ajout du champ numéro de pièce d'identité
+        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber); // Ajout du numéro de téléphone
+        requestData.payment_details = {
+          full_name: formData.fullName, 
+          recipient_country: formData.country, 
+          recipient_city: formData.recipientCity, 
+          id_type: formData.idType, 
+          id_number: formData.idNumber, 
+          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber)
+        };
+      }
+      
+      // Sinon, procéder au retrait
+      const response = await axios.post(`/api/withdrawal/request/${walletId}`, requestData);
+      
       if (response.data.success) {
-        Notification.success('Demande de retrait envoyée avec succès');
-        onClose();
+        console.log('Retrait soumis avec succès:', response.data);
+        setNotification({
+          type: 'success',
+          message: 'Votre demande de retrait a été soumise avec succès'
+        });
+        
+        // Fermer le modal après 2 secondes
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else {
+        console.error('Erreur lors du retrait:', response.data);
+        setNotification({
+          type: 'error',
+          message: response.data.message || 'Une erreur est survenue lors du traitement de votre demande'
+        });
       }
     } catch (error) {
-      Notification.error(error.response?.data?.message || 'Erreur lors de la demande de retrait');
+      console.error('Erreur lors du retrait:', error);
+      setNotification({
+        type: 'error',
+        message: error.response?.data?.message || 'Une erreur est survenue lors du traitement de votre demande'
+      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Validation spéciale pour le champ montant
-    if (name === 'amount') {
-      // Permet uniquement les nombres avec jusqu'à 2 décimales
-      const regex = /^[0-9]*\.?[0-9]{0,2}$/;
-      if (value === '' || regex.test(value)) {
-        // Vérifier que le montant ne dépasse pas le solde
-        if (value && parseFloat(value) > walletBalance) {
-          Notification.warning('Le montant dépasse votre solde disponible');
-        }
-        
-        setFormData({
-          ...formData,
-          [name]: value
-        });
-        
-        // Calculer les frais si le montant est valide et supérieur à 0
-        if (value && parseFloat(value) > 0) {
-          calculateFees(formData.amount, selectedMethod, walletCurrency).then((result) => {
-            setWithdrawalFee(result.fee);
-            setFeePercentage(result.feePercentage);
-            setFeeBreakdown(result.feeBreakdown);
-            setFeeDetails(result.feeDetails);
-          });
-        }
-      }
-      return;
-    }
-    
-    // Validation pour le numéro de carte
-    if (name === 'cardNumber') {
-      // Permettre uniquement les chiffres et formater avec des espaces tous les 4 chiffres
-      const cleaned = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-      if (cleaned.length > 16) return;
-      
-      // Formater avec des espaces tous les 4 chiffres
-      const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-      setFormData({ ...formData, [name]: formatted });
-      return;
-    }
-    
-    // Validation pour la date d'expiration
-    if (name === 'expiryDate') {
-      // Format MM/YY
-      const cleaned = value.replace(/[^0-9]/gi, '');
-      if (cleaned.length > 4) return;
-      
-      let formatted = cleaned;
-      if (cleaned.length > 2) {
-        formatted = `${cleaned.substring(0, 2)}/${cleaned.substring(2)}`;
-      }
-      
-      setFormData({ ...formData, [name]: formatted });
-      return;
-    }
-    
-    // Validation pour le CVV
-    if (name === 'cvv') {
-      const cleaned = value.replace(/[^0-9]/gi, '');
-      if (cleaned.length > 3) return;
-      setFormData({ ...formData, [name]: cleaned });
-      return;
-    }
-    
-    // Pour les autres champs
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const renderFields = () => {
-    if (!selectedMethod) return null;
-
-    if (selectedMethod === 'mobileMoney') {
-      return (
-        <div className="space-y-4 fade-in">
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Numéro de téléphone <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="tel"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleInputChange}
-              placeholder="Entrez votre numéro de téléphone"
-              className="input-field"
-              required
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Assurez-vous que ce numéro est enregistré pour {selectedOption ? paymentMethods.mobileMoney.options.find(o => o.id === selectedOption)?.name : 'Mobile Money'}
-            </p>
-          </div>
-          
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Montant <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center">
-              <span className="text-gray-500 dark:text-gray-400 mr-2">
-                {CURRENCIES[walletCurrency]?.symbol || '$'}
-              </span>
-              <input
-                type="text"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                className="input-field flex-1"
-                required
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Solde disponible: {CURRENCIES[walletCurrency]?.symbol || '$'}{walletBalance.toFixed(2)} {walletCurrency}
-            </p>
-          </div>
-          
-          {/* Détails des frais */}
-          {formData.amount && parseFloat(formData.amount) > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-              <h5 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Détails des frais
-              </h5>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de base:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.baseFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de traitement:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.processingFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais réseau:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.networkFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
-                  <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Montant net à recevoir:</span>
-                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(parseFloat(formData.amount) - withdrawalFee).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-              {feeDetails.note && (
-                <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <span className="font-medium">Note:</span> {feeDetails.note}
-                </p>
-              )}
-            </div>
-          )}
-          
-          {otpSent && (
-            <div className="mb-4 fade-in">
-              <label className="input-label dark:text-gray-200">
-                Code OTP <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Entrez le code reçu par SMS"
-                className="input-field"
-                required
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Code envoyé au {formData.phoneNumber}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={resendLoading}
-                  className="text-primary-500 text-sm hover:underline focus:outline-none"
-                >
-                  {resendLoading ? (
-                    <span className="flex items-center">
-                      <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
-                      Envoi...
-                    </span>
-                  ) : (
-                    'Renvoyer le code'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!otpSent && formData.phoneNumber && formData.amount && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={resendLoading || !formData.phoneNumber || !formData.amount}
-                className="btn-primary w-full"
-              >
-                {resendLoading ? (
-                  <span className="flex items-center justify-center">
-                    <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    Envoi du code...
-                  </span>
-                ) : (
-                  'Recevoir le code OTP'
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (selectedMethod === 'cards') {
-      return (
-        <div className="space-y-4 fade-in">
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Nom du titulaire <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="cardHolderName"
-              value={formData.cardHolderName}
-              onChange={handleInputChange}
-              placeholder="Nom complet sur la carte"
-              className="input-field"
-              required
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Numéro de carte <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                name="cardNumber"
-                value={formData.cardNumber}
-                onChange={handleInputChange}
-                placeholder="XXXX XXXX XXXX XXXX"
-                className="input-field pl-10"
-                required
-              />
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <CreditCardIcon className="h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="input-label dark:text-gray-200">
-                Date d'expiration <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="expiryDate"
-                value={formData.expiryDate}
-                onChange={handleInputChange}
-                placeholder="MM/YY"
-                className="input-field"
-                required
-              />
-            </div>
-            <div>
-              <label className="input-label dark:text-gray-200">
-                CVV <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="cvv"
-                value={formData.cvv}
-                onChange={handleInputChange}
-                placeholder="123"
-                className="input-field"
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Montant <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center">
-              <span className="text-gray-500 dark:text-gray-400 mr-2">
-                {CURRENCIES[walletCurrency]?.symbol || '$'}
-              </span>
-              <input
-                type="text"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                className="input-field flex-1"
-                required
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Solde disponible: {CURRENCIES[walletCurrency]?.symbol || '$'}{walletBalance.toFixed(2)} {walletCurrency}
-            </p>
-          </div>
-          
-          {/* Détails des frais */}
-          {formData.amount && parseFloat(formData.amount) > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-              <h5 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Détails des frais
-              </h5>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de base:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.baseFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de traitement:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.processingFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais réseau:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.networkFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
-                  <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Montant net à recevoir:</span>
-                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(parseFloat(formData.amount) - withdrawalFee).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-              {feeDetails.note && (
-                <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <span className="font-medium">Note:</span> {feeDetails.note}
-                </p>
-              )}
-            </div>
-          )}
-          
-          {otpSent && (
-            <div className="mb-4 fade-in">
-              <label className="input-label dark:text-gray-200">
-                Code OTP <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Entrez le code reçu par email"
-                className="input-field"
-                required
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Code envoyé à votre email
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={resendLoading}
-                  className="text-primary-500 text-sm hover:underline focus:outline-none"
-                >
-                  {resendLoading ? (
-                    <span className="flex items-center">
-                      <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
-                      Envoi...
-                    </span>
-                  ) : (
-                    'Renvoyer le code'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!otpSent && formData.cardHolderName && formData.cardNumber && formData.expiryDate && formData.cvv && formData.amount && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={resendLoading || !formData.cardHolderName || !formData.cardNumber || !formData.expiryDate || !formData.cvv || !formData.amount}
-                className="btn-primary w-full"
-              >
-                {resendLoading ? (
-                  <span className="flex items-center justify-center">
-                    <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    Envoi du code...
-                  </span>
-                ) : (
-                  'Recevoir le code OTP'
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (selectedMethod === 'bankTransfer') {
-      return (
-        <div className="space-y-4 fade-in">
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Nom de la banque <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="bankName"
-              value={formData.bankName}
-              onChange={handleInputChange}
-              placeholder="Nom de la banque"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Numéro de compte <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="accountNumber"
-              value={formData.accountNumber}
-              onChange={handleInputChange}
-              placeholder="Numéro de compte"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Nom du titulaire du compte <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="accountName"
-              value={formData.accountName}
-              onChange={handleInputChange}
-              placeholder="Nom du titulaire du compte"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Code SWIFT <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="swiftCode"
-              value={formData.swiftCode}
-              onChange={handleInputChange}
-              placeholder="Code SWIFT"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Adresse de la banque <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="bankAddress"
-              value={formData.bankAddress}
-              onChange={handleInputChange}
-              placeholder="Adresse de la banque"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Montant <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center">
-              <span className="text-gray-500 dark:text-gray-400 mr-2">
-                {CURRENCIES[walletCurrency]?.symbol || '$'}
-              </span>
-              <input
-                type="text"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                className="input-field flex-1"
-                required
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Solde disponible: {CURRENCIES[walletCurrency]?.symbol || '$'}{walletBalance.toFixed(2)} {walletCurrency}
-            </p>
-          </div>
-          
-          {/* Détails des frais */}
-          {formData.amount && parseFloat(formData.amount) > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-              <h5 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Détails des frais
-              </h5>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de base:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.baseFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de traitement:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.processingFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais réseau:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.networkFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
-                  <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Montant net à recevoir:</span>
-                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(parseFloat(formData.amount) - withdrawalFee).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-              {feeDetails.note && (
-                <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <span className="font-medium">Note:</span> {feeDetails.note}
-                </p>
-              )}
-            </div>
-          )}
-          
-          {otpSent && (
-            <div className="mb-4 fade-in">
-              <label className="input-label dark:text-gray-200">
-                Code OTP <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Entrez le code reçu par SMS"
-                className="input-field"
-                required
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Code envoyé au {formData.phoneNumber}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={resendLoading}
-                  className="text-primary-500 text-sm hover:underline focus:outline-none"
-                >
-                  {resendLoading ? (
-                    <span className="flex items-center">
-                      <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
-                      Envoi...
-                    </span>
-                  ) : (
-                    'Renvoyer le code'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!otpSent && formData.bankName && formData.accountNumber && formData.accountName && formData.swiftCode && formData.bankAddress && formData.amount && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={resendLoading || !formData.bankName || !formData.accountNumber || !formData.accountName || !formData.swiftCode || !formData.bankAddress || !formData.amount}
-                className="btn-primary w-full"
-              >
-                {resendLoading ? (
-                  <span className="flex items-center justify-center">
-                    <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    Envoi du code...
-                  </span>
-                ) : (
-                  'Recevoir le code OTP'
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (selectedMethod === 'moneyTransfer') {
-      return (
-        <div className="space-y-4 fade-in">
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Nom complet <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleInputChange}
-              placeholder="Nom complet"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Adresse <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              placeholder="Adresse"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Ville <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleInputChange}
-              placeholder="Ville"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Pays <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="country"
-              value={formData.country}
-              onChange={handleInputChange}
-              placeholder="Pays"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Numéro d'identité <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="idNumber"
-              value={formData.idNumber}
-              onChange={handleInputChange}
-              placeholder="Numéro d'identité"
-              className="input-field"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Type d'identité <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="idType"
-              value={formData.idType}
-              onChange={handleInputChange}
-              className="input-field"
-              required
-            >
-              <option value="passport">Passeport</option>
-              <option value="id_card">Carte d'identité</option>
-              <option value="driver_license">Permis de conduire</option>
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className="input-label dark:text-gray-200">
-              Montant <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center">
-              <span className="text-gray-500 dark:text-gray-400 mr-2">
-                {CURRENCIES[walletCurrency]?.symbol || '$'}
-              </span>
-              <input
-                type="text"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                className="input-field flex-1"
-                required
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Solde disponible: {CURRENCIES[walletCurrency]?.symbol || '$'}{walletBalance.toFixed(2)} {walletCurrency}
-            </p>
-          </div>
-          
-          {/* Détails des frais */}
-          {formData.amount && parseFloat(formData.amount) > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-              <h5 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Détails des frais
-              </h5>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de base:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.baseFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais de traitement:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.processingFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais réseau:</span>
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(feeBreakdown.networkFee || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 my-1 pt-1"></div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Total des frais ({feePercentage.toFixed(1)}%):</span>
-                  <span className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Montant net à recevoir:</span>
-                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                    {CURRENCIES[walletCurrency]?.symbol || '$'}{(parseFloat(formData.amount) - withdrawalFee).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-              {feeDetails.note && (
-                <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <span className="font-medium">Note:</span> {feeDetails.note}
-                </p>
-              )}
-            </div>
-          )}
-          
-          {otpSent && (
-            <div className="mb-4 fade-in">
-              <label className="input-label dark:text-gray-200">
-                Code OTP <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Entrez le code reçu par SMS"
-                className="input-field"
-                required
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Code envoyé au {formData.phoneNumber}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={resendLoading}
-                  className="text-primary-500 text-sm hover:underline focus:outline-none"
-                >
-                  {resendLoading ? (
-                    <span className="flex items-center">
-                      <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
-                      Envoi...
-                    </span>
-                  ) : (
-                    'Renvoyer le code'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!otpSent && formData.fullName && formData.address && formData.city && formData.country && formData.idNumber && formData.amount && (
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={resendLoading || !formData.fullName || !formData.address || !formData.city || !formData.country || !formData.idNumber || !formData.amount}
-                className="btn-primary w-full"
-              >
-                {resendLoading ? (
-                  <span className="flex items-center justify-center">
-                    <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                    Envoi du code...
-                  </span>
-                ) : (
-                  'Recevoir le code OTP'
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    return null;
   };
 
   const renderPaymentMethodCards = () => {
     return (
-      <div className="grid grid-cols-2 gap-3">
-        {Object.keys(paymentMethods).map((method) => (
-          <button
-            key={method}
-            type="button"
-            onClick={() => {
-              setSelectedMethod(method);
-              setSelectedOption('');
-              setOtpSent(false);
-              setOtp('');
-            }}
-            className={`method-card flex items-center gap-3 ${
-              selectedMethod === method ? 'selected' : ''
-            }`}
-          >
-            {React.createElement(paymentMethods[method].icon, {
-              className: `h-5 w-5 ${
-                selectedMethod === method
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {Object.keys(filteredPaymentTypes).map(typeKey => {
+          const type = filteredPaymentTypes[typeKey];
+          const methodInfo = paymentMethodsMap[type];
+          
+          if (!methodInfo) return null;
+          
+          const Icon = methodInfo.icon;
+          
+          return (
+            <button
+              key={type}
+              type="button"
+              className={`method-card flex items-center p-4 ${
+                selectedType === type ? 'selected' : ''
+              } ${
+                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}
+              onClick={() => {
+                setSelectedType(type);
+                setSelectedMethod(methodInfo);
+                setSelectedPaymentOption(null); // Réinitialiser l'option spécifique
+              }}
+            >
+              <Icon className={`h-6 w-6 mr-3 ${
+                selectedType === type
                   ? 'text-primary-500'
                   : isDarkMode
-                    ? 'text-gray-400'
-                    : 'text-gray-500'
-              }`
-            })}
-            <span className={`text-sm font-medium ${
-              selectedMethod === method
-                ? 'text-primary-500'
-                : isDarkMode
-                  ? 'text-gray-300'
-                  : 'text-gray-700'
-            }`}>
-              {paymentMethods[method].name}
-            </span>
-          </button>
-        ))}
+                    ? 'text-gray-300'
+                    : 'text-gray-700'
+              }`} />
+              <span className={`font-medium ${
+                selectedType === type
+                  ? 'text-primary-500'
+                  : isDarkMode
+                    ? 'text-gray-300'
+                    : 'text-gray-700'
+              }`}>
+                {methodInfo.name}
+              </span>
+            </button>
+          );
+        })}
       </div>
     );
   };
@@ -1416,7 +783,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                       Solde disponible:
                     </span>
                     <span className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {CURRENCIES[walletCurrency]?.symbol || '$'}{walletBalance.toFixed(2)} {walletCurrency}
+                      {walletData?.balance.toFixed(2)} $
                     </span>
                   </div>
                 </div>
@@ -1431,146 +798,523 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                   {renderPaymentMethodCards()}
                 </div>
 
-                {/* Options de Mobile Money */}
-                {selectedMethod === 'mobileMoney' && (
-                  <div className="mb-6 slide-in">
-                    <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Sélectionnez un opérateur
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {paymentMethods[selectedMethod].options.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setSelectedOption(option.id)}
-                          className={`method-card flex items-center gap-3 ${
-                            selectedOption === option.id ? 'selected' : ''
-                          }`}
-                        >
-                          <PhoneIcon className={`h-5 w-5 ${
-                            selectedOption === option.id
-                              ? 'text-primary-500'
-                              : isDarkMode
-                                ? 'text-gray-400'
-                                : 'text-gray-500'
-                          }`} />
-                          <span className={`text-sm font-medium ${
-                            selectedOption === option.id
-                              ? 'text-primary-500'
-                              : isDarkMode
-                                ? 'text-gray-300'
-                                : 'text-gray-700'
-                          }`}>
-                            {option.name}
-                          </span>
-                        </button>
-                      ))}
+                {/* Sélection du pays - commun à tous les types de paiement */}
+                <div className="mb-4">
+                  <label className="input-label dark:text-gray-200">
+                    Pays <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="country"
+                      value={formData.country}
+                      onChange={(e) => {
+                        // Trouver l'indicatif téléphonique correspondant au pays sélectionné
+                        const selectedCountry = countries.find(c => c.code === e.target.value);
+                        setFormData({
+                          ...formData,
+                          country: e.target.value,
+                          phoneCode: selectedCountry ? selectedCountry.phoneCode : '+243'
+                        });
+                      }}
+                      className="input-field pl-10"
+                      required
+                    >
+                      {countries.map(country => {
+                        // Trouver l'indicatif téléphonique du pays
+                        const phoneCode = country.phoneCode || '';
+                        return (
+                          <option key={country.code} value={country.code}>
+                            {country.name} ({phoneCode})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                      {formData.country && (
+                        <img
+                          src={`https://flagcdn.com/${formData.country.toLowerCase()}.svg`}
+                          alt={formData.country}
+                          className="w-5 h-auto"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'inline';
+                          }}
+                        />
+                      )}
+                      <span style={{ display: 'none' }}>
+                        {getFlagEmoji(formData.country)}
+                      </span>
                     </div>
                   </div>
-                )}
-
-                {/* Options de Money Transfer */}
-                {selectedMethod === 'moneyTransfer' && (
-                  <div className="mb-6 slide-in">
-                    <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Sélectionnez un service
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {paymentMethods[selectedMethod].options.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setSelectedOption(option.id)}
-                          className={`method-card flex items-center gap-3 ${
-                            selectedOption === option.id ? 'selected' : ''
-                          }`}
-                        >
-                          <ArrowPathIcon className={`h-5 w-5 ${
-                            selectedOption === option.id
-                              ? 'text-primary-500'
-                              : isDarkMode
-                                ? 'text-gray-400'
-                                : 'text-gray-500'
-                          }`} />
-                          <span className={`text-sm font-medium ${
-                            selectedOption === option.id
-                              ? 'text-primary-500'
-                              : isDarkMode
-                                ? 'text-gray-300'
-                                : 'text-gray-700'
-                          }`}>
-                            {option.name}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {/* Champs du formulaire */}
-                {selectedMethod && (
+                {selectedType && (
                   <div className="mb-6 slide-in">
-                    {renderFields()}
+                    {selectedType === PAYMENT_TYPES.MOBILE_MONEY && (
+                      <div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Numéro de téléphone <span className="text-red-500">*</span>
+                          </label>
+                          <div className="flex">
+                            <div className="flex-none w-24 bg-gray-100 dark:bg-gray-700 rounded-l-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                              {formData.phoneCode}
+                            </div>
+                            <input
+                              type="tel"
+                              name="phoneNumber"
+                              value={formData.phoneNumber}
+                              onChange={(e) => {
+                                // Ne garder que les chiffres
+                                const value = e.target.value.replace(/\D/g, '');
+                                setFormData({ ...formData, phoneNumber: value });
+                              }}
+                              placeholder="Numéro sans indicatif"
+                              className="flex-1 input-field rounded-l-none border-l-0"
+                              required
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Exemple: pour {formData.phoneCode} 123456789
+                          </p>
+                          {formData.phoneNumber && !validatePhoneNumber(formData.phoneNumber, formData.country) && (
+                            <p className="text-xs text-red-500 font-medium mt-1 animate-pulse">
+                              Numéro de téléphone invalide pour le pays sélectionné.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedType === PAYMENT_TYPES.BANK_TRANSFER && (
+                      <div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Nom de la banque <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="bankName"
+                            value={formData.bankName}
+                            onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                            placeholder="Nom de la banque"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Numéro de compte <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="accountNumber"
+                            value={formData.accountNumber}
+                            onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                            placeholder="Numéro de compte"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Nom du titulaire du compte <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="accountName"
+                            value={formData.accountName}
+                            onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                            placeholder="Nom du titulaire du compte"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Code SWIFT <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="swiftCode"
+                            value={formData.swiftCode}
+                            onChange={(e) => setFormData({ ...formData, swiftCode: e.target.value })}
+                            placeholder="Code SWIFT"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            IBAN
+                          </label>
+                          <input
+                            type="text"
+                            name="iban"
+                            value={formData.iban}
+                            onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                            placeholder="IBAN"
+                            className="input-field"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedType === PAYMENT_TYPES.CREDIT_CARD && (
+                      <div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Numéro de carte <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="accountNumber"
+                            value={formatCreditCardNumber(formData.accountNumber)}
+                            onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value.replace(/\D/g, '') })}
+                            placeholder="XXXX XXXX XXXX XXXX"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Nom du titulaire de la carte <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="accountName"
+                            value={formData.accountName}
+                            onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                            placeholder="Nom du titulaire de la carte"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedType === PAYMENT_TYPES.MONEY_TRANSFER && (
+                      <div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Nom complet <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="fullName"
+                            value={formData.fullName}
+                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                            placeholder="Nom complet"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Ville <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="recipientCity"
+                            value={formData.recipientCity}
+                            onChange={(e) => setFormData({ ...formData, recipientCity: e.target.value })}
+                            placeholder="Ville"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Type de pièce d'identité <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="idType"
+                            value={formData.idType}
+                            onChange={(e) => setFormData({ ...formData, idType: e.target.value })}
+                            placeholder="Type de pièce d'identité"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Numéro de pièce d'identité <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="idNumber"
+                            value={formData.idNumber}
+                            onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+                            placeholder="Numéro de pièce d'identité"
+                            className="input-field"
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label className="input-label dark:text-gray-200">
+                            Numéro de téléphone <span className="text-red-500">*</span>
+                          </label>
+                          <div className="flex">
+                            <div className="flex-none w-24 bg-gray-100 dark:bg-gray-700 rounded-l-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                              {formData.phoneCode}
+                            </div>
+                            <input
+                              type="tel"
+                              name="phoneNumber"
+                              value={formData.phoneNumber}
+                              onChange={(e) => {
+                                // Ne garder que les chiffres
+                                const value = e.target.value.replace(/\D/g, '');
+                                setFormData({ ...formData, phoneNumber: value });
+                              }}
+                              placeholder="Numéro sans indicatif"
+                              className="flex-1 input-field rounded-l-none border-l-0"
+                              required
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Exemple: pour {formData.phoneCode} 123456789
+                          </p>
+                          {formData.phoneNumber && !validatePhoneNumber(formData.phoneNumber, formData.country) && (
+                            <p className="text-xs text-red-500 font-medium mt-1 animate-pulse">
+                              Numéro de téléphone invalide pour le pays sélectionné.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="mb-4">
+                      <label className="input-label dark:text-gray-200">
+                        Montant <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex items-center">
+                        <span className="text-gray-500 dark:text-gray-400 mr-2">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          name="amount"
+                          value={formData.amount}
+                          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                          className="input-field flex-1"
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Solde disponible: {walletData?.balance.toFixed(2)} $
+                      </p>
+                      {formData.amount && parseFloat(formData.amount) > 0 && (parseFloat(formData.amount) + withdrawalFee + referralCommission) > walletData?.balance && (
+                        <p className="text-xs text-red-500 font-medium mt-1 animate-pulse">
+                          Solde insuffisant. Le montant total (montant + frais + commission) dépasse votre solde disponible.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="input-label dark:text-gray-200">
+                        Devise souhaitée pour recevoir l'argent
+                      </label>
+                      <select
+                        name="currency"
+                        value={formData.currency}
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        className="input-field w-full"
+                      >
+                        {Object.keys(CURRENCIES).map((currencyCode) => (
+                          <option key={currencyCode} value={currencyCode}>
+                            {CURRENCIES[currencyCode].name} ({CURRENCIES[currencyCode].symbol})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Options de paiement spécifiques */}
+                    {selectedMethod && selectedMethod.options && (
+                      <div className="mb-6 slide-in">
+                        <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Sélectionnez une option
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {selectedMethod.options.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={`method-card flex items-center gap-3 ${
+                                selectedPaymentOption === option.id ? 'selected' : ''
+                              }`}
+                              onClick={() => setSelectedPaymentOption(option.id)}
+                            >
+                              <span className={`text-sm font-medium ${
+                                selectedPaymentOption === option.id
+                                  ? 'text-primary-500'
+                                  : isDarkMode
+                                    ? 'text-gray-300'
+                                    : 'text-gray-700'
+                              }`}>
+                                {option.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {showOtpField && (
+                      <div className="mb-4 fade-in">
+                        <label className="input-label dark:text-gray-200">
+                          Code OTP <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.otpCode}
+                          onChange={(e) => setFormData({ ...formData, otpCode: e.target.value })}
+                          placeholder="Entrez le code reçu"
+                          className="input-field"
+                          required
+                        />
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Code envoyé {formData.phoneNumber ? `au ${formData.phoneNumber}` : 'à votre adresse email'}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={loading}
+                            className="text-primary-500 text-sm hover:underline focus:outline-none"
+                          >
+                            {loading ? (
+                              <span className="flex items-center">
+                                <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
+                                Envoi...
+                              </span>
+                            ) : (
+                              'Renvoyer le code'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!showOtpField && selectedPaymentOption && formData.amount && parseFloat(formData.amount) > 0 && (
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={handleSendOtp}
+                          disabled={loading || !isOtpEnabled()}
+                          className="btn-primary w-full"
+                        >
+                          {loading ? (
+                            <span className="flex items-center justify-center">
+                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                              Envoi du code...
+                            </span>
+                          ) : (
+                            'Recevoir le code OTP'
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Résumé de la transaction */}
+                    {selectedPaymentOption && formData.amount && parseFloat(formData.amount) > 0 && (
+                      <div className={`mt-6 p-4 rounded-lg summary-card ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Résumé de la transaction
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Montant à retirer:</span>
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {parseFloat(formData.amount).toFixed(2)} $
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Frais de retrait ({feePercentage.toFixed(1)}%):</span>
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {withdrawalFee.toFixed(2)} $
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Commission parrainage (5%):</span>
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {referralCommission.toFixed(2)} $
+                            </span>
+                          </div>
+                          <div className="border-t border-dashed my-2"></div>
+                          <div className="flex justify-between">
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total à débiter:</span>
+                            <span className={`${isDarkMode ? 'text-red-400' : 'text-red-600'} font-bold`}>
+                              {(parseFloat(formData.amount) + withdrawalFee + referralCommission).toFixed(2)} $
+                            </span>
+                          </div>
+                          
+                          {/* Information sur la commission du parrain */}
+                          <div className="mt-4 pt-3 border-t border-dashed">
+                            <div className="flex items-start">
+                              <UserGroupIcon className={`h-5 w-5 mr-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                              <div>
+                                <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  Commission parrainage
+                                </p>
+                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  Votre parrain direct recevra 5% du montant demandé, soit {referralCommission.toFixed(2)} $
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Bouton de rechargement des frais en cas d'erreur */}
+                          {feesError && (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={calculateFeesAsync}
+                                className="flex items-center justify-center w-full py-2 px-3 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
+                              >
+                                <ArrowPathIcon className="h-4 w-4 mr-2" />
+                                Recalculer les frais
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 
-                {/* Résumé de la transaction */}
-                {selectedMethod && formData.amount && parseFloat(formData.amount) > 0 && (
-                  <div className={`mt-6 p-4 rounded-lg summary-card ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                    <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Résumé de la transaction
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Montant prélevé:</span>
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                          {CURRENCIES[walletCurrency]?.symbol || '$'}{parseFloat(formData.amount).toFixed(2)} {walletCurrency}
+                {/* Pied de page */}
+                <div className={`sticky bottom-0 z-10 p-4 border-t ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="btn-secondary"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      form="withdrawalForm"
+                      disabled={loading || !isSubmitEnabled()}
+                      className={`btn-primary ${isSubmitEnabled() && !loading ? 'pulse' : ''}`}
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center">
+                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                          Traitement...
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Frais ({feePercentage.toFixed(1)}%):</span>
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                          {CURRENCIES[walletCurrency]?.symbol || '$'}{withdrawalFee.toFixed(2)} {walletCurrency}
-                        </span>
-                      </div>
-                      <div className="border-t border-dashed my-2"></div>
-                      <div className="flex justify-between">
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Montant à recevoir:</span>
-                        <span className={`${isDarkMode ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                          {CURRENCIES[walletCurrency]?.symbol || '$'}{(parseFloat(formData.amount) - withdrawalFee).toFixed(2)} {walletCurrency}
-                        </span>
-                      </div>
-                    </div>
+                      ) : (
+                        'Confirmer le retrait'
+                      )}
+                    </button>
                   </div>
-                )}
-              </form>
-
-              <div className={`sticky bottom-0 z-10 p-4 border-t ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn-secondary"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    form="withdrawalForm"
-                    disabled={loading || !formIsValid}
-                    className={`btn-primary ${formIsValid && !loading ? 'pulse' : ''}`}
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center">
-                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                        Traitement...
-                      </span>
-                    ) : (
-                      'Confirmer le retrait'
-                    )}
-                  </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
