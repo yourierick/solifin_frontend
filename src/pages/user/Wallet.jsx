@@ -5,6 +5,7 @@ import Notification from '../../components/Notification';
 import WithdrawalForm from '../../components/WithdrawalForm';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { createPortal } from 'react-dom';
 import {
   PhoneIcon,
   CreditCardIcon,
@@ -104,6 +105,41 @@ const getStatusText = (status) => {
   }
 };
 
+const formatDate = (dateString) => {
+  if (!dateString) return 'Non disponible';
+  
+  try {
+    // Si la date est déjà au format français avec heure (JJ/MM/AAAA HH:MM:SS)
+    if (typeof dateString === 'string' && dateString.includes('/')) {
+      // Extraire seulement la partie date (JJ/MM/AAAA)
+      const dateParts = dateString.split(' ');
+      if (dateParts.length > 0) {
+        return dateParts[0]; // Retourne seulement la partie date
+      }
+      return dateString;
+    }
+    
+    // Essayer de créer une date valide
+    const date = new Date(dateString);
+    
+    // Vérifier si la date est valide
+    if (isNaN(date.getTime())) {
+      console.error('Date invalide:', dateString);
+      return 'Format de date invalide';
+    }
+    
+    // Formater la date en français sans l'heure
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Erreur de formatage de date:', error, dateString);
+    return 'Erreur de date';
+  }
+};
+
 export default function Wallets() {
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -120,6 +156,8 @@ export default function Wallets() {
   const [showFilters, setShowFilters] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [withdrawalToCancel, setWithdrawalToCancel] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
 
   useEffect(() => {
     fetchWalletData();
@@ -169,7 +207,7 @@ export default function Wallets() {
 
   const getTransactionStatusColor = (status) => {
     switch (status.toLowerCase()) {
-      case 'completed':
+      case 'approved':
         return isDarkMode 
           ? 'bg-green-900/50 text-green-300' 
           : 'bg-green-100 text-green-800';
@@ -177,14 +215,14 @@ export default function Wallets() {
         return isDarkMode 
           ? 'bg-yellow-900/50 text-yellow-300' 
           : 'bg-yellow-100 text-yellow-800';
+      case 'rejected':
+        return isDarkMode 
+          ? 'bg-red-900/50 text-red-300' 
+          : 'bg-red-100 text-red-800';
       case 'cancelled':
         return isDarkMode 
           ? 'bg-gray-900/50 text-gray-300' 
           : 'bg-gray-100 text-gray-800';
-      case 'failed':
-        return isDarkMode 
-          ? 'bg-red-900/50 text-red-300' 
-          : 'bg-red-100 text-red-800';
       default:
         return isDarkMode 
           ? 'bg-gray-900/50 text-gray-300' 
@@ -231,6 +269,11 @@ export default function Wallets() {
     }
   };
 
+  const handleTransactionClick = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowTransactionDetails(true);
+  };
+
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = JSON.stringify(transaction.metadata)
       .toLowerCase()
@@ -239,8 +282,73 @@ export default function Wallets() {
     const matchesStatus = statusFilter === 'all' || transaction.status.toLowerCase() === statusFilter;
     const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
     
-    const matchesDate = (!dateFilter.startDate || new Date(transaction.created_at) >= new Date(dateFilter.startDate)) &&
-      (!dateFilter.endDate || new Date(transaction.created_at) <= new Date(dateFilter.endDate));
+    // Amélioration du filtrage par date
+    let matchesDate = true;
+    
+    if (dateFilter.startDate || dateFilter.endDate) {
+      try {
+        // Convertir la date de transaction en objet Date
+        let transactionDate;
+        
+        if (typeof transaction.created_at === 'string') {
+          // Si la date est au format "JJ/MM/AAAA HH:MM:SS" (format français)
+          if (transaction.created_at.includes('/')) {
+            const parts = transaction.created_at.split('/');
+            if (parts.length === 3) {
+              // Format JJ/MM/AAAA
+              const day = parseInt(parts[0], 10);
+              const month = parseInt(parts[1], 10) - 1; // Les mois commencent à 0 en JavaScript
+              
+              // Extraire l'année et l'heure si présente
+              let year, time;
+              if (parts[2].includes(' ')) {
+                [year, time] = parts[2].split(' ');
+                year = parseInt(year, 10);
+              } else {
+                year = parseInt(parts[2], 10);
+              }
+              
+              transactionDate = new Date(year, month, day);
+            } else {
+              transactionDate = new Date(transaction.created_at);
+            }
+          } else {
+            // Format standard ISO
+            transactionDate = new Date(transaction.created_at);
+          }
+        } else {
+          transactionDate = new Date(transaction.created_at);
+        }
+        
+        // Convertir les dates de filtre en objets Date
+        // Pour la date de début, on définit l'heure à 00:00:00
+        let startDate = null;
+        if (dateFilter.startDate) {
+          startDate = new Date(dateFilter.startDate);
+          startDate.setHours(0, 0, 0, 0);
+        }
+        
+        // Pour la date de fin, on définit l'heure à 23:59:59
+        let endDate = null;
+        if (dateFilter.endDate) {
+          endDate = new Date(dateFilter.endDate);
+          endDate.setHours(23, 59, 59, 999);
+        }
+        
+        // Vérifier si la date de transaction est dans la plage
+        matchesDate = (!startDate || transactionDate >= startDate) &&
+                      (!endDate || transactionDate <= endDate);
+                      
+        console.log('Transaction date:', transactionDate);
+        console.log('Start date:', startDate);
+        console.log('End date:', endDate);
+        console.log('Matches date:', matchesDate);
+        
+      } catch (error) {
+        console.error('Erreur lors du filtrage par date:', error);
+        matchesDate = false;
+      }
+    }
     
     return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
@@ -407,9 +515,9 @@ export default function Wallets() {
                 >
                   <option value="all">Tous les statuts</option>
                   <option value="pending">En attente</option>
-                  <option value="completed">Complété</option>
+                  <option value="approved">Approuvé</option>
+                  <option value="rejected">Refusé</option>
                   <option value="cancelled">Annulé</option>
-                  <option value="failed">Échoué</option>
                 </select>
               </div>
 
@@ -424,9 +532,9 @@ export default function Wallets() {
                   }`}
                 >
                   <option value="all">Tous les types</option>
-                  <option value="transfer">Vente</option>
+                  <option value="transfer">Achat</option>
                   <option value="withdrawal">Retrait</option>
-                  <option value="commission">Paiement</option>
+                  <option value="commission">Commissions</option>
                 </select>
               </div>
 
@@ -500,12 +608,13 @@ export default function Wallets() {
                   {currentTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
-                      className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
+                      className={`${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors duration-150`}
+                      onClick={() => handleTransactionClick(transaction)}
                     >
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         isDarkMode ? 'text-gray-200' : 'text-gray-900'
                       }`}>
-                        {transaction.type}
+                        {transaction.type === "withdrawal" ? "Retrait" : transaction.type === "transfer" ? "Achat" : "Commission"}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         transaction.type === 'withdrawal' || transaction.type === 'transfer' ? 'text-red-500' : 'text-green-500'
@@ -568,7 +677,7 @@ export default function Wallets() {
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         isDarkMode ? 'text-gray-200' : 'text-gray-900'
                       }`}>
-                        {transaction.created_at}
+                        {formatDate(transaction.created_at)}
                       </td>
                       {hasActionableTransactions && (
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -684,6 +793,174 @@ export default function Wallets() {
         </div>
       )}
 
+      {/* Modal de détails de transaction */}
+      {showTransactionDetails && selectedTransaction && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
+             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}>
+          <div className={`relative p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-xl font-medium ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Détails de la transaction
+              </h3>
+              <button
+                onClick={() => setShowTransactionDetails(false)}
+                className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} overflow-y-auto max-h-[60vh]`}>
+              {/* Informations principales */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ID de transaction</p>
+                  <p className="font-medium">{selectedTransaction.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Type de transaction</p>
+                  <p className="font-medium capitalize">{selectedTransaction.type === "withdrawal" ? "retrait": selectedTransaction.type === "transfer" ? "virement" : "commission"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Montant de la transaction</p>
+                  <p className={`font-medium ${
+                    selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'transfer' 
+                      ? 'text-red-500' 
+                      : 'text-green-500'
+                  }`}>
+                    {selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'transfer' ? '-' : '+'}
+                    {selectedTransaction.amount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Statut de la transaction</p>
+                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    getTransactionStatusColor(selectedTransaction.status)
+                  }`}>
+                    {selectedTransaction.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date de la transaction</p>
+                  <p className="font-medium">
+                    {formatDate(selectedTransaction.created_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière mise à jour</p>
+                  <p className="font-medium">
+                    {formatDate(selectedTransaction.updated_at)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Métadonnées */}
+              {selectedTransaction.metadata && Object.keys(selectedTransaction.metadata).length > 0 && (
+                <div>
+                  <h4 className={`text-lg font-medium mb-2 ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Informations supplémentaires
+                  </h4>
+                  <div className={`p-4 rounded-lg ${
+                    isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                  }`}>
+                    {Object.entries(selectedTransaction.metadata).map(([key, value]) => {
+                      // Traduire les clés en français
+                      const frenchLabels = {
+                        'withdrawal_request_id': 'Identifiant de la demande de retrait',
+                        'payment_method': 'Méthode de paiement',
+                        'montant_a_retirer': 'Montant à retirer',
+                        'fee_percentage': 'Pourcentage de frais',
+                        'frais_de_retrait': 'Frais de retrait',
+                        'frais_de_commission': 'Frais de commission',
+                        'montant_total_a_payer': 'Montant total à payer',
+                        'devise': 'Dévise choisie pour le retrait',
+                        'payment_details': 'Détails du paiement',
+                        'status': 'Statut',
+                        'source': 'Source',
+                        'type': 'Type',
+                        'amount': 'Montant',
+                        'currency': 'Devise',
+                        'description': 'Description',
+                        'reference': 'Référence'
+                      };
+                      
+                      const label = frenchLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                      
+                      // Formater la valeur selon son type
+                      let formattedValue = value;
+                      
+                      // Traduction des statuts
+                      if (key === 'status' || key.endsWith('_status')) {
+                        if (value === 'pending') formattedValue = 'En attente';
+                        else if (value === 'approved') formattedValue = 'Approuvé';
+                        else if (value === 'rejected') formattedValue = 'Rejeté';
+                        else if (value === 'cancelled' || value === 'canceled') formattedValue = 'Annulé';
+                        else if (value === 'completed') formattedValue = 'Complété';
+                        else if (value === 'failed') formattedValue = 'Échoué';
+                      }
+                      
+                      // Ajout de symboles pour les valeurs monétaires
+                      if (
+                        key === 'amount' || 
+                        key === 'montant_a_retirer' || 
+                        key === 'frais_de_retrait' || 
+                        key === 'frais_de_commission' || 
+                        key === 'montant_total_a_payer' ||
+                        key.includes('montant') ||
+                        key.includes('amount')
+                      ) {
+                        formattedValue = `${value} $`;
+                      }
+                      
+                      // Ajout de symboles pour les pourcentages
+                      if (
+                        key === 'fee_percentage' || 
+                        key.includes('percentage') || 
+                        key.includes('pourcentage')
+                      ) {
+                        formattedValue = `${value} %`;
+                      }
+                      
+                      return (
+                        <div key={key} className="mb-2">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">
+                            {label}
+                          </p>
+                          <p className="font-medium break-words">
+                            {typeof formattedValue === 'object' 
+                              ? JSON.stringify(formattedValue, null, 2) 
+                              : String(formattedValue)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowTransactionDetails(false)}
+                className={`px-4 py-2 rounded-md ${
+                  isDarkMode 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Modal de retrait */}
       {showWithdrawalForm && (
         <div 

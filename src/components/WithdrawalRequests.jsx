@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from 'axios';
 import Notification from './Notification';
+import FullScreenModal from './FullScreenModal';
+import ConfirmationModal from './ConfirmationModal';
 import {
   XMarkIcon,
   ClockIcon,
@@ -10,7 +12,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EyeIcon,
-  TrashIcon
+  TrashIcon,
+  CheckIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 export default function WithdrawalRequests() {
@@ -21,6 +25,8 @@ export default function WithdrawalRequests() {
   const [requestsPerPage] = useState(5);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState(null);
   const [adminNote, setAdminNote] = useState('');
   const [processingAction, setProcessingAction] = useState(false);
   const [walletSystemBalance, setWalletSystemBalance] = useState(0);
@@ -29,11 +35,27 @@ export default function WithdrawalRequests() {
     fetchRequests();
   }, []);
 
+  useEffect(() => {
+    if (showModal) {
+      // Empêcher le défilement du body
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Réactiver le défilement du body
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Nettoyer l'effet lors du démontage du composant
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [showModal]);
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/admin/withdrawal/requests');
       if (response.data.success) {
+        console.log(response.data);
         setRequests(response.data.requests);
         setWalletSystemBalance(response.data.wallet_system_balance || 0);
       }
@@ -45,11 +67,10 @@ export default function WithdrawalRequests() {
   };
 
   const handleDelete = async (requestId) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
-      return;
-    }
+    if (!requestId) return;
     
     try {
+      setProcessingAction(true);
       const response = await axios.delete(`/api/admin/withdrawal/requests/${requestId}`);
       if (response.data.success) {
         Notification.success('Demande supprimée avec succès');
@@ -57,6 +78,8 @@ export default function WithdrawalRequests() {
       }
     } catch (error) {
       Notification.error('Erreur lors de la suppression de la demande');
+    } finally {
+      setProcessingAction(false);
     }
   };
 
@@ -66,12 +89,12 @@ export default function WithdrawalRequests() {
     setShowModal(true);
   };
 
-  const handleApprove = async () => {
-    if (!selectedRequest) return;
+  const handleApprove = async (requestId) => {
+    if (!requestId) return;
     
     try {
       setProcessingAction(true);
-      const response = await axios.post(`/api/admin/withdrawal/requests/${selectedRequest.id}/approve`, {
+      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/approve`, {
         admin_note: adminNote
       });
       
@@ -87,12 +110,12 @@ export default function WithdrawalRequests() {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedRequest) return;
+  const handleReject = async (requestId) => {
+    if (!requestId) return;
     
     try {
       setProcessingAction(true);
-      const response = await axios.post(`/api/admin/withdrawal/requests/${selectedRequest.id}/reject`, {
+      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/reject`, {
         admin_note: adminNote
       });
       
@@ -105,6 +128,20 @@ export default function WithdrawalRequests() {
       Notification.error('Erreur lors du rejet de la demande');
     } finally {
       setProcessingAction(false);
+    }
+  };
+
+  const handleSaveNote = async (requestId) => {
+    try {
+      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/note`, {
+        admin_note: adminNote
+      });
+      
+      if (response.data.success) {
+        Notification.success('Note enregistrée avec succès');
+      }
+    } catch (error) {
+      Notification.error('Erreur lors de l\'enregistrement de la note');
     }
   };
 
@@ -276,11 +313,14 @@ export default function WithdrawalRequests() {
                       </button>
                       {request.status === 'pending' && (
                         <button
-                          onClick={() => handleDelete(request.id)}
+                          onClick={() => {
+                            setRequestToDelete(request);
+                            setShowDeleteConfirmation(true);
+                          }}
                           className={`inline-flex items-center px-3 py-1 border text-sm leading-4 font-medium rounded-md ${
                             isDarkMode 
                               ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
-                              : 'border-red-300 text-red-700 hover:bg-red-100'
+                              : 'border-red-300 text-red-700 hover:bg-gray-100'
                           }`}
                         >
                           <TrashIcon className="h-4 w-4 mr-1" />
@@ -348,213 +388,445 @@ export default function WithdrawalRequests() {
         </div>
       )}
 
-      {/* Modal de détails de la demande */}
-      {showModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`max-w-lg w-full rounded-lg shadow-xl ${
-            isDarkMode ? 'bg-gray-800' : 'bg-white'
-          } p-6 relative max-h-[90vh] overflow-y-auto`}>
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-            
-            <h2 className={`text-xl font-semibold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
+      <FullScreenModal
+        isOpen={showModal && selectedRequest !== null}
+        onClose={() => setShowModal(false)}
+        title="Détails de la demande"
+        isDarkMode={isDarkMode}
+      >
+        {selectedRequest && (
+          <>
+            {/* Informations de base */}
+            <div className={`mb-6 p-4 rounded-lg ${
+              isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
             }`}>
-              Détails de la demande
-            </h2>
-            
-            <div className="space-y-4">
-              {/* Informations utilisateur et détails de la demande */}
-              <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Utilisateur:
-                  </span>
-                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                    {selectedRequest.user_name}
-                  </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Identifiant
+                  </p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    #{selectedRequest.id}
+                  </p>
                 </div>
-                
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Balance wallet:
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Montant
+                  </p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedRequest.amount} $
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Date
+                  </p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {new Date(selectedRequest.created_at).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Statut
+                  </p>
+                  <div className="flex items-center">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      selectedRequest.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : selectedRequest.status === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedRequest.status === 'rejected'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedRequest.status === 'pending' && (
+                        <ClockIcon className="h-3 w-3 mr-1" />
+                      )}
+                      {selectedRequest.status === 'approved' && (
+                        <CheckIcon className="h-3 w-3 mr-1" />
+                      )}
+                      {selectedRequest.status === 'rejected' && (
+                        <XMarkIcon className="h-3 w-3 mr-1" />
+                      )}
+                      {selectedRequest.status === 'pending'
+                        ? 'En attente'
+                        : selectedRequest.status === 'approved'
+                        ? 'Approuvée'
+                        : selectedRequest.status === 'rejected'
+                        ? 'Rejetée'
+                        : selectedRequest.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Informations utilisateur */}
+            <div className="mb-6">
+              <h3 className={`text-lg font-medium mb-3 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Informations utilisateur
+              </h3>
+              <div className={`p-4 rounded-lg ${
+                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+              }`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Nom
+                    </p>
+                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRequest.user_name || 'Non spécifié'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Email
+                    </p>
+                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRequest.user.email || 'Non spécifié'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Téléphone
+                    </p>
+                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRequest.user.phone || 'Non spécifié'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      ID Utilisateur
+                    </p>
+                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRequest.user.account_id || 'Non spécifié'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Solde actuel
+                    </p>
+                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedRequest.wallet_balance || '0'} $
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Détails de paiement */}
+            <div className="mb-6">
+              <h3 className={`text-lg font-medium mb-3 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Détails de paiement
+              </h3>
+              <div className={`p-4 rounded-lg ${
+                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+              }`}>
+                {selectedRequest.payment_details && Object.keys(selectedRequest.payment_details).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(selectedRequest.payment_details).map(([key, value]) => {
+                      // Ignorer les clés qui contiennent "url" ou "link"
+                      if (key.toLowerCase().includes('url') || key.toLowerCase().includes('link')) {
+                        return null;
+                      }
+
+                      // Traduire les clés techniques en libellés plus lisibles
+                      const getTranslatedKey = (key) => {
+                        const translations = {
+                          'type': 'Type de paiement',
+                          'phone_number': 'Numéro de téléphone',
+                          'account_number': 'Numéro de compte',
+                          'bank_name': 'Nom de la banque',
+                          'bank_code': 'Code de la banque',
+                          'branch_code': 'Code de l\'agence',
+                          'iban': 'IBAN',
+                          'swift_bic': 'Code SWIFT/BIC',
+                          'account_holder': 'Titulaire du compte',
+                          'email': 'Email PayPal',
+                          'amount': 'Montant',
+                          'fee': 'Frais',
+                          'total': 'Total',
+                          'commission': 'Commission',
+                          'percentage': 'Pourcentage',
+                          'country': 'Pays',
+                          'currency': 'Devise',
+                          'mobile_money_provider': 'Fournisseur Mobile Money',
+                          'mobile_money_number': 'Numéro Mobile Money',
+                          'card_number': 'Numéro de carte',
+                          'card_holder': 'Titulaire de la carte',
+                          'expiry_date': 'Date d\'expiration',
+                          'cvv': 'CVV',
+                          'address': 'Adresse',
+                          'city': 'Ville',
+                          'state': 'État/Province',
+                          'postal_code': 'Code postal',
+                          'country_code': 'Code pays',
+                          'routing_number': 'Numéro de routage',
+                          'account_type': 'Type de compte',
+                          'wallet_address': 'Adresse de portefeuille',
+                          'wallet_type': 'Type de portefeuille',
+                          'network': 'Réseau',
+                          'memo': 'Mémo',
+                          'tag': 'Tag',
+                          'note': 'Note',
+                          'reference': 'Référence',
+                          'description': 'Description',
+                          'payment_method': 'Méthode de paiement',
+                          'payment_type': 'Type de paiement',
+                          'payment_details': 'Détails du paiement',
+                          'payment_status': 'Statut du paiement',
+                          'payment_date': 'Date du paiement',
+                          'payment_id': 'ID du paiement',
+                          'transaction_id': 'ID de transaction',
+                          'transaction_date': 'Date de transaction',
+                          'transaction_status': 'Statut de la transaction',
+                          'transaction_type': 'Type de transaction',
+                          'transaction_reference': 'Référence de transaction',
+                          'transaction_description': 'Description de la transaction',
+                          'transaction_note': 'Note de transaction',
+                          'transaction_memo': 'Mémo de transaction',
+                          'transaction_tag': 'Tag de transaction',
+                          'transaction_amount': 'Montant de la transaction',
+                          'transaction_fee': 'Frais de transaction',
+                          'transaction_total': 'Total de la transaction',
+                          'transaction_commission': 'Commission de transaction',
+                          'transaction_percentage': 'Pourcentage de transaction',
+                          'transaction_currency': 'Devise de la transaction',
+                          'transaction_country': 'Pays de la transaction',
+                          'transaction_country_code': 'Code pays de la transaction',
+                          'transaction_address': 'Adresse de transaction',
+                          'transaction_city': 'Ville de transaction',
+                          'transaction_state': 'État/Province de transaction',
+                          'transaction_postal_code': 'Code postal de transaction',
+                          'transaction_routing_number': 'Numéro de routage de transaction',
+                          'transaction_account_number': 'Numéro de compte de transaction',
+                          'transaction_account_type': 'Type de compte de transaction',
+                          'transaction_account_holder': 'Titulaire du compte de transaction',
+                          'transaction_bank_name': 'Nom de la banque de transaction',
+                          'transaction_bank_code': 'Code de la banque de transaction',
+                          'transaction_branch_code': 'Code de l\'agence de transaction',
+                          'transaction_iban': 'IBAN de transaction',
+                          'transaction_swift_bic': 'Code SWIFT/BIC de transaction',
+                          'transaction_wallet_address': 'Adresse de portefeuille de transaction',
+                          'transaction_wallet_type': 'Type de portefeuille de transaction',
+                          'transaction_network': 'Réseau de transaction',
+                          'transaction_memo': 'Mémo de transaction',
+                          'transaction_tag': 'Tag de transaction',
+                          'transaction_note': 'Note de transaction',
+                          'transaction_reference': 'Référence de transaction',
+                          'transaction_description': 'Description de la transaction',
+                        };
+                        
+                        return translations[key.toLowerCase()] || key;
+                      };
+
+                      // Formater les valeurs spéciales
+                      const formatValue = (key, value) => {
+                        if (key === 'phone_number' && typeof value === 'string') {
+                          // Formater les numéros de téléphone
+                          if (value.startsWith('+')) {
+                            return value;
+                          } else {
+                            return `+${value}`;
+                          }
+                        } else if (
+                          key === 'amount' || 
+                          key === 'fee' || 
+                          key === 'total' || 
+                          key === 'commission'
+                        ) {
+                          // Ajouter le symbole $ pour les valeurs monétaires
+                          return typeof value === 'string' ? value : value.toString();
+                        } else if (key === 'percentage') {
+                          // Ajouter le symbole % pour les pourcentages
+                          return typeof value === 'string' ? value : value.toString();
+                        }
+                        
+                        return typeof value === 'string' ? value : JSON.stringify(value);
+                      };
+
+                      if (typeof value === 'object' && value !== null) {
+                        return (
+                          <div key={key} className="border-t pt-2 first:border-t-0 first:pt-0">
+                            <p className={`font-medium mb-2 ${
+                              isDarkMode ? 'text-white' : 'text-gray-900'
+                            }`}>
+                              {getTranslatedKey(key)}
+                            </p>
+                            <div className="pl-4 space-y-2">
+                              {Object.entries(value).map(([subKey, subValue]) => {
+                                // Ignorer les clés qui contiennent "url" ou "link"
+                                if (subKey.toLowerCase().includes('url') || subKey.toLowerCase().includes('link')) {
+                                  return null;
+                                }
+                                
+                                const formattedSubValue = formatValue(subKey, subValue);
+                                
+                                return (
+                                  <div key={subKey} className="flex justify-between">
+                                    <span className={`text-sm ${
+                                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                                    }`}>
+                                      {getTranslatedKey(subKey)}
+                                    </span>
+                                    <span className={`text-sm font-medium ${
+                                      isDarkMode ? 'text-white' : 'text-gray-900'
+                                    }`}>
+                                      {subKey === 'amount' || subKey === 'fee' || subKey === 'total' || subKey === 'commission'
+                                        ? `${formattedSubValue} $`
+                                        : subKey === 'percentage'
+                                          ? `${formattedSubValue}%`
+                                          : formattedSubValue}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const formattedValue = formatValue(key, value);
+                      
+                      return (
+                        <div key={key} className="flex justify-between border-t pt-2 first:border-t-0 first:pt-0">
+                          <span className={`text-sm ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                          }`}>
+                            {getTranslatedKey(key)}
+                          </span>
+                          <span className={`text-sm font-medium ${
+                            isDarkMode ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {key === 'amount' || key === 'fee' || key === 'total' || key === 'commission'
+                              ? `${formattedValue} $`
+                              : key === 'percentage'
+                                ? `${formattedValue}%`
+                                : formattedValue}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Aucun détail de paiement disponible
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* Balance du système */}
+            <div className="mb-6">
+              <h3 className={`text-lg font-medium mb-3 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Balance du système
+              </h3>
+              <div className={`p-4 rounded-lg ${
+                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Balance disponible
                   </span>
-                  <span className={`${
-                    parseFloat(selectedRequest.wallet_balance) < parseFloat(selectedRequest.amount) 
+                  <span className={`font-medium ${
+                    parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount) 
                       ? 'text-red-500' 
                       : isDarkMode ? 'text-green-400' : 'text-green-600'
                   }`}>
-                    {selectedRequest.wallet_balance} $
+                    {parseFloat(walletSystemBalance).toFixed(2)} $
                   </span>
                 </div>
-                
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Montant demandé:
-                  </span>
-                  <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedRequest.amount} $
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Statut:
-                  </span>
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    getStatusColor(selectedRequest.status)
-                  }`}>
-                    {selectedRequest.status}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Date:
-                  </span>
-                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                    {new Date(selectedRequest.created_at).toLocaleDateString()}
-                  </span>
-                </div>
+                {parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount) && (
+                  <p className="mt-2 text-sm text-red-500">
+                    La balance du système est insuffisante pour traiter cette demande.
+                  </p>
+                )}
               </div>
-              
-              {/* Méthode de paiement */}
-              <div>
-                <h3 className={`text-sm font-medium mb-2 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Méthode de paiement
-                </h3>
-                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Méthode:
-                    </span>
-                    <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
-                      {selectedRequest.payment_method}
-                    </span>
-                  </div>
-                  
-                  {selectedRequest.payment_details && (
-                    <div>
-                      <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Détails:
-                      </span>
-                      <pre className={`mt-1 p-2 rounded text-xs ${
-                        isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
-                      } overflow-x-auto`}>
-                        {JSON.stringify(selectedRequest.payment_details, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Balance du système */}
-              {selectedRequest.status === 'pending' && (
-                <div>
-                  <h3 className={`text-sm font-medium mb-2 ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    Balance du système
-                  </h3>
-                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                    <div className="flex justify-between items-center">
-                      <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Balance disponible:
-                      </span>
-                      <span className={`${
-                        parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount) 
-                          ? 'text-red-500' 
-                          : isDarkMode ? 'text-green-400' : 'text-green-600'
-                      }`}>
-                        {walletSystemBalance} $
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Note admin */}
-              <div>
-                <h3 className={`text-sm font-medium mb-2 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Note admin
-                </h3>
-                <textarea
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                  disabled={selectedRequest.status !== 'pending'}
-                  className={`w-full p-3 rounded-lg ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                      : 'border-gray-300 text-gray-900 placeholder-gray-400'
-                  } ${selectedRequest.status !== 'pending' ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  placeholder="Ajouter une note (optionnel)"
-                  rows="2"
-                ></textarea>
-              </div>
-              
-              {/* Boutons d'action */}
-              {selectedRequest.status === 'pending' && (
-                <div className="flex justify-end space-x-3 mt-4">
-                  <button
-                    onClick={handleReject}
-                    disabled={processingAction}
-                    className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
-                      isDarkMode 
-                        ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
-                        : 'border-red-300 text-red-700 hover:bg-red-100'
-                    } ${processingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                    <XMarkIcon className="h-4 w-4 mr-2" />
-                    Rejeter
-                  </button>
-                  <button
-                    onClick={handleApprove}
-                    disabled={
-                      processingAction || 
-                      parseFloat(selectedRequest.wallet_balance) < parseFloat(selectedRequest.amount) ||
-                      parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount)
-                    }
-                    className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
-                      isDarkMode 
-                        ? 'border-green-600 text-green-400 hover:bg-green-900/20' 
-                        : 'border-green-300 text-green-700 hover:bg-green-100'
-                    } ${
-                      processingAction || 
-                      parseFloat(selectedRequest.wallet_balance) < parseFloat(selectedRequest.amount) ||
-                      parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount)
-                        ? 'opacity-70 cursor-not-allowed' 
-                        : ''
-                    }`}
-                  >
-                    <CheckCircleIcon className="h-4 w-4 mr-2" />
-                    Approuver
-                  </button>
-                </div>
-              )}
-              
-              {/* Message d'erreur pour les balances insuffisantes */}
-              {selectedRequest.status === 'pending' && (
-                parseFloat(selectedRequest.wallet_balance) < parseFloat(selectedRequest.amount) || 
-                parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount)
-              ) && (
-                <div className={`mt-2 text-xs text-red-500 text-center`}>
-                  {parseFloat(selectedRequest.wallet_balance) < parseFloat(selectedRequest.amount) 
-                    ? "La balance de l'utilisateur est insuffisante pour cette demande." 
-                    : "La balance du système est insuffisante pour traiter cette demande."}
-                </div>
-              )}
             </div>
-          </div>
-        </div>
-      )}
+            
+            {/* Note d'administration */}
+            <div className="mb-6">
+              <h3 className={`text-lg font-medium mb-3 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Note d'administration
+              </h3>
+              <textarea
+                value={adminNote}
+                onChange={(e) => setAdminNote(e.target.value)}
+                className={`w-full p-3 border rounded-lg ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                rows={3}
+                placeholder="Ajouter une note (visible uniquement par les administrateurs)"
+              />
+            </div>
+            
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                {selectedRequest.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => handleApprove(selectedRequest.id)}
+                      disabled={processingAction}
+                      className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
+                        isDarkMode 
+                          ? 'border-green-600 text-green-400 hover:bg-green-900/20' 
+                          : 'border-green-300 text-green-700 hover:bg-green-100'
+                      } ${processingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                      <CheckIcon className="h-4 w-4 mr-2" />
+                      Approuver
+                    </button>
+                    <button
+                      onClick={() => handleReject(selectedRequest.id)}
+                      disabled={processingAction}
+                      className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
+                        isDarkMode 
+                          ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
+                          : 'border-red-300 text-red-700 hover:bg-gray-100'
+                      } ${processingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                      <XMarkIcon className="h-4 w-4 mr-2" />
+                      Rejeter
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </FullScreenModal>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
+        onConfirm={() => {
+          handleDelete(requestToDelete?.id);
+          setShowDeleteConfirmation(false);
+        }}
+        title="Confirmation de suppression"
+        message={`Êtes-vous sûr de vouloir supprimer la demande #${requestToDelete?.id} ?`}
+        confirmButtonText="Supprimer"
+        cancelButtonText="Annuler"
+        isDarkMode={isDarkMode}
+        type="danger"
+      />
     </div>
   );
 }

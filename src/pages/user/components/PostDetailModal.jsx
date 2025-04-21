@@ -453,7 +453,7 @@ export default function PostDetailModal({
                 <>
                   <span className="text-sm">{post.categorie}</span>
                   <span className="mx-2 text-gray-400">•</span>
-                </>  
+                </> 
               )}
               {post.adresse && (
                 <>
@@ -603,7 +603,7 @@ export default function PostDetailModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -946,10 +946,10 @@ export default function PostDetailModal({
                           <img
                             src={user.picture}
                             alt="Photo de profil"
-                            className="h-8 w-8 rounded-full object-cover mr-2"
+                            className="h-8 w-8 rounded-full"
                           />
                         ) : (
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
                             <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                               {user?.name?.charAt(0) || 'U'}
                             </span>
