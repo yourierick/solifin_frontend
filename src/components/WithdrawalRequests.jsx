@@ -620,11 +620,7 @@ export default function WithdrawalRequests() {
                           'transaction_wallet_address': 'Adresse de portefeuille de transaction',
                           'transaction_wallet_type': 'Type de portefeuille de transaction',
                           'transaction_network': 'Réseau de transaction',
-                          'transaction_memo': 'Mémo de transaction',
-                          'transaction_tag': 'Tag de transaction',
-                          'transaction_note': 'Note de transaction',
-                          'transaction_reference': 'Référence de transaction',
-                          'transaction_description': 'Description de la transaction',
+                          
                         };
                         
                         return translations[key.toLowerCase()] || key;

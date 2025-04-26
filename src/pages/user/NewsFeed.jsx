@@ -639,9 +639,9 @@ export default function NewsFeed() {
         )}
 
         {loading && (
-          <div className="flex justify-center p-4">
-            <LoadingSpinner size="lg" />
-          </div>
+          <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+        </div>
         )}
       </div>
           </Tab.Panel>
@@ -748,8 +748,8 @@ export default function NewsFeed() {
               
               {/* Corps du tableau */}
               {loading ? (
-                <div className="flex justify-center p-8">
-                  <LoadingSpinner size="lg" />
+                <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                 </div>
               ) : (
                 <div>
@@ -916,9 +916,9 @@ export default function NewsFeed() {
           <Tab.Panel className={classNames('rounded-xl p-3', 'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2')}>
             <div className="space-y-6">
               {loading ? (
-                <div className="flex justify-center p-4">
-                  <LoadingSpinner size="lg" />
-                </div>
+                <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+              </div>
               ) : (
                 posts
                   .filter(post => post.type === 'opportunites-affaires')
@@ -947,8 +947,8 @@ export default function NewsFeed() {
                   Pages que vous suivez
                 </h2>
                 {loadingPages ? (
-                  <div className="flex justify-center p-4">
-                    <LoadingSpinner size="md" />
+                  <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                   </div>
                 ) : subscribedPages.length > 0 ? (
                   <div className="mt-3 space-y-3">
@@ -998,8 +998,8 @@ export default function NewsFeed() {
                   Pages recommandées
                 </h2>
                 {loadingPages ? (
-                  <div className="flex justify-center p-4">
-                    <LoadingSpinner size="md" />
+                  <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                   </div>
                 ) : recommendedPages.length > 0 ? (
                   <div className="mt-3 space-y-3">

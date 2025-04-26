@@ -33,6 +33,17 @@ export default function Packs() {
     nombre_filleuls: 5,
     taux_bonus: 50
   });
+  const [formData, setFormData] = useState({
+    nom: '',
+    description: '',
+    prix: '',
+    duree: '',
+    image: null,
+    frequence: 'weekly',
+    nombre_filleuls: '',
+    points_attribues: '',
+    valeur_point: '',
+  });
 
   useEffect(() => {
     fetchPacks();
@@ -122,16 +133,18 @@ export default function Packs() {
   const showBonusModal = async (packId, packName) => {
     setSelectedPackIdForBonus(packId);
     setSelectedPackNameForBonus(packName);
-    setIsBonusModalVisible(true);
     
     try {
       const response = await axios.get(`/api/admin/packs/${packId}/bonus-rates`);
       if (response.data.success) {
-        setBonusRates(response.data.bonusRates);
+        setBonusRates(response.data.bonusRates || []);
       }
-    } catch (err) {
-      Notification.error('Erreur lors de la récupération des taux de bonus');
+    } catch (error) {
+      console.error('Erreur lors du chargement des taux de bonus:', error);
+      setBonusRates([]);
     }
+    
+    setIsBonusModalVisible(true);
   };
 
   const hideBonusModal = () => {
@@ -187,10 +200,15 @@ export default function Packs() {
     try {
       const response = await axios.delete(`/api/admin/bonus-rates/${id}`);
       if (response.data.success) {
-        showToast(response.data.message, 'success');
-        setBonusRates(prev => prev.filter(rate => rate.id !== id));
+        Notification.success('Taux de bonus supprimé avec succès');
+        
+        // Mettre à jour la liste des bonus immédiatement
+        const updatedBonusResponse = await axios.get(`/api/admin/packs/${selectedPackIdForBonus}/bonus-rates`);
+        if (updatedBonusResponse.data.success) {
+          setBonusRates(updatedBonusResponse.data.bonusRates || []);
+        }
       }
-    } catch (err) {
+    } catch (error) {
       Notification.error('Erreur lors de la suppression du taux de bonus');
     }
   };
@@ -239,6 +257,134 @@ export default function Packs() {
     } catch (error) {
       Notification.error('Erreur lors de la mise à jour du taux de commission', 'error');
     }
+  };
+
+  const FormulaireAjoutBonus = ({ packId, onBonusAdded }) => {
+    const [formBonus, setFormBonus] = useState({
+      frequence: 'weekly',
+      nombre_filleuls: '',
+      points_attribues: '',
+      valeur_point: '',
+    });
+
+    const handleBonusChange = (e) => {
+      const { name, value } = e.target;
+      setFormBonus({ ...formBonus, [name]: value });
+    };
+
+    const handleBonusSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const response = await axios.post(`/api/admin/packs/${packId}/bonus-rates`, formBonus);
+        if (response.data.success) {
+          Notification.success('Taux de bonus ajouté avec succès');
+          
+          // Mettre à jour la liste des bonus immédiatement
+          const updatedBonusResponse = await axios.get(`/api/admin/packs/${packId}/bonus-rates`);
+          if (updatedBonusResponse.data.success) {
+            setBonusRates(updatedBonusResponse.data.bonusRates || []);
+          }
+          
+          setFormBonus({
+            frequence: 'weekly',
+            nombre_filleuls: '',
+            points_attribues: '',
+            valeur_point: '',
+          });
+          onBonusAdded();
+        }
+      } catch (error) {
+        Notification.error('Erreur lors de l\'ajout du bonus');
+      }
+    };
+
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-4">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Configurer le bonus sur délais</h3>
+        <form onSubmit={handleBonusSubmit}>
+          <div className="mb-4">
+            <label htmlFor="frequence" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fréquence
+            </label>
+            <select
+              id="frequence"
+              name="frequence"
+              value={formBonus.frequence}
+              onChange={handleBonusChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              required
+            >
+              <option value="daily">Journalier</option>
+              <option value="weekly">Hebdomadaire</option>
+              <option value="monthly">Mensuel</option>
+              <option value="yearly">Annuel</option>
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="nombre_filleuls" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nombre de filleuls pour 1 point
+            </label>
+            <input
+              type="number"
+              id="nombre_filleuls"
+              name="nombre_filleuls"
+              value={formBonus.nombre_filleuls}
+              onChange={handleBonusChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              min="1"
+              required
+              placeholder="Ex: 7 (1 point tous les 7 filleuls)"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Si un utilisateur parraine 14 filleuls, il recevra 2 points. S'il en parraine 21, il recevra 3 points, etc.
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="points_attribues" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Points attribués par palier
+            </label>
+            <input
+              type="number"
+              id="points_attribues"
+              name="points_attribues"
+              value={formBonus.points_attribues}
+              onChange={handleBonusChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              min="1"
+              required
+              placeholder="Ex: 1 (1 point par palier atteint)"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="valeur_point" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Valeur d'un point en devise ($)
+            </label>
+            <input
+              type="number"
+              id="valeur_point"
+              name="valeur_point"
+              value={formBonus.valeur_point}
+              onChange={handleBonusChange}
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              min="0.01"
+              step="0.01"
+              required
+              placeholder="Ex: 10.00 (10$ par point)"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            Ajouter
+          </button>
+        </form>
+      </div>
+    );
   };
 
   if (loading) {
@@ -361,7 +507,7 @@ export default function Packs() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                   {filteredPacks.map((pack) => (
                     <tr key={pack.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
@@ -464,7 +610,7 @@ export default function Packs() {
 
       {isCommissionModalVisible && (
         <div 
-          className="fixed inset-0 z-50 bg-gray-700 bg-opacity-75 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center"
           onClick={() => setIsCommissionModalVisible(false)}
         >
           <div 
@@ -554,7 +700,7 @@ export default function Packs() {
       {/* Modal de confirmation de suppression */}
       {isDeleteModalVisible && (
         <div 
-          className="fixed inset-0 z-50 bg-gray-700 bg-opacity-75 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center"
           onClick={hideDeleteModal}
         >
           <div 
@@ -576,7 +722,7 @@ export default function Packs() {
                 </div>
               </div>
             </div>
-            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+            <div className="mt-6">
               <button
                 type="button"
                 className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
@@ -596,10 +742,10 @@ export default function Packs() {
         </div>
       )}
 
-      {/* Modal de configuration des bonus sur délais */}
+      {/* Modal de configuration des bonus */}
       {isBonusModalVisible && (
         <div 
-          className="fixed inset-0 z-50 bg-gray-700 bg-opacity-75 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center"
           onClick={hideBonusModal}
         >
           <div 
@@ -624,17 +770,18 @@ export default function Packs() {
                 Définissez des bonus pour les utilisateurs qui parrainent un certain nombre de filleuls dans une période donnée.
               </p>
 
-              {/* Liste des taux de bonus existants */}
+              {/* Liste des bonus existants */}
               {bonusRates.length > 0 ? (
                 <div className="mb-6">
-                  <h4 className="text-md font-medium mb-2">Taux de bonus configurés</h4>
+                  <h4 className="text-md font-medium mb-2">Bonus sur délais configurés</h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-600">
                       <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
                           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">Fréquence</th>
                           <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">Nombre de filleuls</th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">Taux de bonus (%)</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">Point par palier</th>
+                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">Valeur par point</th>
                           <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-200">Actions</th>
                         </tr>
                       </thead>
@@ -648,10 +795,13 @@ export default function Packs() {
                               {rate.frequence === 'yearly' && 'Annuel'}
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.nombre_filleuls}
+                              {rate.nombre_filleuls} filleuls
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.taux_bonus}%
+                              {rate.points_attribues} points
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                              {rate.valeur_point} $
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
                               <div className="flex items-center justify-center space-x-2">
@@ -676,79 +826,20 @@ export default function Packs() {
               )}
 
               {/* Formulaire d'ajout de taux de bonus */}
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                <h4 className="text-md font-medium mb-4">Ajouter un nouveau taux de bonus</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label htmlFor="frequence" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Fréquence
-                    </label>
-                    <select
-                      id="frequence"
-                      name="frequence"
-                      value={newBonusRate.frequence}
-                      onChange={handleNewBonusRateChange}
-                      className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    >
-                      <option value="daily">Journalier</option>
-                      <option value="weekly">Hebdomadaire</option>
-                      <option value="monthly">Mensuel</option>
-                      <option value="yearly">Annuel</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="nombre_filleuls" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Nombre de filleuls
-                    </label>
-                    <input
-                      type="number"
-                      id="nombre_filleuls"
-                      name="nombre_filleuls"
-                      min="1"
-                      value={newBonusRate.nombre_filleuls}
-                      onChange={handleNewBonusRateChange}
-                      className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="taux_bonus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Taux de bonus (%)
-                    </label>
-                    <input
-                      type="number"
-                      id="taux_bonus"
-                      name="taux_bonus"
-                      min="0"
-                      max="100"
-                      value={newBonusRate.taux_bonus}
-                      onChange={handleNewBonusRateChange}
-                      className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={addBonusRate}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    Ajouter
-                  </button>
-                </div>
-              </div>
+              <FormulaireAjoutBonus packId={selectedPackIdForBonus} onBonusAdded={() => setBonusRates(prev => [...prev])} />
 
               <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Exemple</h3>
                     <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                       <p>
-                        Si vous configurez un bonus <strong>hebdomadaire</strong> de <strong>50%</strong> pour <strong>7 filleuls</strong>, alors un utilisateur qui parraine 7 filleuls ou plus en une semaine recevra un bonus de 50% du prix du pack.
+                        Si vous configurez un palier de <strong>1</strong> pour <strong>7 filleuls</strong> pour un bonus <strong>hebdomadaire</strong>, alors un utilisateur qui parraine 7 filleuls en une semaine recevra un bonus de 1 point pour ce pack.
                       </p>
                     </div>
                   </div>
