@@ -8,17 +8,37 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { Person as PersonIcon } from '@mui/icons-material';
+import { 
+  Person as PersonIcon, 
+  Lock as LockIcon, 
+  Visibility as VisibilityIcon, 
+  VisibilityOff as VisibilityOffIcon,
+  Info as InfoIcon,
+  LockReset as LockResetIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon
+} from '@mui/icons-material';
 import axios from '../../utils/axios';
 import ReferralStats from '../../components/ReferralStats';
 import ReferralList from '../../components/ReferralList';
 import { useToast } from '../../contexts/ToastContext';
 import Notification from '../../components/Notification';
+import { useTheme } from '../../contexts/ThemeContext';
+
+// Style personnalisé pour l'overlay des modals avec effet de flou
+const backdropStyle = {
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropFilter: 'blur(4px)',
+};
 
 const Users = () => {
   //console.log('Rendering Users component'); // Debug log
-
+  const { isDarkMode } = useTheme();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true); // Changed to true initially
   const [error, setError] = useState(null);
@@ -35,7 +55,19 @@ const Users = () => {
   });
   const [selectedUser, setSelectedUser] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState({
+    userId: null,
+    userName: '',
+    newPassword: '',
+    adminPassword: '',
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const { toast } = useToast();
+
+  // États pour la réinitialisation de mot de passe
 
   const fetchUsers = async () => {
     //console.log('Fetching users...'); // Debug log
@@ -112,6 +144,72 @@ const Users = () => {
     //console.log('Closing dialog'); // Debug log
     setOpenDialog(false);
     setSelectedUser(null);
+  };
+
+  const handleOpenResetPassword = (user) => {
+    setResetPasswordData({
+      userId: user.id,
+      userName: user.name,
+      newPassword: '',
+      adminPassword: '',
+    });
+    setResetPasswordDialog(true);
+  };
+
+  const handleCloseResetPassword = () => {
+    setResetPasswordDialog(false);
+    setResetPasswordData({
+      userId: null,
+      userName: '',
+      newPassword: '',
+      adminPassword: '',
+    });
+    setShowNewPassword(false);
+    setShowAdminPassword(false);
+  };
+
+  const handleResetPasswordChange = (e) => {
+    const { name, value } = e.target;
+    setResetPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleResetPasswordSubmit = async () => {
+    try {
+      setResetPasswordLoading(true);
+      
+      // Validation basique
+      if (!resetPasswordData.newPassword || resetPasswordData.newPassword.length < 8) {
+        toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères');
+        setResetPasswordLoading(false);
+        return;
+      }
+      
+      if (!resetPasswordData.adminPassword) {
+        toast.error('Veuillez entrer votre mot de passe administrateur');
+        setResetPasswordLoading(false);
+        return;
+      }
+      
+      const response = await axios.post(`/api/admin/users/${resetPasswordData.userId}/reset-password`, {
+        new_password: resetPasswordData.newPassword,
+        admin_password: resetPasswordData.adminPassword
+      });
+      
+      if (response.data.success) {
+        toast.success(response.data.message || 'Mot de passe réinitialisé avec succès');
+        handleCloseResetPassword();
+      } else {
+        throw new Error(response.data.message || 'Erreur lors de la réinitialisation du mot de passe');
+      }
+    } catch (err) {
+      console.error('Error in handleResetPasswordSubmit:', err);
+      toast.error(err.response?.data?.message || 'Erreur lors de la réinitialisation du mot de passe');
+    } finally {
+      setResetPasswordLoading(false);
+    }
   };
 
   const toggleUserStatus = async (userId) => {
@@ -258,22 +356,42 @@ const Users = () => {
                             {user.referrals_count || 0} filleul(s)
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-right space-x-4">
-                            <button
-                              onClick={() => handleViewDetails(user)}
-                              className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300"
-                            >
-                              Détails
-                            </button>
-                            <button
-                              onClick={() => toggleUserStatus(user.id)}
-                              className={`${
-                                user.status === 'active'
-                                  ? 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300'
-                                  : 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'
-                              }`}
-                            >
-                              {user.status === 'active' ? 'Désactiver' : 'Activer'}
-                            </button>
+                            <Tooltip title="Voir les détails de l'utilisateur" arrow>
+                              <IconButton
+                                onClick={() => handleViewDetails(user)}
+                                className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300"
+                                size="small"
+                              >
+                                <InfoIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title="Réinitialiser le mot de passe" arrow>
+                              <IconButton
+                                onClick={() => handleOpenResetPassword(user)}
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                                size="small"
+                              >
+                                <LockResetIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            <Tooltip title={user.status === 'active' ? "Désactiver l'utilisateur" : "Activer l'utilisateur"} arrow>
+                              <IconButton
+                                onClick={() => toggleUserStatus(user.id)}
+                                className={`${
+                                  user.status === 'active'
+                                    ? 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'
+                                    : 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300'
+                                }`}
+                                size="small"
+                              >
+                                {user.status === 'active' ? 
+                                  <ToggleOnIcon fontSize="small" /> : 
+                                  <ToggleOffIcon fontSize="small" />
+                                }
+                              </IconButton>
+                            </Tooltip>
                           </td>
                         </tr>
                       ))}
@@ -287,10 +405,148 @@ const Users = () => {
       </div>
 
       <Dialog
+        open={resetPasswordDialog}
+        onClose={handleCloseResetPassword}
+        maxWidth="sm"
+        fullWidth
+        BackdropProps={{
+          style: backdropStyle
+        }}
+        PaperProps={{
+          style: {
+            backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff',
+            color: isDarkMode ? '#fff' : '#000',
+          },
+        }}
+      >
+        <DialogTitle>
+          <div className="flex items-center">
+            <LockIcon className="mr-2" style={{ color: isDarkMode ? '#fff' : '#000' }} />
+            <span style={{ color: isDarkMode ? '#fff' : '#000' }}>Réinitialiser le mot de passe</span>
+          </div>
+        </DialogTitle>
+        <DialogContent>
+          <div className="mt-2 mb-4">
+            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Vous êtes sur le point de réinitialiser le mot de passe de l'utilisateur : 
+              <span className="font-bold ml-1">{resetPasswordData.userName}</span>
+            </p>
+            <p className="text-sm text-red-400 mt-1">
+              Cette action est irréversible et le nouveau mot de passe prendra effet immédiatement.
+            </p>
+          </div>
+          
+          <div className="space-y-4 mt-4">
+            <div className="relative">
+              <TextField
+                label="Nouveau mot de passe"
+                variant="outlined"
+                type={showNewPassword ? 'text' : 'password'}
+                value={resetPasswordData.newPassword}
+                onChange={handleResetPasswordChange}
+                name="newPassword"
+                fullWidth
+                helperText="Minimum 8 caractères"
+                InputLabelProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                InputProps={{ style: { color: isDarkMode ? '#fff' : undefined } }}
+                FormHelperTextProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? '#4b5563' : undefined,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: isDarkMode ? '#6b7280' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: isDarkMode ? '#3b82f6' : undefined,
+                    },
+                  },
+                }}
+              />
+              <IconButton
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                style={{ 
+                  position: 'absolute', 
+                  right: '10px', 
+                  top: '10px',
+                  color: isDarkMode ? '#9ca3af' : undefined
+                }}
+              >
+                {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              </IconButton>
+            </div>
+            
+            <div className="relative mt-4">
+              <TextField
+                label="Votre mot de passe administrateur"
+                variant="outlined"
+                type={showAdminPassword ? 'text' : 'password'}
+                value={resetPasswordData.adminPassword}
+                onChange={handleResetPasswordChange}
+                name="adminPassword"
+                fullWidth
+                helperText="Requis pour confirmer l'action"
+                InputLabelProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                InputProps={{ style: { color: isDarkMode ? '#fff' : undefined } }}
+                FormHelperTextProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? '#4b5563' : undefined,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: isDarkMode ? '#6b7280' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: isDarkMode ? '#3b82f6' : undefined,
+                    },
+                  },
+                }}
+              />
+              <IconButton
+                onClick={() => setShowAdminPassword(!showAdminPassword)}
+                style={{ 
+                  position: 'absolute', 
+                  right: '10px', 
+                  top: '10px',
+                  color: isDarkMode ? '#9ca3af' : undefined
+                }}
+              >
+                {showAdminPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              </IconButton>
+            </div>
+          </div>
+        </DialogContent>
+        <DialogActions style={{ backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff' }}>
+          <Button 
+            onClick={handleCloseResetPassword} 
+            style={{ color: isDarkMode ? '#9ca3af' : undefined }}
+          >
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleResetPasswordSubmit} 
+            variant="contained"
+            disabled={resetPasswordLoading}
+            style={{ 
+              backgroundColor: !resetPasswordLoading ? (isDarkMode ? '#3b82f6' : undefined) : undefined,
+              color: isDarkMode ? '#fff' : undefined
+            }}
+          >
+            {resetPasswordLoading ? 'En cours...' : 'Réinitialiser le mot de passe'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
+        BackdropProps={{
+          style: backdropStyle
+        }}
       >
         <DialogTitle>
           <div className="flex items-center">

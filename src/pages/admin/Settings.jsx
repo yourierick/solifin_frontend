@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
 import TransactionFeeSettings from './components/TransactionFeeSettings';
+import CountryAccessSettings from './components/CountryAccessSettings';
 import { useTheme } from '../../contexts/ThemeContext';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { 
+  CurrencyDollarIcon, 
+  Cog6ToothIcon, 
+  BellIcon, 
+  ShieldCheckIcon, 
+  GlobeAltIcon 
+} from '@heroicons/react/24/outline';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -13,78 +20,90 @@ const Settings = () => {
   const [isEmailNotificationEnabled, setIsEmailNotificationEnabled] = useState(true);
   const [password, setPassword] = useState('');
 
+  // Configuration des onglets avec leurs icônes et titres
+  const tabs = [
+    { name: 'FRAIS DE TRANSACTION', icon: CurrencyDollarIcon },
+    { name: 'PARAMÈTRES GÉNÉRAUX', icon: Cog6ToothIcon },
+    { name: 'NOTIFICATIONS', icon: BellIcon },
+    { name: 'SÉCURITÉ', icon: ShieldCheckIcon },
+    { name: 'PAYS AUTORISÉS', icon: GlobeAltIcon },
+  ];
+
   return (
-    <div className="bg-white dark:bg-[#1e283b] text-gray-900 dark:text-white rounded-lg shadow-lg">
+    <div className="bg-white dark:bg-[#1f2937] text-gray-900 dark:text-white rounded-lg shadow-lg">
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-6">Paramètres du système</h1>
+        <h1 className="text-2xl font-semibold mb-6 flex items-center">
+          <Cog6ToothIcon className="h-7 w-7 mr-2 text-primary-600 dark:text-primary-400" />
+          Paramètres du système
+        </h1>
         
         <Tab.Group>
-          <Tab.List className="flex space-x-1 rounded-xl bg-gray-800/20 p-1 dark:bg-gray-700/20">
-            <Tab className={({ selected }) => classNames(
-              'w-full py-3 text-sm font-medium rounded-lg',
-              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
-              selected
-                ? 'bg-white dark:bg-gray-800 shadow text-primary-700 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-gray-700/[0.8] hover:text-primary-600 dark:hover:text-primary-400'
-            )}>
-              FRAIS DE TRANSACTION
-            </Tab>
-            <Tab className={({ selected }) => classNames(
-              'w-full py-3 text-sm font-medium rounded-lg',
-              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
-              selected
-                ? 'bg-white dark:bg-gray-800 shadow text-primary-700 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-gray-700/[0.8] hover:text-primary-600 dark:hover:text-primary-400'
-            )}>
-              PARAMÈTRES GÉNÉRAUX
-            </Tab>
-            <Tab className={({ selected }) => classNames(
-              'w-full py-3 text-sm font-medium rounded-lg',
-              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
-              selected
-                ? 'bg-white dark:bg-gray-800 shadow text-primary-700 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-gray-700/[0.8] hover:text-primary-600 dark:hover:text-primary-400'
-            )}>
-              NOTIFICATIONS
-            </Tab>
-            <Tab className={({ selected }) => classNames(
-              'w-full py-3 text-sm font-medium rounded-lg',
-              'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-primary-400 ring-white ring-opacity-60',
-              selected
-                ? 'bg-white dark:bg-gray-800 shadow text-primary-700 dark:text-primary-400'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-gray-700/[0.8] hover:text-primary-600 dark:hover:text-primary-400'
-            )}>
-              SÉCURITÉ
-            </Tab>
+          <Tab.List className="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+            {tabs.map((tab, index) => (
+              <Tab
+                key={index}
+                className={({ selected }) => classNames(
+                  'w-full py-3 text-sm font-medium rounded-lg transition-all duration-200 ease-in-out flex items-center justify-center',
+                  'focus:outline-none',
+                  selected
+                    ? 'bg-white dark:bg-[#141c2f] shadow-md text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-white/[0.08] hover:text-primary-600 dark:hover:text-primary-400'
+                )}
+              >
+                <tab.icon className="h-5 w-5 mr-2" />
+                {tab.name}
+              </Tab>
+            ))}
           </Tab.List>
+          <hr className="my-4" />
 
-          <Tab.Panels className="mt-2">
+          <Tab.Panels className="mt-4">
             <Tab.Panel>
-              <div className="rounded-lg bg-white p-4 dark:bg-[#1e283b] dark:text-white">
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
                 <TransactionFeeSettings />
               </div>
             </Tab.Panel>
             <Tab.Panel>
-              <div className="rounded-lg bg-white p-4 dark:bg-[#1e283b] dark:text-white">
-                <h2 className="text-xl font-semibold mb-4">Paramètres généraux</h2>
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <Cog6ToothIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
+                  Paramètres généraux
+                </h2>
                 <div className="space-y-4">
                   
                 </div>
               </div>
             </Tab.Panel>
             <Tab.Panel>
-              <div className="rounded-lg bg-white p-4 dark:bg-[#1e283b] dark:text-white">
-                <h2 className="text-xl font-semibold mb-4">Notifications</h2>
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <BellIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
+                  Notifications
+                </h2>
                 <div className="space-y-4">
                   
                 </div>
               </div>
             </Tab.Panel>
             <Tab.Panel>
-              <div className="rounded-lg bg-white p-4 dark:bg-[#1e283b] dark:text-white">
-                <h2 className="text-xl font-semibold mb-4">Sécurité</h2>
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <ShieldCheckIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
+                  Sécurité
+                </h2>
                 <div className="space-y-4">
                   
+                </div>
+              </div>
+            </Tab.Panel>
+            <Tab.Panel>
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <GlobeAltIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
+                  Pays autorisés
+                </h2>
+                <div className="space-y-4">
+                  <CountryAccessSettings />
                 </div>
               </div>
             </Tab.Panel>

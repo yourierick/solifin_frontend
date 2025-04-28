@@ -45,6 +45,11 @@ const TransactionFeeSettings = () => {
   });
   const [updatingFromApi, setUpdatingFromApi] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState([]);
+  
+  // États pour la pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchTransactionFees();
@@ -59,6 +64,11 @@ const TransactionFeeSettings = () => {
     }
   }, [currentFee.payment_type]);
 
+  // Réinitialiser la page lorsque le nombre de lignes par page change
+  useEffect(() => {
+    setPage(0);
+  }, [rowsPerPage]);
+
   const fetchTransactionFees = async () => {
     setLoading(true);
     try {
@@ -69,6 +79,7 @@ const TransactionFeeSettings = () => {
       });
       if (response.data.status === 'success') {
         setTransactionFees(response.data.data);
+        setTotalCount(response.data.data.length);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des frais de transaction:', error);
@@ -163,7 +174,7 @@ const TransactionFeeSettings = () => {
     }
     
     try {
-      const response = await axios.delete('/api/admin/transaction-fees/${id}', {
+      const response = await axios.delete(`/api/admin/transaction-fees/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -369,89 +380,134 @@ const TransactionFeeSettings = () => {
     </Grid>
   );
 
-  const renderTransactionFeeTable = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-800">
-          <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Méthode</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de transfert</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de retrait</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais fixes</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Plafond</th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
-            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-          {loading ? (
+  const renderTransactionFeeTable = () => {
+    // Calculer les éléments à afficher pour la page actuelle
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    const displayedFees = transactionFees.slice(startIndex, endIndex);
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <td colSpan={8} className="px-6 py-4 text-center">
-                <CircularProgress size={40} />
-              </td>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type de paiement</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Méthode de paiement</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de transfert (%)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais de retrait (%)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frais fixe ($)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Plafond ($)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
-          ) : transactionFees.length === 0 ? (
-            <tr>
-              <td colSpan={8} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                Aucun frais de transaction configuré
-              </td>
-            </tr>
-          ) : (
-            transactionFees.map((fee) => (
-              <tr key={fee.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {getPaymentTypeName(fee.payment_type)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {getPaymentMethodName(fee.payment_type, fee.payment_method)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.transfer_fee_percentage}%</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.withdrawal_fee_percentage}%</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_fixed} $</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_cap || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                  {fee.is_active ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                      <CheckCircleIcon className="h-4 w-4 mr-1" />
-                      Actif
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
-                      <NoSymbolIcon className="h-4 w-4 mr-1" />
-                      Inactif
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleOpenDialog('edit', fee)}
-                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(fee.id)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-3"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleToggleStatus(fee)}
-                    className={`text-${fee.is_active ? 'red' : 'green'}-600 dark:text-${fee.is_active ? 'red' : 'green'}-400 hover:text-${fee.is_active ? 'red' : 'green'}-900 dark:hover:text-${fee.is_active ? 'red' : 'green'}-300`}
-                  >
-                    {fee.is_active ? (
-                      <NoSymbolIcon className="h-5 w-5" />
-                    ) : (
-                      <CheckCircleIcon className="h-5 w-5" />
-                    )}
-                  </button>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-4 text-center">
+                  <CircularProgress size={24} />
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : displayedFees.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  Aucun frais de transaction trouvé
+                </td>
+              </tr>
+            ) : (
+              displayedFees.map((fee) => (
+                <tr key={fee.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    {getPaymentTypeName(fee.payment_type)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    {getPaymentMethodName(fee.payment_type, fee.payment_method)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.transfer_fee_percentage}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.withdrawal_fee_percentage}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_fixed} $</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{fee.fee_cap || '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    {fee.is_active ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                        <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        Actif
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+                        <NoSymbolIcon className="h-4 w-4 mr-1" />
+                        Inactif
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleOpenDialog('edit', fee)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-3"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(fee.id)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-3"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(fee)}
+                      className={`text-${fee.is_active ? 'red' : 'green'}-600 dark:text-${fee.is_active ? 'red' : 'green'}-400 hover:text-${fee.is_active ? 'red' : 'green'}-900 dark:hover:text-${fee.is_active ? 'red' : 'green'}-300`}
+                    >
+                      {fee.is_active ? (
+                        <NoSymbolIcon className="h-5 w-5" />
+                      ) : (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        <div className="flex justify-between items-center py-4">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Afficher</span>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
+              className="ml-2 text-sm text-gray-500 dark:text-gray-400"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+            <span className="text-sm text-gray-500 dark:text-gray-400">lignes</span>
+          </div>
+          <div className="flex items-center">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 0}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              Précédent
+            </button>
+            <span className="mx-2 text-sm text-gray-500 dark:text-gray-400">{page + 1} / {Math.ceil(totalCount / rowsPerPage)}</span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={(page + 1) * rowsPerPage >= totalCount}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTransactionFeeTableWithPagination = () => (
+    <div>
+      {renderTransactionFeeTable()}
     </div>
   );
 
@@ -483,8 +539,8 @@ const TransactionFeeSettings = () => {
         </div>
       </div>
 
-      <div className='bg-white dark:bg-[#1e283b] rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700'>
-        {renderTransactionFeeTable()}
+      <div className='bg-white dark:bg-[#1f2937] rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700'>
+        {renderTransactionFeeTableWithPagination()}
       </div>
 
       {/* Dialog pour ajouter/modifier des frais */}
@@ -494,7 +550,7 @@ const TransactionFeeSettings = () => {
         maxWidth="md" 
         fullWidth
         PaperProps={{
-          className: 'bg-white dark:bg-[#1e283b] text-gray-900 dark:text-white',
+          className: 'bg-white dark:bg-[#1f2937] text-gray-900 dark:text-white',
           sx: {
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             borderRadius: '0.5rem'
@@ -504,7 +560,7 @@ const TransactionFeeSettings = () => {
         <DialogTitle className="border-b border-gray-200 dark:border-gray-700 text-xl font-medium text-gray-900 dark:text-white">
           {dialogMode === 'add' ? 'Ajouter des frais de transaction' : 'Modifier des frais de transaction'}
         </DialogTitle>
-        <DialogContent className="pt-4 bg-white dark:bg-[#1e283b] text-gray-900 dark:text-white">
+        <DialogContent className="pt-4 bg-white dark:bg-[#1f2937] text-gray-900 dark:text-white">
           {renderFormFields()}
         </DialogContent>
         <DialogActions className="border-t border-gray-200 dark:border-gray-700 py-3 px-4">

@@ -1169,7 +1169,7 @@ export default function Wallets() {
                         } cursor-pointer`}
                         onClick={() => handleTransactionClick(transaction)}
                       >
-                        {transaction.type === "withdrawal" ? "Retrait" : transaction.type === "sales" ? "Achat" : "Commission"}
+                        {transaction.type === "withdrawal" ? "Retrait" : transaction.type === "sales" ? "Achat" : transaction.type === "reception" ? "Dépot des fonds" : transaction.type === "transfer" ? "Transfert des fonds":"Commission"}
                       </td>
                       <td 
                         className={`px-6 py-4 whitespace-nowrap text-sm ${

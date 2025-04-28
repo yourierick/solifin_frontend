@@ -5,7 +5,24 @@ import { useTheme } from '../contexts/ThemeContext';
 import publicAxios from '../utils/publicAxios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Typography,
+  Button,
+  CircularProgress,
+  Box,
+  Divider,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
+} from '@mui/material';
 
+// Animations
 const containerVariants = {
   hidden: {},
   visible: {
@@ -26,30 +43,62 @@ const itemVariants = {
   },
 };
 
+// Animations améliorées pour les titres de catégorie
 const categoryTitleVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
+  hidden: { opacity: 0, y: -20, scale: 0.9 },
   visible: {
     opacity: 1,
+    y: 0,
     scale: 1,
     transition: {
-      duration: 0.6,
-      ease: "easeOut"
+      duration: 0.7,
+      ease: "easeOut",
+      delay: 0.1
     }
   }
 };
 
 const categoryLineVariants = {
-  hidden: { width: 0 },
+  hidden: { width: 0, opacity: 0 },
   visible: {
     width: "100%",
+    opacity: 1,
     transition: {
-      duration: 0.8,
-      ease: "easeInOut"
+      duration: 1,
+      ease: "easeInOut",
+      delay: 0.4
     }
   }
 };
 
-// Définition des couleurs par catégorie - plus distinctes
+// Animations pour les décorations du titre
+const decorationLeftVariants = {
+  hidden: { opacity: 0, x: -30 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.8,
+      ease: "easeOut",
+      delay: 0.3
+    }
+  }
+};
+
+const decorationRightVariants = {
+  hidden: { opacity: 0, x: 30 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.8,
+      ease: "easeOut",
+      delay: 0.3
+    }
+  }
+};
+
+// Définition des couleurs par catégorie
 const categoryColors = {
   // Couleurs pour le mode clair
   light: {
@@ -62,7 +111,7 @@ const categoryColors = {
   },
   // Couleurs pour le mode sombre
   dark: {
-    default: { bg: 'bg-gray-800', border: 'border-gray-700', highlight: 'bg-green-600', hover: 'hover:bg-green-700', icon: 'text-green-400', accent: 'text-green-400', gradientFrom: 'from-green-600', gradientTo: 'to-green-700' },
+    default: { bg: '#1f2937', border: 'border-gray-700', highlight: 'bg-green-600', hover: 'hover:bg-green-700', icon: 'text-green-400', accent: 'text-green-400', gradientFrom: 'from-green-600', gradientTo: 'to-green-700' },
     'Débutant': { bg: 'bg-blue-900/40', border: 'border-blue-700', highlight: 'bg-blue-600', hover: 'hover:bg-blue-700', icon: 'text-blue-400', accent: 'text-blue-400', gradientFrom: 'from-blue-600', gradientTo: 'to-blue-700' },
     'Intermédiaire': { bg: 'bg-purple-900/40', border: 'border-purple-700', highlight: 'bg-purple-600', hover: 'hover:bg-purple-700', icon: 'text-purple-400', accent: 'text-purple-400', gradientFrom: 'from-purple-600', gradientTo: 'to-purple-700' },
     'Expert': { bg: 'bg-amber-900/40', border: 'border-amber-700', highlight: 'bg-amber-600', hover: 'hover:bg-amber-700', icon: 'text-amber-400', accent: 'text-amber-400', gradientFrom: 'from-amber-600', gradientTo: 'to-amber-700' },
@@ -97,8 +146,8 @@ export default function Packages() {
 
     fetchPacks();
   }, []);
-  
-  // Organiser les packs par catégorie
+
+  // Grouper les packs par catégorie
   const packsByCategory = useMemo(() => {
     const grouped = {};
     packs.forEach(pack => {
@@ -110,118 +159,248 @@ export default function Packages() {
     });
     return grouped;
   }, [packs]);
-  
+
   // Obtenir les couleurs en fonction du mode (clair/sombre)
   const getColorScheme = (category) => {
     const mode = isDarkMode ? 'dark' : 'light';
     return categoryColors[mode][category] || categoryColors[mode].default;
   };
 
+  const handleSubscribeClick = (pack) => {
+    if (!user) {
+      navigate('/register');
+    } else {
+      if (user.is_admin) {
+        navigate('/admin/mespacks');
+      } else {
+        navigate('/dashboard/buypacks');
+      }
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
-        </div>
-      </div>
+      <Container sx={{ 
+        mt: 4, 
+        display: 'flex', 
+        justifyContent: 'center', 
+        minHeight: '50vh', 
+        alignItems: 'center',
+        bgcolor: isDarkMode ? '#1f2937' : 'background.default'
+      }}>
+        <CircularProgress />
+      </Container>
     );
   }
 
   return (
-    <section id="packages" className={`section-padding ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            Nos packs d'investissement
-          </h2>
-          <p className={`mt-4 text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            Choisissez le pack qui correspond à vos objectifs
-          </p>
-        </div>
+    <Container maxWidth="lg" sx={{ 
+      mt: 4, 
+      mb: 8,
+      bgcolor: isDarkMode ? '#1f2937' : 'background.default',
+      borderRadius: 2,
+      py: 4
+    }}>
+      <Box textAlign="center" mb={6}>
+        <Typography variant="h4" component="h2" gutterBottom sx={{ color: isDarkMode ? 'white' : 'text.primary' }}>
+          Nos Packs
+        </Typography>
+        <Typography variant="subtitle1" color={isDarkMode ? 'text.secondary' : 'text.secondary'} sx={{ maxWidth: '800px', mx: 'auto' }}>
+          Choisissez le pack qui correspond le mieux à vos besoins et commencez votre aventure dès aujourd'hui.
+        </Typography>
+      </Box>
 
-        <div className="mt-16 space-y-12">
-          {Object.entries(packsByCategory).map(([category, categoryPacks]) => (
-            <div key={category} className="space-y-6">
-              <motion.div 
-                className="flex flex-col items-center justify-center mb-8"
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-              >
-                <motion.h3 
-                  className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} inline-block px-8 ${getColorScheme(category).accent}`}
-                  variants={categoryTitleVariants}
+      {Object.entries(packsByCategory).map(([category, categoryPacks]) => (
+        <Box key={category} mb={8}>
+          <Box 
+            textAlign="center" 
+            mb={6}
+            component={motion.div}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            sx={{ position: 'relative' }}
+          >
+            {/* Décoration gauche */}
+            <Box 
+              component={motion.div}
+              variants={decorationLeftVariants}
+              sx={{ 
+                position: 'absolute', 
+                left: { xs: '10%', md: '25%' }, 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                display: { xs: 'none', sm: 'block' }
+              }}
+            >
+              <Box sx={{ 
+                width: '40px', 
+                height: '2px', 
+                background: `linear-gradient(to right, transparent, ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'})`,
+                display: 'inline-block',
+                mr: 1
+              }} />
+              <Box component="span" sx={{ 
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                bgcolor: 'primary.main',
+                verticalAlign: 'middle'
+              }} />
+            </Box>
+            
+            {/* Titre */}
+            <Typography 
+              variant="h4" 
+              component={motion.div}
+              variants={categoryTitleVariants}
+              sx={{ 
+                textTransform: 'capitalize',
+                color: isDarkMode ? 'white' : 'text.primary',
+                position: 'relative',
+                display: 'inline-block',
+                mb: 1,
+                px: 4,
+                fontWeight: 'bold',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: '-8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '40px',
+                  height: '4px',
+                  bgcolor: 'primary.main',
+                  borderRadius: '2px'
+                }
+              }}
+            >
+              {category}
+            </Typography>
+            
+            {/* Décoration droite */}
+            <Box 
+              component={motion.div}
+              variants={decorationRightVariants}
+              sx={{ 
+                position: 'absolute', 
+                right: { xs: '10%', md: '25%' }, 
+                top: '50%', 
+                transform: 'translateY(-50%)',
+                display: { xs: 'none', sm: 'block' }
+              }}
+            >
+              <Box component="span" sx={{ 
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                bgcolor: 'primary.main',
+                verticalAlign: 'middle'
+              }} />
+              <Box sx={{ 
+                width: '40px', 
+                height: '2px', 
+                background: `linear-gradient(to left, transparent, ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'})`,
+                display: 'inline-block',
+                ml: 1
+              }} />
+            </Box>
+            
+            {/* Ligne sous le titre */}
+            <Box 
+              component={motion.div}
+              variants={categoryLineVariants}
+              sx={{ 
+                height: '2px', 
+                width: { xs: '60%', sm: '40%', md: '30%' },
+                maxWidth: '200px',
+                background: `linear-gradient(to right, transparent, ${isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}, transparent)`,
+                mx: 'auto',
+                mt: 4,
+                borderRadius: '1px'
+              }}
+            />
+          </Box>
+
+          <Grid 
+            container 
+            spacing={3}
+            component={motion.div}
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {categoryPacks.map((pack) => (
+              <Grid item xs={12} sm={6} md={4} key={pack.id}>
+                <Card 
+                  component={motion.div}
+                  variants={itemVariants}
+                  sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    boxShadow: 3,
+                    transition: 'transform 0.3s, box-shadow 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: 6
+                    },
+                    bgcolor: isDarkMode ? '#1f2937' : 'background.paper',
+                    color: isDarkMode ? 'text.primary' : 'inherit',
+                    border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.12)' : 'none'
+                  }}
                 >
-                  <span style={{ textTransform: 'capitalize' }}>{category}</span>
-                </motion.h3>
-                <motion.div 
-                  className={`h-1 mt-2 rounded-full bg-gradient-to-r ${getColorScheme(category).gradientFrom} ${getColorScheme(category).gradientTo}`}
-                  variants={categoryLineVariants}
-                  style={{ originX: 0.5 }}
-                />
-              </motion.div>
-              
-              <motion.div
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-                variants={containerVariants}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-              >
-                {categoryPacks.map((pack) => {
-                  const colorScheme = getColorScheme(category);
-                  return (
-                    <motion.div
-                      key={pack.id}
-                      variants={itemVariants}
-                      className={`rounded-lg shadow-lg overflow-hidden border-2 ${colorScheme.bg} ${colorScheme.border} transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1`}
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h5" component="h3" gutterBottom sx={{ color: isDarkMode ? 'white' : 'text.primary' }}>
+                      {pack.name}
+                    </Typography>
+                    <Typography variant="subtitle1" color={isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} gutterBottom>
+                      À partir de
+                    </Typography>
+                    <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                      {pack.price}€/mois
+                    </Typography>
+                    <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)' }} />
+                    <Typography variant="body2" color={isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} paragraph>
+                      {pack.description}
+                    </Typography>
+                    
+                    {pack.avantages && pack.avantages.length > 0 && (
+                      <List disablePadding>
+                        {pack.avantages.map((avantage, index) => (
+                          <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+                            <ListItemIcon sx={{ minWidth: '32px' }}>
+                              <CheckIcon fontSize="small" color="primary" />
+                            </ListItemIcon>
+                            <ListItemText primary={avantage} primaryTypographyProps={{ variant: 'body2' }} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </CardContent>
+                  <CardActions sx={{ p: 2, pt: 0 }}>
+                    <Button 
+                      fullWidth 
+                      variant="contained" 
+                      color="primary" 
+                      onClick={() => handleSubscribeClick(pack)}
+                      sx={{ 
+                        py: 1.5,
+                        fontWeight: 'medium'
+                      }}
                     >
-                      <div className="p-6">
-                        <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {pack.name}
-                        </h3>
-                        <p className={`mt-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                          À partir de
-                        </p>
-                        <p className={`mt-2 text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {pack.price}$/mois
-                        </p>
-                        <ul className="mt-6 space-y-4">
-                          {pack.avantages && pack.avantages.map((avantage, index) => (
-                            <li key={index} className="flex items-start">
-                              <CheckIcon className={`h-6 w-6 flex-shrink-0 ${getColorScheme(category).icon}`} />
-                              <span className={`ml-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                {avantage}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                        <button
-                          className={`mt-8 w-full px-4 py-2 rounded-md font-medium transition-colors duration-200 text-white ${colorScheme.highlight} ${colorScheme.hover}`}
-                          onClick={() => {
-                            if (!user) {
-                              navigate('/register');
-                            } else {
-                              if (user.is_admin) {
-                                navigate('/admin/mespacks');
-                              } else {
-                                navigate('/dashboard/buypacks');
-                              }
-                            }
-                          }}
-                        >
-                          Souscrire Maintenant
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+                      Souscrire Maintenant
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      ))}
+    </Container>
   );
 }

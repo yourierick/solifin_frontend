@@ -52,6 +52,18 @@ instance.interceptors.response.use(
                 console.error('Erreur lors du rafraîchissement du token CSRF:', refreshError);
             }
         }
+        
+        // Gestion des erreurs 403 liées aux restrictions de pays
+        if (error.response?.status === 403 && error.response?.data?.access_denied) {
+            // Stocker les informations du pays dans le localStorage
+            const countryCode = error.response.data.country_code || '';
+            localStorage.setItem('blocked_country_code', countryCode);
+            
+            // Rediriger vers la page d'erreur HTML statique
+            window.location.href = `/access-denied.html`;
+            return new Promise(() => {}); // Bloquer la chaîne de promesses
+        }
+        
         return Promise.reject(error);
     }
 );
