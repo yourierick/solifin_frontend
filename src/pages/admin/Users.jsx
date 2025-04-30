@@ -21,7 +21,8 @@ import {
   Info as InfoIcon,
   LockReset as LockResetIcon,
   ToggleOn as ToggleOnIcon,
-  ToggleOff as ToggleOffIcon
+  ToggleOff as ToggleOffIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import axios from '../../utils/axios';
 import ReferralStats from '../../components/ReferralStats';
@@ -29,6 +30,7 @@ import ReferralList from '../../components/ReferralList';
 import { useToast } from '../../contexts/ToastContext';
 import Notification from '../../components/Notification';
 import { useTheme } from '../../contexts/ThemeContext';
+import UserDetails from './UserDetails';
 
 // Style personnalisé pour l'overlay des modals avec effet de flou
 const backdropStyle = {
@@ -121,22 +123,20 @@ const Users = () => {
   const handleViewDetails = async (user) => {
     //console.log('Viewing details for user:', user); // Debug log
     try {
-      setLoading(true);
-      const response = await axios.get(`/api/admin/users/${user.id}`);
-      //console.log('User details response:', response.data); // Debug log
+      setSelectedUser(user);
+      setOpenDialog(true);
       
-      if (response.data.success) {
-        setSelectedUser(response.data.data.user);
-        setStatistiques(response.data.data.stats);
-        setOpenDialog(true);
-      } else {
-        throw new Error(response.data.message || 'Erreur lors de la récupération des détails');
+      // Récupérer les statistiques de parrainage
+      const statsResponse = await axios.get(`/api/admin/users/${user.id}/referrals`);
+      if (statsResponse.data.success) {
+        setStatistiques(statsResponse.data.referrals || []);
       }
     } catch (err) {
-      //console.error('Error in handleViewDetails:', err);
-      Notification.error('Erreur lors de la récupération des détails');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching user details:', err);
+      toast({
+        type: 'error',
+        message: 'Erreur lors de la récupération des détails de l\'utilisateur'
+      });
     }
   };
 
@@ -235,6 +235,18 @@ const Users = () => {
     }
   };
 
+  // Fonction pour formater correctement les dates
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('fr-FR');
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
   if (loading && !users.length) {
     //console.log('Showing loading state'); // Debug log
     return (
@@ -318,13 +330,13 @@ const Users = () => {
                           Email
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
+                          Date d'inscription
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
                           Statut
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
                           Packs
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Filleuls
                         </th>
                         <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-200">
                           Actions
@@ -340,6 +352,9 @@ const Users = () => {
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
                             {user.email}
                           </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                              {formatDate(user.created_at)}
+                          </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               user.status === 'active'
@@ -351,9 +366,6 @@ const Users = () => {
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
                             {user.packs?.length || 0} pack(s)
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                            {user.referrals_count || 0} filleul(s)
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-right space-x-4">
                             <Tooltip title="Voir les détails de l'utilisateur" arrow>
@@ -542,42 +554,31 @@ const Users = () => {
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
         BackdropProps={{
           style: backdropStyle
         }}
+        PaperProps={{
+          style: {
+            backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: '#14532d' }}>
           <div className="flex items-center">
             <PersonIcon className="mr-2" />
-            <span>Détails de l'utilisateur</span>
+            <span>Informations sur l'utilisateur</span>
           </div>
+          <IconButton edge="end" color="inherit" onClick={handleCloseDialog} aria-label="close">
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
-          {selectedUser ? (
-            <div className="space-y-4">
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <h2 className="text-xl font-semibold mb-4">Informations générales</h2>
-                <div className="space-y-2">
-                  <p className="text-gray-700 dark:text-gray-300">Nom: {selectedUser.name}</p>
-                  <p className="text-gray-700 dark:text-gray-300">Email: {selectedUser.email}</p>
-                  <p className="text-gray-700 dark:text-gray-300">Statut: {selectedUser.status}</p>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    Date d'inscription: {new Date(selectedUser.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <ReferralStats stats={{
-                total_referrals: statistiques.length,
-                referrals_by_pack: statistiques,
-              }} />
-              <ReferralList userId={selectedUser.id} />
-            </div>
-          ) : (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
+        <DialogContent dividers style={{ padding: 0 }}>
+          {selectedUser && (
+            <UserDetails userId={selectedUser.id} />
           )}
         </DialogContent>
       </Dialog>
