@@ -105,6 +105,8 @@ export default function PostDetailModal({
     }
   };
 
+  console.log(post);
+
   // Afficher l'icône appropriée selon le type de post
   const renderTypeIcon = () => {
     switch (post.type) {

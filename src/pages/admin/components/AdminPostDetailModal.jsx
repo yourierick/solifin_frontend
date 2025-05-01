@@ -150,7 +150,7 @@ export default function AdminPostDetailModal({
                 {/* Site */}
                 <tr>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Site</th>
-                  <td className="px-4 py-2">{post.lien || 'Non précisé'}</td>
+                  <td className="px-4 py-2"><a href={post.lien} target='_blank'>suivre le lien</a></td>
                 </tr>
                 
                 {/* Département */}
@@ -298,7 +298,7 @@ export default function AdminPostDetailModal({
                 {/* Site */}
                 <tr>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Site</th>
-                  <td className="px-4 py-2">{post.lien || 'Non précisé'}</td>
+                  <td className="px-4 py-2"><a href={post.lien} target='_blank'>suivre le lien</a></td>
                 </tr>
                 
                 {/* Localisation */}
@@ -379,7 +379,7 @@ export default function AdminPostDetailModal({
               {post.lien && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <span>{post.lien}</span>
+                  <span><a href={post.lien} target='_blank'>suivre le lien</a></span>
                 </div>
               )}
               
@@ -398,9 +398,6 @@ export default function AdminPostDetailModal({
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de la publicité avec titre principal */}
           <div className="border-b pb-3 mb-4">
-            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              {post.titre || post.title}
-            </h2>
             <div className="flex items-center mt-1">
               <TagIcon className="h-4 w-4 mr-1 text-primary-500" />
               <span className="text-sm font-medium">
@@ -508,7 +505,7 @@ export default function AdminPostDetailModal({
               {post.lien && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
-                  <span>{post.lien}</span>
+                  <span><a href={post.lien} target='_blank'>suivre le lien</a></span>
                 </div>
               )}
             </div>
@@ -761,13 +758,6 @@ export default function AdminPostDetailModal({
                           >
                             <XCircleIcon className="h-5 w-5 mr-2" />
                             Rejeter
-                          </button>
-                          <button
-                            onClick={() => onPending(post.id)}
-                            className="flex-1 flex items-center justify-center px-4 py-2 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 transition-colors"
-                          >
-                            <ClockIcon className="h-5 w-5 mr-2" />
-                            En attente
                           </button>
                         </div>
                       ) : (

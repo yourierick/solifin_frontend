@@ -23,7 +23,8 @@ import {
   ChevronUpIcon,
   ChartBarIcon,
   ArrowsPointingInIcon,
-  ArrowsPointingOutIcon
+  ArrowsPointingOutIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
@@ -54,6 +55,10 @@ import Tree from 'react-d3-tree';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { createPortal } from 'react-dom';
+import PackStatsModal from './components/PackStatsModal';
+import { ToastContainer } from 'react-toastify';
 
 export default function UserDetails({ userId }) {
   const { isDarkMode } = useTheme();
@@ -86,6 +91,11 @@ export default function UserDetails({ userId }) {
   const treeRef = useRef(null);
   const modalRef = useRef(null);
   const [modalWidth, setModalWidth] = useState(800);
+  const [packStatsModal, setPackStatsModal] = useState(false);
+  const [selectedPack, setSelectedPack] = useState(null);
+  // États pour le modal de détails de transaction
+  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   
   useEffect(() => {
     fetchUserDetails();
@@ -132,13 +142,37 @@ export default function UserDetails({ userId }) {
 
   // Fonction pour formater correctement les dates
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Non disponible';
+    
     try {
+      // Si la date est déjà au format français avec heure (JJ/MM/AAAA HH:MM:SS)
+      if (typeof dateString === 'string' && dateString.includes('/')) {
+        // Extraire seulement la partie date (JJ/MM/AAAA)
+        const dateParts = dateString.split(' ');
+        if (dateParts.length > 0) {
+          return dateParts[0]; // Retourne seulement la partie date
+        }
+        return dateString;
+      }
+      
+      // Essayer de créer une date valide
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('fr-FR');
+      
+      // Vérifier si la date est valide
+      if (isNaN(date.getTime())) {
+        console.error('Date invalide:', dateString);
+        return 'Format de date invalide';
+      }
+      
+      // Formater la date en français sans l'heure
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      });
     } catch (error) {
-      return 'N/A';
+      console.error('Erreur de formatage de date:', error, dateString);
+      return 'Erreur de date';
     }
   };
 
@@ -217,7 +251,13 @@ export default function UserDetails({ userId }) {
     // Essayer de parser directement
     try {
       const date = new Date(dateStr);
-      return isNaN(date.getTime()) ? null : date;
+      
+      // Vérifier si la date est valide
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      
+      return date;
     } catch (e) {
       return null;
     }
@@ -228,8 +268,6 @@ export default function UserDetails({ userId }) {
     if (!currentPackReferrals || !currentPackReferrals[currentTab]) {
       return [];
     }
-
-    console.log("Filleuls avant filtrage:", currentPackReferrals[currentTab]);
 
     // Préparer les dates de filtre une seule fois
     const startDate = dateFilter.startDate ? normalizeDate(dateFilter.startDate) : null;
@@ -412,8 +450,6 @@ export default function UserDetails({ userId }) {
 
   // Fonction pour transformer les données des filleuls en structure d'arbre
   const transformDataToTree = (referrals) => {
-    console.log("Données pour l'arbre:", referrals);
-    
     const rootNode = {
       name: 'Vous',
       attributes: {
@@ -436,10 +472,63 @@ export default function UserDetails({ userId }) {
         commission: `${parseFloat(ref.commission || ref.total_commission || 0).toFixed(2)}$`,
         status: ref.pack_status || ref.status || 'N/A',
         generation: 1,
-        userId: ref.id
+        userId: ref.id,
+        sponsorId: ref.sponsor_id
       },
       children: []
     }));
+
+    // Fonction récursive pour trouver le nœud parent
+    const findParentNode = (nodes, sponsorId) => {
+      for (let node of nodes) {
+        if (node.attributes.userId === sponsorId) {
+          return node;
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findParentNode(node.children, sponsorId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Pour les filleuls qui ont un sponsor_id, les attacher à leur parent
+    // Cette approche fonctionne pour toutes les générations
+    const processReferrals = (refs, generation) => {
+      if (!refs || refs.length === 0) return;
+      
+      refs.forEach(ref => {
+        // Ignorer les filleuls de la première génération, ils sont déjà attachés à la racine
+        if (generation <= 1) return;
+        
+        // Trouver le parent de ce filleul
+        const parentNode = findParentNode(rootNode.children, ref.sponsor_id);
+        
+        if (parentNode) {
+          if (!parentNode.children) parentNode.children = [];
+          
+          // Ajouter ce filleul comme enfant de son parent
+          parentNode.children.push({
+            name: ref.name || 'Inconnu',
+            attributes: {
+              commission: `${parseFloat(ref.commission || ref.total_commission || 0).toFixed(2)}$`,
+              status: ref.pack_status || ref.status || 'N/A',
+              generation: generation,
+              userId: ref.id,
+              sponsorId: ref.sponsor_id
+            },
+            children: []
+          });
+        }
+      });
+    };
+
+    // Traiter les générations 2 à 4
+    for (let gen = 2; gen <= 4; gen++) {
+      if (referrals && referrals.length > gen-1) {
+        processReferrals(referrals[gen-1], gen);
+      }
+    }
 
     return rootNode;
   };
@@ -634,15 +723,14 @@ export default function UserDetails({ userId }) {
         const isExpired = params.row.expiry_date && new Date(params.row.expiry_date) < new Date();
         
         return (
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 p-2">
             <button
-              onClick={() => handleViewPackReferrals(params.row.id)}
+              onClick={() => handleViewPackReferrals(params.row.pack_id)}
               className="p-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
               title="Voir les filleuls"
             >
               <UsersIcon className="h-5 w-5" />
             </button>
-            
             <button
               onClick={() => handleViewPackStats(params.row.id)}
               className="p-1 bg-green-50 dark:bg-green-900 text-green-600 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-800 transition-colors"
@@ -650,7 +738,7 @@ export default function UserDetails({ userId }) {
             >
               <ChartBarIcon className="h-5 w-5" />
             </button>
-            
+
             {!isExpired && (
               <button
                 onClick={() => handleTogglePackStatus(params.row.id, params.row.status)}
@@ -676,29 +764,63 @@ export default function UserDetails({ userId }) {
   // Fonction pour afficher les statistiques d'un pack
   const handleViewPackStats = (packId) => {
     // Fonction pour afficher les statistiques du pack
-    console.log("Afficher les statistiques du pack", packId);
-    // Ici, vous pourriez ouvrir un modal ou rediriger vers une page de statistiques
+    setSelectedPack(packs.find(pack => pack.id === packId));
+    setPackStatsModal(true);
   };
 
   // Fonction pour activer/désactiver un pack
   const handleTogglePackStatus = (packId, currentStatus) => {
-    // Fonction pour activer/désactiver un pack
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     console.log(`Changer le statut du pack ${packId} de ${currentStatus} à ${newStatus}`);
     
-    // Ici, vous feriez un appel API pour changer le statut
-    // Exemple:
-    // axios.post(`/api/admin/users/packs/${packId}/toggle-status`, { status: newStatus })
-    //   .then(response => {
-    //     // Mettre à jour les packs dans l'état local
-    //     const updatedPacks = packs.map(pack => 
-    //       pack.id === packId ? { ...pack, status: newStatus } : pack
-    //     );
-    //     setPacks(updatedPacks);
-    //   })
-    //   .catch(error => {
-    //     console.error("Erreur lors du changement de statut:", error);
-    //   });
+    // Appel API pour changer le statut
+    axios.patch(`/api/admin/users/packs/${packId}/toggle-status`)
+      .then(response => {
+        if (response.data.success) {
+          // Mettre à jour les packs dans l'état local
+          const updatedPacks = packs.map(pack => 
+            pack.id === packId ? { ...pack, status: newStatus } : pack
+          );
+          setPacks(updatedPacks);
+          
+          // Afficher un message de succès
+          toast.success(`Le statut du pack a été changé à ${newStatus === 'active' ? 'actif' : 'inactif'}`);
+        } else {
+          toast.error(response.data.message || 'Erreur lors du changement de statut');
+        }
+      })
+      .catch(error => {
+        console.error("Erreur lors du changement de statut:", error);
+        toast.error(error.response?.data?.message || 'Erreur lors du changement de statut du pack');
+      });
+  };
+
+  // Fonction pour afficher les détails d'une transaction
+  const handleViewTransactionDetails = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowTransactionDetails(true);
+  };
+
+  // Fonction pour fermer le modal de détails de transaction
+  const handleCloseTransactionDetails = () => {
+    setShowTransactionDetails(false);
+    setSelectedTransaction(null);
+  };
+
+  // Fonction pour obtenir la couleur du statut de transaction
+  const getTransactionStatusColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'approved':
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'rejected':
+      case 'failed':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
   };
 
   // Colonnes pour le tableau des transactions
@@ -743,7 +865,7 @@ export default function UserDetails({ userId }) {
         }
         
         return (
-          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${color} ${bgColor}`}>
+          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color} ${bgColor}`}>
             {label}
           </span>
         );
@@ -806,14 +928,39 @@ export default function UserDetails({ userId }) {
           const metadata = typeof params.value === 'string' ? JSON.parse(params.value) : params.value;
           return (
             <div className="text-xs">
-              {Object.entries(metadata).map(([key, value]) => (
-                <div key={key}><span className="font-medium">{key}:</span> {value}</div>
-              ))}
+              {Object.entries(metadata).map(([key, value]) => {
+                // Convertir les objets imbriqués en chaîne JSON pour éviter l'erreur "Objects are not valid as a React child"
+                const displayValue = typeof value === 'object' && value !== null 
+                  ? JSON.stringify(value)
+                  : String(value);
+                
+                return (
+                  <div key={key}><span className="font-medium">{key}:</span> {displayValue}</div>
+                );
+              })}
             </div>
           );
-        } catch (e) {
-          return params.value;
+        } catch (error) {
+          return '-';
         }
+      }
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      renderCell: (params) => {
+        return (
+          <div className="flex space-x-2 p-2">
+            <button
+              onClick={() => handleViewTransactionDetails(params.row)}
+              className="p-1 bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+              title="Voir les détails"
+            >
+              <MagnifyingGlassIcon className="h-5 w-5" />
+            </button>
+          </div>
+        );
       }
     }
   ];
@@ -1125,6 +1272,7 @@ export default function UserDetails({ userId }) {
                           </Box>
                         )
                       }}
+                      onRowClick={(params) => handleViewTransactionDetails(params.row)}
                     />
                   </div>
                 </div>
@@ -1330,8 +1478,8 @@ export default function UserDetails({ userId }) {
         PaperProps={{
           ref: modalRef,
           sx: {
-            minHeight: isFullScreen ? '100vh' : '80vh',
-            maxHeight: isFullScreen ? '100vh' : '80vh',
+            minHeight: isFullScreen ? '100vh' : '90vh',
+            maxHeight: isFullScreen ? '100vh' : '90vh',
             bgcolor: isDarkMode ? '#1f2937' : 'rgba(255, 255, 255, 0.98)',
             backdropFilter: 'blur(10px)',
             border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
@@ -1352,7 +1500,7 @@ export default function UserDetails({ userId }) {
           component={motion.div}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          transition={{ duration: 0.3 }}
           sx={{ 
             bgcolor: isDarkMode ? '#1a2433' : 'rgba(0, 0, 0, 0.05)',
             color: isDarkMode ? 'grey.100' : 'text.primary',
@@ -1436,6 +1584,14 @@ export default function UserDetails({ userId }) {
                 onClick={() => setIsFullScreen(!isFullScreen)}
                 sx={{ 
                   ml: 1,
+                  width: 32,
+                  height: 32,
+                  minWidth: 32,
+                  minHeight: 32,
+                  padding: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
                   color: isDarkMode ? 'grey.300' : 'grey.700',
                   bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
                   '&:hover': {
@@ -1444,9 +1600,9 @@ export default function UserDetails({ userId }) {
                 }}
               >
                 {isFullScreen ? (
-                  <ArrowsPointingInIcon className="h-5 w-5" />
+                  <ArrowsPointingInIcon className="h-2 w-4" />
                 ) : (
-                  <ArrowsPointingOutIcon className="h-5 w-5" />
+                  <ArrowsPointingOutIcon className="h-2 w-4" />
                 )}
               </IconButton>
             </Tooltip>
@@ -1816,6 +1972,194 @@ export default function UserDetails({ userId }) {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Modal pour les statistiques du pack */}
+      <PackStatsModal 
+        open={packStatsModal} 
+        onClose={() => setPackStatsModal(false)} 
+        packId={selectedPack?.id}
+        userId={effectiveId}
+      />
+      {/* Modal pour les détails de transaction */}
+      {showTransactionDetails && selectedTransaction && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
+             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}>
+          <div className={`relative p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Détails de la transaction
+              </h3>
+              <button
+                onClick={() => setShowTransactionDetails(false)}
+                className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} overflow-y-auto max-h-[60vh]`}>
+              {/* Informations principales */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">ID de transaction</p>
+                  <p className="font-medium">{selectedTransaction.id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Type de transaction</p>
+                  <p className="font-medium capitalize">{selectedTransaction.type === "withdrawal" ? "retrait": selectedTransaction.type === "sales" ? "achat" : selectedTransaction.type === "transfer" ? "Transfert des fonds" : selectedTransaction.type === "reception" ? "Réception des fonds" : "commission"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Montant de la transaction</p>
+                  <p className={`font-medium ${
+                    selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'sales' 
+                      ? 'text-red-500' 
+                      : 'text-green-500'
+                  }`}>
+                    {selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'sales' ? '-' : '+'}
+                    {selectedTransaction.amount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Statut de la transaction</p>
+                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    getTransactionStatusColor(selectedTransaction.status)
+                  }`}>
+                    {selectedTransaction.status === "pending" ? "En attente" : selectedTransaction.status === "approved" ? "Approuvé" : selectedTransaction.status === "rejected" ? "Refusé" : selectedTransaction.status === "completed" ? "Completé" : selectedTransaction.status === "failed" ? "échouée": selectedTransaction.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date de la transaction</p>
+                  <p className="font-medium">
+                    {formatDate(selectedTransaction.created_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière mise à jour</p>
+                  <p className="font-medium">
+                    {formatDate(selectedTransaction.updated_at)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Métadonnées */}
+              {selectedTransaction.metadata && Object.keys(selectedTransaction.metadata).length > 0 && (
+                <div>
+                  <h4 className={`text-lg font-medium mb-2 ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Informations supplémentaires
+                  </h4>
+                  <div className={`p-4 rounded-lg ${
+                    isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                  }`}>
+                    {Object.entries(selectedTransaction.metadata).map(([key, value]) => {
+                      // Traduire les clés en français
+                      const frenchLabels = {
+                        'withdrawal_request_id': 'Identifiant de la demande de retrait',
+                        'payment_method': 'Méthode de paiement',
+                        'montant_a_retirer': 'Montant à retirer',
+                        'fee_percentage': 'Pourcentage de frais',
+                        'frais_de_retrait': 'Frais de retrait',
+                        'frais_de_commission': 'Frais de commission',
+                        'montant_total_a_payer': 'Montant total à payer',
+                        'devise': 'Dévise choisie pour le retrait',
+                        'payment_details': 'Détails du paiement',
+                        'status': 'Statut',
+                        'source': 'Source',
+                        'type': 'Type',
+                        'amount': 'Montant',
+                        'currency': 'Devise',
+                        'description': 'Description',
+                        'reference': 'Référence'
+                      };
+                      
+                      const label = frenchLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                      
+                      // Formater la valeur selon son type
+                      let formattedValue = value;
+                      
+                      // Traduction des statuts
+                      if (key === 'status' || key.endsWith('_status')) {
+                        if (value === 'pending') formattedValue = 'En attente';
+                        else if (value === 'approved') formattedValue = 'Approuvé';
+                        else if (value === 'rejected') formattedValue = 'Rejeté';
+                        else if (value === 'cancelled' || value === 'canceled') formattedValue = 'Annulé';
+                        else if (value === 'completed') formattedValue = 'Complété';
+                        else if (value === 'failed') formattedValue = 'Échoué';
+                      }
+                      
+                      // Ajout de symboles pour les valeurs monétaires
+                      if (
+                        key === 'amount' || 
+                        key === 'montant_a_retirer' || 
+                        key === 'frais_de_retrait' || 
+                        key === 'frais_de_commission' || 
+                        key === 'montant_total_a_payer' ||
+                        key.includes('montant') ||
+                        key.includes('amount')
+                      ) {
+                        formattedValue = `${value} $`;
+                      }
+                      
+                      // Ajout de symboles pour les pourcentages
+                      if (
+                        key === 'fee_percentage' || 
+                        key.includes('percentage') || 
+                        key.includes('pourcentage')
+                      ) {
+                        formattedValue = `${value} %`;
+                      }
+                      
+                      return (
+                        <div key={key} className="mb-2">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">
+                            {label}
+                          </p>
+                          <p className="font-medium break-words">
+                            {typeof formattedValue === 'object' 
+                              ? JSON.stringify(formattedValue, null, 2) 
+                              : String(formattedValue)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowTransactionDetails(false)}
+                className={`px-4 py-2 rounded-md ${
+                  isDarkMode 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? "dark" : "light"}
+      />
     </div>
   );
 }

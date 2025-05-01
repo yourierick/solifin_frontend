@@ -11,99 +11,6 @@ import {
 import axios from '../../utils/axios';
 
 
-const stats = [
-  {
-    name: 'Solde actuel',
-    value: '€2,450',
-    icon: BanknotesIcon,
-    change: '+€350',
-    changeType: 'positive',
-  },
-  {
-    name: 'Filleuls actifs',
-    value: '12',
-    icon: UsersIcon,
-    change: '+2',
-    changeType: 'positive',
-  },
-  {
-    name: 'Gains du mois',
-    value: '€850',
-    icon: ArrowTrendingUpIcon,
-    change: '+15%',
-    changeType: 'positive',
-  },
-  {
-    name: 'Points bonus',
-    value: '450',
-    icon: GiftIcon,
-    change: '+50',
-    changeType: 'positive',
-  },
-];
-
-const recentActivities = [
-  {
-    id: 1,
-    type: 'transaction',
-    description: 'Bonus de parrainage reçu',
-    amount: '+€200',
-    date: '2024-02-19',
-    status: 'completed',
-  },
-  {
-    id: 2,
-    type: 'referral',
-    description: 'Nouveau filleul : Marie Martin',
-    amount: null,
-    date: '2024-02-18',
-    status: 'pending',
-  },
-  {
-    id: 3,
-    type: 'transaction',
-    description: 'Commission mensuelle',
-    amount: '+€150',
-    date: '2024-02-17',
-    status: 'completed',
-  },
-  {
-    id: 4,
-    type: 'bonus',
-    description: 'Points bonus gagnés',
-    amount: '+50 pts',
-    date: '2024-02-16',
-    status: 'completed',
-  },
-];
-
-const recentAds = [
-  {
-    id: 1,
-    title: "Promotion exceptionnelle",
-    type: "Publicité",
-    status: "active",
-    views: 245,
-    date: "2024-02-20"
-  },
-  {
-    id: 2,
-    title: "Nouvelle opportunité",
-    type: "Opportunité",
-    status: "pending",
-    views: 120,
-    date: "2024-02-19"
-  },
-  {
-    id: 3,
-    title: "Poste de développeur",
-    type: "Emploi",
-    status: "active",
-    views: 180,
-    date: "2024-02-18"
-  }
-];
-
 const getStatusColor = (status, isDarkMode) => {
   switch (status) {
     case 'completed':
@@ -206,7 +113,7 @@ export default function UserDashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className={`text-sm font-medium truncate ${
+                  <dt style={{ fontSize: "10px" }} className={`text-sm font-medium truncate ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
                     Solde actuel
@@ -216,18 +123,6 @@ export default function UserDashboard() {
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
                       {stats?.general_stats?.wallet.balance} $
-                    </div>
-                    <div className={`block`}>
-                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
-                        ${ isDarkMode ? 'text-green-400' : 'text-green-600'
-                      }`}>
-                        total_in: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.wallet.total_earned} $</span>
-                      </div>
-                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
-                        ${ isDarkMode ? 'text-red-400' : 'text-red-600'
-                      }`}>
-                        total_out: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.wallet.total_withdrawn} $</span>
-                      </div>
                     </div>
                   </dd>
                 </dl>
@@ -251,7 +146,7 @@ export default function UserDashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className={`text-sm font-medium truncate ${
+                  <dt style={{ fontSize: "10px" }} className={`text-sm font-medium truncate ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
                     Commissions mensuelles
@@ -284,7 +179,7 @@ export default function UserDashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className={`text-sm font-medium truncate ${
+                  <dt style={{ fontSize: "10px" }} className={`text-sm font-medium truncate ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
                     Total des filleuls
@@ -294,18 +189,6 @@ export default function UserDashboard() {
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
                       {stats?.general_stats.total_referrals}
-                    </div>
-                    <div className={`block`}>
-                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
-                        ${ isDarkMode ? 'text-green-400' : 'text-green-600'
-                      }`}>
-                        actifs: <span style={{ fontSize: "9pt" }}>{stats?.general_stats?.active_referrals}</span>
-                      </div>
-                      <div className={`ml-2 flex items-baseline text-sm font-semibold 
-                        ${ isDarkMode ? 'text-red-400' : 'text-red-600'
-                      }`}>
-                        inactifs: <span style={{ fontSize: "9pt" }}> {stats?.general_stats?.inactive_referrals}</span>
-                      </div>
                     </div>
                   </dd>
                 </dl>
@@ -329,16 +212,16 @@ export default function UserDashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className={`text-sm font-medium truncate ${
+                  <dt style={{ fontSize: "10px" }} className={`text-sm font-medium truncate ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    Commission échouée
+                    Points bonus
                   </dt>
                   <dd className="flex items-baseline">
                     <div className={`text-2xl font-semibold ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
-                      {stats?.general_stats.failed_commission}
+                      {stats?.general_stats.bonus}
                     </div>
                   </dd>
                 </dl>

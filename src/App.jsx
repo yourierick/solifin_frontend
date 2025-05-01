@@ -58,6 +58,7 @@ import BuyPack from './pages/user/Packs';
 import Stats from './pages/user/Stats';
 import WithdrawalRequests from './components/WithdrawalRequests';
 import Settings from './pages/admin/Settings';
+import Page from './pages/user/Page';
 
 function App() {
   return (
@@ -149,6 +150,7 @@ function App() {
               <Route path="news-feed" element={<NewsFeed />} />
               <Route path="packs" element={<MyPacks />} />
               <Route path="buypacks" element={<BuyPack />} />
+              <Route path="pages/:id" element={<Page />} />
             </Route>
 
             {/* Redirection pour les routes inconnues */}

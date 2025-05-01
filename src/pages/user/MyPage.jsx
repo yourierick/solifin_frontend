@@ -36,6 +36,7 @@ export default function MyPage() {
   const { isActive: isPackActive, packInfo, refreshPackStatus } = usePublicationPack();
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [likesCount, setLikesCount] = useState(0);
+  const [pageData, setPageData] = useState({}); // Ajouter l'état pour les données de la page
   
   // États pour la recherche et le filtrage
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,6 +47,12 @@ export default function MyPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   
+  // État pour le modal de photo de couverture
+  const [showCoverPhotoModal, setShowCoverPhotoModal] = useState(false);
+  const [coverPhotoFile, setCoverPhotoFile] = useState(null);
+  const [coverPhotoError, setCoverPhotoError] = useState('');
+  const [coverPhotoLoading, setCoverPhotoLoading] = useState(false);
+  
   // États pour la pagination
   const [pagination, setPagination] = useState({
     advertisements: { currentPage: 1, itemsPerPage: 3 },
@@ -53,33 +60,36 @@ export default function MyPage() {
     businessOpportunities: { currentPage: 1, itemsPerPage: 3 }
   });
 
+  // Fonction pour récupérer les données de la page
+  const fetchPageData = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch page statistics
+      const pageResponse = await axios.get(`/api/my-page`);
+      console.log(pageResponse);
+      setPageData(pageResponse.data.page); // Mettre à jour les données de la page
+      setSubscribersCount(pageResponse.data.page.nombre_abonnes);
+      setLikesCount(pageResponse.data.page.nombre_likes);
+
+      // Fetch all publication types
+      setPublications({
+        advertisements: pageResponse.data.page.publicites,
+        jobOffers: pageResponse.data.page.offres_emploi,
+        businessOpportunities: pageResponse.data.page.opportunites_affaires
+      });
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Vérifier le statut du pack de publication
     if (refreshPackStatus) {
       refreshPackStatus();
     }
     
-    const fetchPageData = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch page statistics
-        const pageResponse = await axios.get(`/api/my-page`);
-        setSubscribersCount(pageResponse.data.page.nombre_abonnes);
-        setLikesCount(pageResponse.data.page.nombre_likes);
-
-        // Fetch all publication types
-        setPublications({
-          advertisements: pageResponse.data.page.publicites,
-          jobOffers: pageResponse.data.page.offres_emploi,
-          businessOpportunities: pageResponse.data.page.opportunites_affaires
-        });
-      } catch (error) {
-        console.error("Erreur lors du chargement des données:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPageData();
   }, [user.id]);
 
@@ -509,12 +519,89 @@ export default function MyPage() {
     }));
   };
 
+  // Fonction pour gérer le téléchargement de la photo de couverture
+  const handleCoverPhotoUpload = async () => {
+    // Vérifier si un fichier a été sélectionné
+    if (!coverPhotoFile) {
+      setCoverPhotoError('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Vérifier la taille du fichier (max 2MB)
+    if (coverPhotoFile.size > 2 * 1024 * 1024) {
+      setCoverPhotoError('La taille de l\'image ne doit pas dépasser 2MB');
+      return;
+    }
+
+    try {
+      setCoverPhotoLoading(true);
+      setCoverPhotoError('');
+
+      // Créer un FormData pour envoyer le fichier
+      const formData = new FormData();
+      formData.append('photo_de_couverture', coverPhotoFile);
+
+      // Envoyer la requête
+      const response = await axios.post('/api/my-page/update-cover-photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        // Fermer le modal et réinitialiser les états
+        setShowCoverPhotoModal(false);
+        setCoverPhotoFile(null);
+        
+        // Rafraîchir les données de la page pour afficher la nouvelle photo
+        fetchPageData();
+      } else {
+        setCoverPhotoError(response.data.message || 'Une erreur est survenue');
+      }
+    } catch (error) {
+      console.error('Erreur lors du téléchargement de la photo:', error);
+      setCoverPhotoError(error.response?.data?.message || 'Une erreur est survenue lors du téléchargement');
+    } finally {
+      setCoverPhotoLoading(false);
+    }
+  };
+
+  // Fonction pour gérer la sélection du fichier
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Vérifier le type de fichier
+      if (!file.type.match('image.*')) {
+        setCoverPhotoError('Veuillez sélectionner une image valide (JPEG, PNG, GIF)');
+        return;
+      }
+      setCoverPhotoFile(file);
+      setCoverPhotoError('');
+    }
+  };
+
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-2">
       {/* Page Header - Similar to Facebook */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
         <div className="h-32 bg-gradient-to-r from-primary-500 to-primary-700 rounded-t-lg relative">
           {/* Cover Photo Area */}
+          {pageData?.photo_de_couverture ? (
+            <img 
+              src={pageData.photo_de_couverture} 
+              alt="Photo de couverture" 
+              className="h-full w-full object-cover rounded-t-lg"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-r from-primary-500 to-primary-700 rounded-t-lg"></div>
+          )}
+          <button 
+            onClick={() => setShowCoverPhotoModal(true)}
+            className="absolute top-2 right-2 bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title="Ajouter une photo de couverture"
+          >
+            <PlusIcon className="h-5 w-5" />
+          </button>
         </div>
         <div className="px-6 pb-4 relative">
           <div className="flex items-end -mt-12 sm:items-center sm:flex-row flex-col">
@@ -871,6 +958,65 @@ export default function MyPage() {
             onClick={confirmDelete}
           >
             Supprimer
+          </button>
+        </div>
+      </Modal>
+
+      {/* Modal de téléchargement de la photo de couverture */}
+      <Modal
+        isOpen={showCoverPhotoModal}
+        onClose={() => setShowCoverPhotoModal(false)}
+        title="Télécharger une photo de couverture"
+        size="md"
+      >
+        <div className="mt-2 mb-6">
+          <div className="mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Sélectionnez une image pour personnaliser votre page. Taille maximale: 2Mo.
+            </p>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-gray-700 dark:file:text-blue-300"
+              />
+            </div>
+          </div>
+          {coverPhotoFile && (
+            <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Fichier sélectionné:</p>
+              <p className="text-sm font-medium truncate">{coverPhotoFile.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {(coverPhotoFile.size / 1024 / 1024).toFixed(2)} Mo
+              </p>
+            </div>
+          )}
+          {coverPhotoError && (
+            <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p className="text-sm text-red-600 dark:text-red-400">{coverPhotoError}</p>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            type="button"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-gray-800 dark:text-gray-200 transition-colors"
+            onClick={() => setShowCoverPhotoModal(false)}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-md text-white transition-colors flex items-center justify-center min-w-[100px]"
+            onClick={handleCoverPhotoUpload}
+            disabled={coverPhotoLoading || !coverPhotoFile}
+          >
+            {coverPhotoLoading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              'Télécharger'
+            )}
           </button>
         </div>
       </Modal>

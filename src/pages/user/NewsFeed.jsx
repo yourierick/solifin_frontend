@@ -192,7 +192,7 @@ export default function NewsFeed() {
   // Se désabonner d'une page
   const handleUnsubscribe = useCallback(async (pageId) => {
     try {
-      await axios.delete(`/api/pages/${pageId}/unsubscribe`);
+      await axios.post(`/api/pages/${pageId}/unsubscribe`);
       // Rafraîchir les listes de pages
       fetchSubscribedPages();
       fetchRecommendedPages();
@@ -640,8 +640,8 @@ export default function NewsFeed() {
 
         {loading && (
           <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-        </div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+          </div>
         )}
       </div>
           </Tab.Panel>
@@ -651,8 +651,10 @@ export default function NewsFeed() {
             {/* Barre de recherche et filtres */}
             <div className={`mb-6 rounded-lg overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
               <div className="p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}">
-                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Offres d'emploi</h2>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Offres d'emploi
+                </h2>
+                <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Les offres d'emploi publiées sont certifiées. Aucun frais n'est exigé pour le dépôt des candidatures.
                 </p>
                 <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800'}`}>
@@ -941,106 +943,218 @@ export default function NewsFeed() {
           
           {/* Quatrième onglet: Pages */}
           <Tab.Panel className={classNames('rounded-xl p-3', 'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2')}>
-            <div className={`rounded-lg shadow p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="mb-4">
-                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Pages que vous suivez
+            <div className={`rounded-lg shadow p-4 ${isDarkMode ? 'bg-[#1f2937]' : 'bg-white'}`}>
+              <div className="mb-6">
+                <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Découvrir des Pages
                 </h2>
+                <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Suggestions
+                </h3>
+                
                 {loadingPages ? (
-                  <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                  <div className="flex items-center justify-center py-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                   </div>
-                ) : subscribedPages.length > 0 ? (
-                  <div className="mt-3 space-y-3">
-                    {subscribedPages.map(page => (
-                      <div key={page.id} className={`flex items-center justify-between p-2 rounded-lg ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                        <div className="flex items-center space-x-3">
-                          {page.user?.profile_picture ? (
-                            <img
-                              src={page.user.profile_picture}
-                              alt={page.user.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                              <span className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                                {page.user?.name?.charAt(0) || 'P'}
-                              </span>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pages recommandées */}
+                    {recommendedPages.length > 0 ? (
+                      recommendedPages.map(page => (
+                        <div key={page.id} className={`rounded-lg overflow-hidden shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} cursor-pointer group`}>
+                          {/* Image de couverture avec photo de profil superposée */}
+                          <div 
+                            className="relative h-40 w-full"
+                            onClick={() => navigate(`/dashboard/pages/${page.id}`)}
+                          >
+                            <button 
+                              className="absolute top-2 right-2 z-10 p-1 rounded-full bg-gray-800 bg-opacity-50 hover:bg-opacity-70"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/pages/${page.id}`);
+                              }}
+                            >
+                              <ArrowTopRightOnSquareIcon className="h-5 w-5 text-white" />
+                            </button>
+                            <div 
+                              className="w-full h-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105" 
+                              style={{ 
+                                backgroundImage: page.photo_de_couverture 
+                                  ? `url(${page.photo_de_couverture})` 
+                                  : 'url(https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1074&q=80)'
+                              }}
+                            ></div>
+                            
+                            {/* Photo de profil superposée sur la photo de couverture */}
+                            <div className="absolute -bottom-8 left-4">
+                              <div className={`h-16 w-16 rounded-full border-4 ${isDarkMode ? 'border-gray-800' : 'border-white'} overflow-hidden bg-white dark:bg-gray-700`}>
+                               
+                                {page.user?.picture ? (
+                                  <img
+                                    src={page.user.picture}
+                                    alt={page.user.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <img
+                                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(page.user?.name || 'Page')}&background=${isDarkMode ? '374151' : 'F3F4F6'}&color=${isDarkMode ? 'FFFFFF' : '1F2937'}&size=128`}
+                                    alt={page.user?.name || 'Page'}
+                                    className="h-full w-full object-cover"
+                                  />
+                                )}
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {page.user.name || 'Page'}
-                            </h3>
-                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {page.nombre_abonnes} abonnés
-                            </p>
+                          </div>
+                          
+                          {/* Contenu de la carte */}
+                          <div 
+                            className="p-4 pt-10"
+                            onClick={() => navigate(`/dashboard/pages/${page.id}`)}
+                          >
+                            <div className="flex flex-col">
+                              {/* Informations de la page */}
+                              <div className="flex-1">
+                                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {page.user?.name || 'Page sans nom'}
+                                </h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Personnalité publique
+                                </p>
+                                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+                                  {page.nombre_abonnes > 0 ? (
+                                    <>
+                                      {page.nombre_abonnes} {page.nombre_abonnes > 1 ? 'personnes aiment' : 'personne aime'} cette Page
+                                    </>
+                                  ) : 'Soyez le premier à aimer cette Page'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Bouton d'abonnement */}
+                            <button
+                              onClick={() => handleSubscribe(page.id)}
+                              className={`w-full mt-4 py-2 px-4 rounded-md flex items-center justify-center font-medium transition-colors ${
+                                isDarkMode 
+                                  ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                              }`}
+                            >
+                              S'abonner
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleUnsubscribe(page.id)}
-                          className="px-3 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800 hover:bg-primary-200"
-                        >
-                          Se désabonner
-                        </button>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className={`col-span-full text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Aucune page recommandée pour le moment.
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Vous ne suivez aucune page pour le moment.
-                  </p>
                 )}
               </div>
               
-              <div className="mt-6">
-                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Pages recommandées
-                </h2>
+              <div className="mt-8">
+                <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Pages que vous suivez
+                </h3>
+                
                 {loadingPages ? (
-                  <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+                  <div className="flex items-center justify-center py-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                   </div>
-                ) : recommendedPages.length > 0 ? (
-                  <div className="mt-3 space-y-3">
-                    {recommendedPages.map(page => (
-                      <div key={page.id} className={`flex items-center justify-between p-2 rounded-lg ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                        <div className="flex items-center space-x-3">
-                          {page.user?.profile_picture ? (
-                            <img
-                              src={page.user.profile_picture}
-                              alt={page.user.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                              <span className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                                {page.user?.name?.charAt(0) || 'P'}
-                              </span>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pages auxquelles l'utilisateur est abonné */}
+                    {subscribedPages.length > 0 ? (
+                      subscribedPages.map(page => (
+                        <div key={page.id} className={`rounded-lg overflow-hidden shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} cursor-pointer group`}>
+                          {/* Image de couverture avec photo de profil superposée */}
+                          <div 
+                            className="relative h-40 w-full"
+                            onClick={() => navigate(`/dashboard/pages/${page.id}`)}
+                          >
+                            <button 
+                              className="absolute top-2 right-2 z-10 p-1 rounded-full bg-gray-800 bg-opacity-50 hover:bg-opacity-70"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/pages/${page.id}`);
+                              }}
+                            >
+                              <ArrowTopRightOnSquareIcon className="h-5 w-5 text-white" />
+                            </button>
+                            <div 
+                              className="w-full h-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105" 
+                              style={{ 
+                                backgroundImage: page.photo_de_couverture 
+                                  ? `url(${page.photo_de_couverture})` 
+                                  : 'url(https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1074&q=80)'
+                              }}
+                            ></div>
+                            
+                            {/* Photo de profil superposée sur la photo de couverture */}
+                            <div className="absolute -bottom-8 left-4">
+                              <div className={`h-16 w-16 rounded-full border-4 ${isDarkMode ? 'border-gray-800' : 'border-white'} overflow-hidden bg-white dark:bg-gray-700`}>
+                                {page.user?.picture ? (
+                                  <img
+                                    src={page.user.picture}
+                                    alt={page.user.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <img
+                                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(page.user?.name || 'Page')}&background=${isDarkMode ? '374151' : 'F3F4F6'}&color=${isDarkMode ? 'FFFFFF' : '1F2937'}&size=128`}
+                                    alt={page.user?.name || 'Page'}
+                                    className="h-full w-full object-cover"
+                                  />
+                                )}
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {page.user.name || 'Page'}
-                            </h3>
-                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {page.nombre_abonnes} abonnés
-                            </p>
+                          </div>
+                          
+                          {/* Contenu de la carte */}
+                          <div 
+                            className="p-4 pt-10"
+                            onClick={() => navigate(`/dashboard/pages/${page.id}`)}
+                          >
+                            <div className="flex flex-col">
+                              {/* Informations de la page */}
+                              <div className="flex-1">
+                                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {page.user?.name || 'Page sans nom'}
+                                </h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Personnalité publique
+                                </p>
+                                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+                                  {page.nombre_abonnes > 0 ? (
+                                    <>
+                                      {page.nombre_abonnes} {page.nombre_abonnes > 1 ? 'personnes aiment' : 'personne aime'} cette Page
+                                    </>
+                                  ) : 'Soyez le premier à aimer cette Page'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Bouton de désabonnement */}
+                            <button
+                              onClick={() => handleUnsubscribe(page.id)}
+                              className={`w-full mt-4 py-2 px-4 rounded-md flex items-center justify-center font-medium transition-colors ${
+                                isDarkMode 
+                                  ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                              }`}
+                            >
+                              Se désabonner
+                            </button>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleSubscribe(page.id)}
-                          className="px-3 py-1 text-xs font-medium rounded-full bg-primary-600 text-white hover:bg-primary-700"
-                        >
-                          S'abonner
-                        </button>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className={`col-span-full text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Vous ne suivez aucune page pour le moment.
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Aucune page recommandée pour le moment.
-                  </p>
                 )}
               </div>
             </div>
