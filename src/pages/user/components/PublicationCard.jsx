@@ -6,7 +6,8 @@ import {
   PencilIcon, 
   TrashIcon,
   EyeIcon,
-  TagIcon
+  TagIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -15,7 +16,7 @@ import InteractionBar from '../../../components/InteractionBar';
 /**
  * Composant pour afficher une publication (publicité, offre d'emploi ou opportunité d'affaires)
  */
-export default function PublicationCard({ publication, type, onStatusChange, onEdit, onDelete, onViewDetails, onStateChange }) {
+export default function PublicationCard({ publication, type, onStatusChange, onEdit, onDelete, onViewDetails, onStateChange, onBoost }) {
   const [showActionMenu, setShowActionMenu] = useState(false);
   const menuRef = React.useRef(null);
   
@@ -184,8 +185,13 @@ export default function PublicationCard({ publication, type, onStatusChange, onE
   };
 
   const handleViewDetails = () => {
-    onViewDetails(publication, type);
     setShowActionMenu(false);
+    onViewDetails(publication);
+  };
+
+  const handleBoost = () => {
+    setShowActionMenu(false);
+    onBoost(publication);
   };
 
   return (
@@ -221,6 +227,13 @@ export default function PublicationCard({ publication, type, onStatusChange, onE
                   >
                     <EyeIcon className="h-4 w-4 mr-2 text-blue-500" />
                     Voir les détails
+                  </button>
+                  <button
+                    onClick={handleBoost}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
+                    <RocketLaunchIcon className="h-4 w-4 mr-2 text-indigo-500" />
+                    Boost
                   </button>
                   <button
                     onClick={handleEdit}

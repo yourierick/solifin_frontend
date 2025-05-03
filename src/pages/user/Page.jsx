@@ -25,6 +25,8 @@ import {
   CheckIcon,
   LinkIcon,
   ChatBubbleLeftIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import PostCard from './components/PostCard';
@@ -51,6 +53,7 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'recent', 'expired'
   const [openShareMenuId, setOpenShareMenuId] = useState(null); // Pour gérer les menus de partage
+  const [expandedComments, setExpandedComments] = useState({}); // Pour suivre les commentaires affichés par publication
   
   // Références pour les sections de la page
   const headerRef = useRef(null);
@@ -62,7 +65,7 @@ export default function Page() {
       try {
         setLoading(true);
         const response = await axios.get(`/api/pages/${id}`);
-        
+        console.log(response);
         if (response.data.success) {
           setPageData(response.data.page);
           setIsSubscribed(response.data.isSubscribed);
@@ -186,6 +189,11 @@ export default function Page() {
               publication = updatedPageData.opportunitesAffaires[index];
             }
           }
+          
+          // Mettre à jour le nombre total de likes de la page
+          updatedPageData.nombre_likes = liked
+            ? (updatedPageData.nombre_likes || 0) + 1
+            : Math.max(0, (updatedPageData.nombre_likes || 1) - 1);
           
           // Mettre à jour l'état global de la page
           setPageData(updatedPageData);
@@ -615,6 +623,10 @@ export default function Page() {
           const isOffreEmploi = postType === 'offres-emploi';
           const isOpportuniteAffaire = postType === 'opportunites-affaires';
           
+          // Vérifier si les commentaires sont développés pour cette publication
+          const isCommentsExpanded = expandedComments[`${postType}-${publication.id}`] || false;
+          const hasComments = publication.comments && publication.comments.length > 0;
+          
           return (
             <div 
               key={`${postType}-${publication.id}`}
@@ -720,7 +732,7 @@ export default function Page() {
                     rel="noopener noreferrer"
                     className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium ${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors duration-200`}
                   >
-                    <InformationCircleIcon className="h-4 w-4 mr-1.5" />
+                    <InformationCircleIcon className="h-4 w-4 mr-1" />
                     En savoir plus
                   </a>
                 </div>
@@ -736,7 +748,7 @@ export default function Page() {
                 </div>
                 <div className="flex space-x-3">
                   <span>{publication.comments_count || 0} commentaires</span>
-                  <span>0 partages</span>
+                  <span>{publication.shares_count || 0} partages</span>
                 </div>
               </div>
               
@@ -753,15 +765,25 @@ export default function Page() {
                   <span className="text-sm font-medium">J'aime</span>
                 </button>
                 
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openPostDetail(publication.id, postType);
+                    setExpandedComments(prev => ({
+                      ...prev,
+                      [`${postType}-${publication.id}`]: !isCommentsExpanded
+                    }));
                   }}
                   className="flex items-center justify-center flex-1 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
                 >
-                  <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                  <span className="text-sm font-medium">Commenter</span>
+                  <ChatBubbleLeftIcon className="h-5 w-5 mr-1" />
+                  <span className="text-sm font-medium">
+                    {isCommentsExpanded ? 'Masquer les commentaires' : `Commentaires (${publication.comments_count || publication.comments?.length || 0})`}
+                  </span>
+                  {hasComments && (
+                    isCommentsExpanded 
+                      ? <ChevronUpIcon className="h-4 w-4 ml-1" /> 
+                      : <ChevronDownIcon className="h-4 w-4 ml-1" />
+                  )}
                 </button>
                 
                 <div className="relative flex-1">
@@ -769,7 +791,7 @@ export default function Page() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleShare(publication.id, postType, 'facebook');
+                        handleShare(publication.id, publication.type, 'facebook');
                       }}
                       className="p-1.5 rounded-full text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                       title="Partager sur Facebook"
@@ -829,14 +851,15 @@ export default function Page() {
               </div>
               
               {/* Aperçu des commentaires récents - Style Facebook */}
-              {publication.comments && publication.comments.length > 0 && (
+              {hasComments && isCommentsExpanded && (
                 <div className="px-4 pt-2 pb-4">
-                  {publication.comments.slice(0, 2).map(comment => (
+                  {publication.comments.map(comment => (
                     <div key={comment.id} className="mb-3 last:mb-0">
                       <div className="flex items-start">
                         <div className="h-8 w-8 rounded-full overflow-hidden mr-2 flex-shrink-0">
+                          {console.log(comment.user?.picture_profile)}
                           <img 
-                            src={comment.user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user?.name || 'Utilisateur')}&background=374151&color=FFFFFF&size=128`} 
+                            src={comment.user?.picture_profile || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user?.name || 'Utilisateur')}&background=374151&color=FFFFFF&size=128`} 
                             alt={comment.user?.name || 'Utilisateur'} 
                             className="h-full w-full object-cover"
                           />
@@ -857,16 +880,6 @@ export default function Page() {
                       </div>
                     </div>
                   ))}
-                  
-                  {publication.comments.length > 2 && (
-                    <button 
-                      onClick={() => openPostDetail(publication.id, postType)}
-                      className={`text-sm font-medium px-3 py-1 rounded-md ${isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white flex items-center mt-2`}
-                    >
-                      <InformationCircleIcon className="h-4 w-4 mr-1" />
-                      En savoir plus
-                    </button>
-                  )}
                   
                   {/* Zone de commentaire rapide */}
                   <div className="flex items-center mt-3">
@@ -895,51 +908,89 @@ export default function Page() {
           if (!postId) return;
           
           try {
-            // Construire l'URL du post
-            let url = '';
-            if (type === 'publication') {
-              url = `${window.location.origin}/pages/${id}/publication/${postId}`;
-            } else if (type === 'offre-emploi') {
-              url = `${window.location.origin}/pages/${id}/offre-emploi/${postId}`;
-            } else if (type === 'opportunite-affaire') {
-              url = `${window.location.origin}/pages/${id}/opportunite-affaire/${postId}`;
+            const response = await axios.post(`/api/${type}/${postId}/share`, { platform });
+            
+            // Trouver la publication dans l'état local
+          let updatedPageData = { ...pageData };
+          let publication;
+          
+          if (type === 'publicites') {
+            const index = updatedPageData.publicites.findIndex(p => p.id === postId);
+            if (index !== -1) {
+              updatedPageData.publicites[index].shares_count = (updatedPageData.publicites[index].shares_count || 0) + 1;
+              publication = updatedPageData.publicites[index];
             }
-            
-            // Texte de partage
-            const text = 'Découvrez cette publication intéressante sur SOLIFIN!';
-            
-            // Gérer le partage selon la plateforme
-            let shareUrl = '';
-            
-            switch (platform) {
-              case 'facebook':
-                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-                window.open(shareUrl, '_blank');
-                toast.success('Partagé sur Facebook');
-                break;
-              case 'twitter':
-                shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-                window.open(shareUrl, '_blank');
-                toast.success('Partagé sur Twitter');
-                break;
-              case 'linkedin':
-                shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
-                window.open(shareUrl, '_blank');
-                toast.success('Partagé sur LinkedIn');
-                break;
-              case 'whatsapp':
-                shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
-                window.open(shareUrl, '_blank');
-                toast.success('Partagé sur WhatsApp');
-                break;
-              case 'copy':
-              default:
-                navigator.clipboard.writeText(url)
-                  .then(() => toast.success('Lien copié dans le presse-papier'))
-                  .catch(err => {
-                    console.error('Erreur lors de la copie:', err);
-                    toast.error('Impossible de copier le lien');
-                  });
+          } else if (type === 'offres-emploi') {
+            const index = updatedPageData.offresEmploi.findIndex(p => p.id === postId);
+            if (index !== -1) {
+              updatedPageData.offresEmploi[index].shares_count = (updatedPageData.offresEmploi[index].shares_count || 0) + 1;
+              publication = updatedPageData.offresEmploi[index];
+            }
+          } else if (type === 'opportunites-affaires') {
+            if (index !== -1) {
+              updatedPageData.opportunitesAffaires[index].shares_count = (updatedPageData.opportunitesAffaires[index].likes_count || 0) + 1;
+              publication = updatedPageData.opportunitesAffaires[index];
+            }
+          }
+          
+          // Mettre à jour l'état global de la page
+          setPageData(updatedPageData);
+          
+          // Mettre à jour également le post sélectionné si c'est le même
+          if (selectedPost && selectedPost.id === postId && selectedPost.type === type) {
+            setSelectedPost({
+              ...selectedPost,
+              shares_count: (selectedPost.shares_count || 0) + 1 
+            });
+          }
+          // Construire l'URL du post
+          let url = '';
+          if (type === 'publicites') {
+            url = `${window.location.origin}/pages/${id}/publication/${postId}`;
+          } else if (type === 'offre-emploi') {
+            url = `${window.location.origin}/pages/${id}/offre-emploi/${postId}`;
+          } else if (type === 'opportunite-affaire') {
+            url = `${window.location.origin}/pages/${id}/opportunite-affaire/${postId}`;
+          }
+
+          console.log(url);
+          
+          // Texte de partage
+          const text = 'Découvrez cette publication intéressante sur SOLIFIN!';
+          
+          // Gérer le partage selon la plateforme
+          let shareUrl = '';
+          
+          switch (platform) {
+            case 'facebook':
+              shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+              window.open(shareUrl, '_blank');
+              toast.success('Partagé sur Facebook');
+              break;
+            case 'twitter':
+              shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+              window.open(shareUrl, '_blank');
+              toast.success('Partagé sur Twitter');
+              break;
+            case 'linkedin':
+              shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+              window.open(shareUrl, '_blank');
+              toast.success('Partagé sur LinkedIn');
+              break;
+            case 'whatsapp':
+              shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+              window.open(shareUrl, '_blank');
+              toast.success('Partagé sur WhatsApp');
+              break;
+            case 'copy':
+
+            default:
+              navigator.clipboard.writeText(url)
+                .then(() => toast.success('Lien copié dans le presse-papier'))
+                .catch(err => {
+                  console.error('Erreur lors de la copie:', err);
+                  toast.error('Impossible de copier le lien');
+                });
             }
             
             // Mettre à jour le compteur de partages (si une API est disponible)
@@ -1010,7 +1061,7 @@ export default function Page() {
                     </h1>
                     <div className="flex items-center mt-1 text-sm md:text-base">
                       <UsersIcon className="h-4 w-4 mr-1" />
-                      <span className="mr-4">{pageData.nombre_abonnes || 0} abonnés</span>
+                      <span>{pageData.nombre_abonnes || 0} abonnés</span>
                       <HeartIcon className="h-4 w-4 mr-1" />
                       <span>{pageData.nombre_likes || 0} likes</span>
                     </div>
@@ -1040,7 +1091,7 @@ export default function Page() {
               {/* Barre d'actions avec espace pour la photo de profil */}
               <div className="flex flex-wrap justify-end items-center py-3 pl-32 sm:pl-40">
                 <div className="flex flex-wrap items-center gap-2">
-                  {user && user.id !== parseInt(id) && (
+                  {user && user.id !== pageData.user_id && (
                     <>
                       {isSubscribed ? (
                         <button

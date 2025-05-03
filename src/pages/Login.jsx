@@ -33,13 +33,30 @@
  * - Stockage sécurisé du token
  */
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import LoginForm from '../components/auth/LoginForm';
 
 export default function Login() {
   const { isDarkMode } = useTheme();
+  const { user, loading } = useAuth();
+
+  // Si l'utilisateur est déjà connecté, le rediriger vers le dashboard approprié
+  if (!loading && user) {
+    const isAdmin = user.is_admin === 1 || user.is_admin === true || user.role === 'admin';
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
+  }
+
+  // Afficher un loader pendant la vérification de l'authentification
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${

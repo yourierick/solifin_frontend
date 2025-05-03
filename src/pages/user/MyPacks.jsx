@@ -674,7 +674,7 @@ export default function MyPacks() {
         <Button
           variant="contained"
           startIcon={<PlusIcon className="h-5 w-5" />}
-          onClick={() => navigate('../packs')}
+          onClick={() => navigate('../buypacks')}
           sx={{
             borderRadius: '8px',
             fontWeight: 600,
@@ -683,7 +683,7 @@ export default function MyPacks() {
             textTransform: 'none'
           }}
         >
-          Ajouter un pack
+          Acheter un nouveau pack
         </Button>
       </Box>
       
@@ -896,41 +896,6 @@ export default function MyPacks() {
                           onClick={() => handleCopy(userPack.link_referral)}
                         >
                           <ContentCopy fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </ListItem>
-                    
-                    {/* Bonus sur délais */}
-                    <ListItem 
-                      disablePadding 
-                      sx={{ 
-                        py: 1.5,
-                        borderBottom: '1px solid',
-                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                      }}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <GiftIcon className="h-5 w-5" />
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary="Bonus sur délais" 
-                        secondary={userPack.bonus_points ? `${userPack.bonus_points} points configurés` : "Configurez les bonus sur délais"}
-                        primaryTypographyProps={{ 
-                          variant: 'caption', 
-                          color: 'text.secondary' 
-                        }}
-                        secondaryTypographyProps={{ 
-                          variant: 'body2', 
-                          fontWeight: 600,
-                          sx: { mt: 0.5 }
-                        }}
-                      />
-                      <Tooltip 
-                        title="Configurez les bonus attribués selon le nombre de filleuls parrainés dans une période donnée" 
-                        placement="top"
-                      >
-                        <IconButton edge="end" size="small">
-                          <Info fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </ListItem>

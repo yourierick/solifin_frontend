@@ -3,8 +3,10 @@ import { Tab } from '@headlessui/react';
 import { PlusIcon, CheckCircleIcon, XMarkIcon, ExclamationTriangleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import axios from '../../utils/axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { usePublicationPack } from '../../contexts/PublicationPackContext';
-import Notification from '../../components/Notification';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import PublicationCard from './components/PublicationCard';
 import PublicationForm from './components/PublicationForm';
 import PublicationPackAlert from '../../components/PublicationPackAlert';
@@ -12,6 +14,7 @@ import PublicationDetailsModal from './components/PublicationDetailsModal';
 import SearchFilterBar from './components/SearchFilterBar';
 import Modal from '../../components/Modal';
 import Pagination from '../../components/Pagination';
+import BoostPublicationModal from './components/BoostPublicationModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -34,6 +37,7 @@ export default function MyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { isActive: isPackActive, packInfo, refreshPackStatus } = usePublicationPack();
+  const { isDarkMode } = useTheme();
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [likesCount, setLikesCount] = useState(0);
   const [pageData, setPageData] = useState({}); // Ajouter l'état pour les données de la page
@@ -59,6 +63,11 @@ export default function MyPage() {
     jobOffers: { currentPage: 1, itemsPerPage: 3 },
     businessOpportunities: { currentPage: 1, itemsPerPage: 3 }
   });
+  
+  // État pour le modal de boost
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [publicationToBoost, setPublicationToBoost] = useState(null);
+  const [boostPublicationType, setBoostPublicationType] = useState(null);
 
   // Fonction pour récupérer les données de la page
   const fetchPageData = async () => {
@@ -66,7 +75,6 @@ export default function MyPage() {
       setIsLoading(true);
       // Fetch page statistics
       const pageResponse = await axios.get(`/api/my-page`);
-      console.log(pageResponse);
       setPageData(pageResponse.data.page); // Mettre à jour les données de la page
       setSubscribersCount(pageResponse.data.page.nombre_abonnes);
       setLikesCount(pageResponse.data.page.nombre_likes);
@@ -157,10 +165,10 @@ export default function MyPage() {
       }
       
       // Afficher une notification de succès
-      Notification.success('Publication supprimée avec succès');
+      toast.success('Publication supprimée avec succès');
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
-      Notification.error('Erreur lors de la suppression de la publication');
+      toast.error('Erreur lors de la suppression de la publication');
     } finally {
       // Fermer le modal de confirmation
       setIsDeleteConfirmOpen(false);
@@ -207,9 +215,19 @@ export default function MyPage() {
           default:
             break;
         }
+        
+        // Afficher une notification de succès
+        let statusText = '';
+        switch (newStatus) {
+          case 'disponible': statusText = 'Disponible'; break;
+          case 'terminé': statusText = 'Terminé'; break;
+          default: statusText = newStatus;
+        }
+        toast.success(`État de la publication modifié avec succès: ${statusText}`);
       })
       .catch(error => {
         console.error('Erreur lors du changement d\'état:', error);
+        toast.error('Erreur lors du changement d\'état de la publication');
       });
   };
 
@@ -225,6 +243,22 @@ export default function MyPage() {
     setShowDetailsModal(false);
     setCurrentPublication(null);
     setCurrentFormType(null);
+  };
+
+  // Gestionnaire pour l'ouverture du modal de boost
+  const handleBoost = (publication, type) => {
+    setPublicationToBoost(publication);
+    setBoostPublicationType(type);
+    setShowBoostModal(true);
+  };
+
+  // Gestionnaire pour la fermeture du modal de boost
+  const handleBoostModalClose = (success) => {
+    if (success) {
+      // Si le boost a réussi, rafraîchir les données
+      fetchPageData();
+    }
+    setShowBoostModal(false);
   };
 
   // Gestionnaire pour la soumission du formulaire (création ou modification)
@@ -306,6 +340,9 @@ export default function MyPage() {
       setSubscribersCount(pageResponse.data.page.nombre_abonnes);
       setLikesCount(pageResponse.data.page.nombre_likes);
       
+      // Afficher une notification de succès
+      toast.success(isCreating ? 'Publication créée avec succès' : 'Publication mise à jour avec succès');
+      
       // Fermer le formulaire
       handleFormClose();
       
@@ -320,7 +357,7 @@ export default function MyPage() {
         errorMessage = error.response.data.message;
       }
       
-      Notification.error(errorMessage);
+      toast.error(errorMessage);
       
       // Propager l'erreur au composant PublicationForm pour qu'il puisse réinitialiser isSubmitting
       throw error;
@@ -362,9 +399,20 @@ export default function MyPage() {
           default:
             break;
         }
+        
+        // Afficher une notification de succès
+        let statusText = '';
+        switch (newStatus) {
+          case 'en_attente': statusText = 'En attente'; break;
+          case 'approuve': statusText = 'Approuvé'; break;
+          case 'rejete': statusText = 'Rejeté'; break;
+          default: statusText = newStatus;
+        }
+        toast.success(`Statut de la publication modifié avec succès: ${statusText}`);
       })
       .catch(error => {
         console.error('Erreur lors du changement de statut:', error);
+        toast.error('Erreur lors du changement de statut de la publication');
       });
   };
 
@@ -725,6 +773,7 @@ export default function MyPage() {
                           onDelete={() => handleDelete(ad.id, 'advertisement')}
                           onViewDetails={() => handleViewDetails(ad, 'advertisement')}
                           onStateChange={(newState) => handleStateChange(ad.id, 'advertisement', newState)}
+                          onBoost={() => handleBoost(ad, 'advertisement')}
                         />
                       ))
                     )}
@@ -791,6 +840,7 @@ export default function MyPage() {
                           onDelete={() => handleDelete(offer.id, 'jobOffer')}
                           onViewDetails={() => handleViewDetails(offer, 'jobOffer')}
                           onStateChange={(newState) => handleStateChange(offer.id, 'jobOffer', newState)}
+                          onBoost={() => handleBoost(offer, 'jobOffer')}
                         />
                       ))
                     )}
@@ -857,6 +907,7 @@ export default function MyPage() {
                           onDelete={() => handleDelete(opportunity.id, 'businessOpportunity')}
                           onViewDetails={() => handleViewDetails(opportunity, 'businessOpportunity')}
                           onStateChange={(newState) => handleStateChange(opportunity.id, 'businessOpportunity', newState)}
+                          onBoost={() => handleBoost(opportunity, 'businessOpportunity')}
                         />
                       ))
                     )}
@@ -1020,6 +1071,26 @@ export default function MyPage() {
           </button>
         </div>
       </Modal>
+
+      {/* Modal de boost */}
+      <BoostPublicationModal
+        isOpen={showBoostModal}
+        onClose={(success) => handleBoostModalClose(success)}
+        publication={publicationToBoost}
+        publicationType={boostPublicationType}
+      />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? "dark" : "light"}
+      />
     </div>
   );
 }

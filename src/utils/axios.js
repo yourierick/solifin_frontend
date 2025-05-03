@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+// Créer un événement personnalisé pour la gestion de l'expiration de session
+export const sessionEvents = {
+  expired: new EventTarget(),
+};
+
+// Variable pour suivre si une redirection est en cours
+let redirectionInProgress = false;
+
 const instance = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     withCredentials: true,
@@ -33,10 +41,32 @@ instance.interceptors.request.use(async (config) => {
 instance.interceptors.response.use(
     response => response,
     async error => {
+        // Gestion des erreurs 401 (non autorisé)
         if (error.response?.status === 401) {
-            // En cas d'erreur 401, on ne fait rien ici car la redirection est gérée dans AuthContext
+            // Éviter les redirections multiples
+            if (!redirectionInProgress) {
+                redirectionInProgress = true;
+                
+                // Vérifier si nous sommes déjà sur la page de login
+                const isLoginPage = window.location.pathname === '/login';
+                
+                // Ne pas déclencher d'événement ni rediriger si on est déjà sur la page de login
+                if (!isLoginPage) {
+                    // Déclencher l'événement d'expiration de session
+                    const sessionExpiredEvent = new Event('session-expired');
+                    sessionEvents.expired.dispatchEvent(sessionExpiredEvent);
+                    
+                    // Rediriger vers la page de connexion après un court délai
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 100);
+                }
+            }
+            
             return Promise.reject(error);
         }
+        
+        // Gestion des erreurs 419 (CSRF token expiré)
         if (error.response?.status === 419) {
             // Token CSRF expiré, on essaie de le rafraîchir
             try {

@@ -12,7 +12,7 @@ import {
   Chip,
   Divider,
   Paper,
-  useTheme as useMuiTheme,
+  useTheme,
   useMediaQuery
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -21,13 +21,12 @@ import StarOutlineIcon from '@mui/icons-material/StarOutline';
 import BoltIcon from '@mui/icons-material/Bolt';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { useToast } from '../../contexts/ToastContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import PurchasePackForm from '../../components/PurchasePackForm';
-import axios from '../../utils/axios';
+import { useToast } from '../contexts/ToastContext';
+import PurchasePackForm from '../components/PurchasePackForm';
+import axios from '../utils/axios';
 
 // Style pour les cartes de pack
-const PackCard = styled(Card)(({ theme, featured, isDarkMode }) => ({
+const PackCard = styled(Card)(({ theme, featured }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
@@ -35,11 +34,8 @@ const PackCard = styled(Card)(({ theme, featured, isDarkMode }) => ({
   transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   overflow: 'visible',
   borderRadius: '16px',
-  border: featured ? `2px solid ${theme.palette.primary.main}` : '1px solid',
-  borderColor: isDarkMode ? 'rgba(76, 78, 209, 0.12)' : 'rgba(0, 0, 0, 0.12)',
-  backgroundColor: isDarkMode 
-    ? featured ? 'rgba(46, 125, 50, 0.08)' : '#1f2937' 
-    : featured ? 'rgba(46, 125, 50, 0.04)' : theme.palette.background.paper,
+  border: featured ? `2px solid ${theme.palette.primary.main}` : '1px solid rgba(0, 0, 0, 0.12)',
+  backgroundColor: featured ? 'rgba(46, 125, 50, 0.04)' : theme.palette.background.paper,
   boxShadow: featured 
     ? '0 8px 24px rgba(0, 0, 0, 0.15)' 
     : '0 2px 8px rgba(0, 0, 0, 0.08)',
@@ -86,9 +82,8 @@ const Packs = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPack, setSelectedPack] = useState(null);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
-  const { isDarkMode } = useTheme();
-  const muiTheme = useMuiTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     const fetchPacks = async () => {
@@ -125,19 +120,6 @@ const Packs = () => {
     setSelectedPack(null);
   };
 
-  // Fonction pour obtenir l'icône appropriée pour chaque avantage
-  const getAdvantageIcon = (text) => {
-    if (text.toLowerCase().includes('premium') || text.toLowerCase().includes('prioritaire')) {
-      return <StarOutlineIcon fontSize="small" color="secondary" sx={{ mr: 1, mt: 0.5 }} />;
-    } else if (text.toLowerCase().includes('boost') || text.toLowerCase().includes('rapide')) {
-      return <BoltIcon fontSize="small" color="warning" sx={{ mr: 1, mt: 0.5 }} />;
-    } else if (text.toLowerCase().includes('réduction') || text.toLowerCase().includes('économie')) {
-      return <LocalOfferIcon fontSize="small" color="error" sx={{ mr: 1, mt: 0.5 }} />;
-    } else {
-      return <CheckCircleOutlineIcon fontSize="small" color="primary" sx={{ mr: 1, mt: 0.5 }} />;
-    }
-  };
-
   if (loading) {
     return (
       <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -151,19 +133,46 @@ const Packs = () => {
     );
   }
 
+  // Fonction pour obtenir l'icône appropriée pour chaque avantage
+  const getAdvantageIcon = (text) => {
+    if (text.toLowerCase().includes('premium') || text.toLowerCase().includes('prioritaire')) {
+      return <StarOutlineIcon fontSize="small" color="secondary" sx={{ mr: 1, mt: 0.5 }} />;
+    } else if (text.toLowerCase().includes('boost') || text.toLowerCase().includes('rapide')) {
+      return <BoltIcon fontSize="small" color="warning" sx={{ mr: 1, mt: 0.5 }} />;
+    } else if (text.toLowerCase().includes('réduction') || text.toLowerCase().includes('économie')) {
+      return <LocalOfferIcon fontSize="small" color="error" sx={{ mr: 1, mt: 0.5 }} />;
+    } else {
+      return <CheckCircleOutlineIcon fontSize="small" color="primary" sx={{ mr: 1, mt: 0.5 }} />;
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
       <Box textAlign="center" mb={6}>
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          gutterBottom 
+          fontWeight="bold"
+          sx={{
+            background: 'linear-gradient(45deg, #2E7D32 30%, #4CAF50 90%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: 1
+          }}
+        >
+          Nos Packs Premium
+        </Typography>
         <Typography variant="h6" color="textSecondary" sx={{ maxWidth: '700px', mx: 'auto', mb: 3 }}>
           Choisissez le pack qui correspond à vos besoins et boostez votre visibilité sur SOLIFIN
         </Typography>
-        <Divider sx={{ width: '100px', mx: 'auto', mb: 4, borderColor: muiTheme.palette.primary.main, borderWidth: 2 }} />
+        <Divider sx={{ width: '100px', mx: 'auto', mb: 4, borderColor: theme.palette.primary.main, borderWidth: 2 }} />
       </Box>
 
       <Grid container spacing={4} alignItems="stretch">
         {packs.map(pack => (
           <Grid item xs={12} sm={6} md={4} key={pack.id} sx={{ display: 'flex' }}>
-            <PackCard featured={pack.featured} elevation={pack.featured ? 8 : 2} isDarkMode={isDarkMode}>
+            <PackCard featured={pack.featured} elevation={pack.featured ? 8 : 2}>
               {pack.featured && (
                 <FeaturedBadge 
                   label="POPULAIRE" 
