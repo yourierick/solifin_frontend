@@ -23,6 +23,7 @@ import {
   TagIcon,
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 export default function AdminPostDetailModal({
   isOpen,
@@ -32,8 +33,8 @@ export default function AdminPostDetailModal({
   onApprove,
   onReject,
   onPending,
-  isDarkMode,
 }) {
+  const { isDarkMode } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionForm, setShowRejectionForm] = useState(false);
@@ -56,7 +57,7 @@ export default function AdminPostDetailModal({
   // Navigation dans le carrousel d'images
   const nextImage = () => {
     if (post.images && post.images.length > 0) {
-      setCurrentImageIndex((prevIndex) => 
+      setCurrentImageIndex((prevIndex) =>
         prevIndex === post.images.length - 1 ? 0 : prevIndex + 1
       );
     }
@@ -64,7 +65,7 @@ export default function AdminPostDetailModal({
 
   const prevImage = () => {
     if (post.images && post.images.length > 0) {
-      setCurrentImageIndex((prevIndex) => 
+      setCurrentImageIndex((prevIndex) =>
         prevIndex === 0 ? post.images.length - 1 : prevIndex - 1
       );
     }
@@ -120,7 +121,7 @@ export default function AdminPostDetailModal({
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de l'offre avec titre principal */}
-          <div className="border-b pb-3 mb-4">
+          <div className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} pb-3 mb-4`}>
             <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {post.titre || post.title}
             </h2>
@@ -136,7 +137,7 @@ export default function AdminPostDetailModal({
               )}
             </div>
           </div>
-          
+
           {/* Tableau d'informations principales */}
           <div className={`w-full mb-4 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-md overflow-hidden`}>
             <table className="w-full text-sm">
@@ -146,19 +147,19 @@ export default function AdminPostDetailModal({
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Numéro de référence</th>
                   <td className="px-4 py-2">{post.reference || 'Non précisé'}</td>
                 </tr>
-                
+
                 {/* Site */}
                 <tr>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Site</th>
                   <td className="px-4 py-2"><a href={post.lien} target='_blank'>suivre le lien</a></td>
                 </tr>
-                
+
                 {/* Département */}
                 <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Département</th>
                   <td className="px-4 py-2">{post.company_name || post.entreprise || 'Non précisé'}</td>
                 </tr>
-                
+
                 {/* Type de contrat */}
                 {post.type_contrat && (
                   <tr>
@@ -166,7 +167,7 @@ export default function AdminPostDetailModal({
                     <td className="px-4 py-2">{post.type_contrat}</td>
                   </tr>
                 )}
-                
+
                 {/* Date limite */}
                 {post.date_limite && (
                   <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
@@ -177,7 +178,7 @@ export default function AdminPostDetailModal({
               </tbody>
             </table>
           </div>
-          
+
           {/* Vue d'ensemble du poste */}
           {post.description && (
             <div className="mb-4">
@@ -185,7 +186,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.description}</p>
             </div>
           )}
-          
+
           {/* Compétences requises */}
           {post.competences_requises && (
             <div className="mb-4">
@@ -197,7 +198,7 @@ export default function AdminPostDetailModal({
               </ul>
             </div>
           )}
-          
+
           {/* Expérience et études */}
           {(post.experience_requise || post.niveau_etudes) && (
             <div className="mb-4">
@@ -212,7 +213,7 @@ export default function AdminPostDetailModal({
               </ul>
             </div>
           )}
-          
+
           {/* Avantages */}
           {post.avantages && (
             <div className="mb-4">
@@ -220,7 +221,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.avantages}</p>
             </div>
           )}
-          
+
           {/* Rémunération */}
           {(post.salaire || post.devise) && (
             <div className="mb-4">
@@ -231,7 +232,7 @@ export default function AdminPostDetailModal({
               </p>
             </div>
           )}
-          
+
           {/* Informations de contact */}
           <div className="mt-6 pt-4 border-t">
             <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONTACT</h3>
@@ -242,21 +243,21 @@ export default function AdminPostDetailModal({
                   <span>{post.email_contact}</span>
                 </div>
               )}
-              
+
               {post.contacts && (
                 <div className="flex items-center">
                   <PhoneIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span>{post.contacts}</span>
                 </div>
               )}
-              
+
               {post.external_link && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span>{post.external_link}</span>
                 </div>
               )}
-              
+
               {post.offer_file_url && (
                 <div className="flex items-center">
                   <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-primary-500" />
@@ -271,7 +272,7 @@ export default function AdminPostDetailModal({
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de l'opportunité avec titre principal */}
-          <div className="border-b pb-3 mb-4">
+          <div className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} pb-3 mb-4`}>
             <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               {post.titre || post.title}
             </h2>
@@ -284,7 +285,7 @@ export default function AdminPostDetailModal({
               )}
             </div>
           </div>
-          
+
           {/* Tableau d'informations principales */}
           <div className={`w-full mb-4 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-md overflow-hidden`}>
             <table className="w-full text-sm">
@@ -294,19 +295,19 @@ export default function AdminPostDetailModal({
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Secteur</th>
                   <td className="px-4 py-2">{post.secteur || 'Non précisé'}</td>
                 </tr>
-                
+
                 {/* Site */}
                 <tr>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Site</th>
                   <td className="px-4 py-2"><a href={post.lien} target='_blank'>suivre le lien</a></td>
                 </tr>
-                
+
                 {/* Localisation */}
                 <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                   <th className={`px-4 py-2 text-left font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} w-1/3`}>Localisation</th>
                   <td className="px-4 py-2">{post.localisation || 'Non précisé'}</td>
                 </tr>
-                
+
                 {/* Contacts */}
                 {post.contacts && (
                   <tr>
@@ -314,7 +315,7 @@ export default function AdminPostDetailModal({
                     <td className="px-4 py-2">{post.contacts}</td>
                   </tr>
                 )}
-                
+
                 {/* Date limite */}
                 {post.date_limite && (
                   <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
@@ -333,7 +334,7 @@ export default function AdminPostDetailModal({
               </tbody>
             </table>
           </div>
-          
+
           {/* Description */}
           {post.description && (
             <div className="mb-4">
@@ -341,7 +342,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.description}</p>
             </div>
           )}
-          
+
           {/* Benefices attendus */}
           {post.benefices_attendus && (
             <div className="mb-4">
@@ -349,7 +350,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.benefices_attendus}</p>
             </div>
           )}
-          
+
           {/* Conditions de participation */}
           {post.conditions_participation && (
             <div className="mb-4">
@@ -357,7 +358,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.conditions_participation}</p>
             </div>
           )}
-          
+
           {/* Informations de contact */}
           <div className="mt-6 pt-4 border-t">
             <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONTACT</h3>
@@ -368,21 +369,21 @@ export default function AdminPostDetailModal({
                   <span>{post.email}</span>
                 </div>
               )}
-              
+
               {post.contacts && (
                 <div className="flex items-center">
                   <PhoneIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span>{post.contacts}</span>
                 </div>
               )}
-              
+
               {post.lien && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span><a href={post.lien} target='_blank'>suivre le lien</a></span>
                 </div>
               )}
-              
+
               {post.opportunity_file_url && (
                 <div className="flex items-center">
                   <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-primary-500" />
@@ -397,7 +398,7 @@ export default function AdminPostDetailModal({
       return (
         <div className={`mt-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
           {/* En-tête de la publicité avec titre principal */}
-          <div className="border-b pb-3 mb-4">
+          <div className={`border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} pb-3 mb-4`}>
             <div className="flex items-center mt-1">
               <TagIcon className="h-4 w-4 mr-1 text-primary-500" />
               <span className="text-sm font-medium">
@@ -405,7 +406,7 @@ export default function AdminPostDetailModal({
               </span>
             </div>
           </div>
-          
+
           {/* Tableau d'informations principales */}
           <div className={`w-full mb-4 border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-md overflow-hidden`}>
             <table className="w-full text-sm">
@@ -417,7 +418,7 @@ export default function AdminPostDetailModal({
                     {post.prix_unitaire_vente ? `${post.prix_unitaire_vente} ${post.devise || ''}` : 'Non précisé'}
                   </td>
                 </tr>
-                
+
                 {/* Quantité disponible */}
                 {post.quantite_disponible && (
                   <tr>
@@ -425,7 +426,7 @@ export default function AdminPostDetailModal({
                     <td className="px-4 py-2">{post.quantite_disponible}</td>
                   </tr>
                 )}
-                
+
                 {/* Point de vente */}
                 {post.point_vente && (
                   <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
@@ -433,7 +434,7 @@ export default function AdminPostDetailModal({
                     <td className="px-4 py-2">{post.point_vente}</td>
                   </tr>
                 )}
-                
+
                 {/* Besoin de livreurs */}
                 {post.besoin_livreurs && (
                   <tr>
@@ -441,7 +442,7 @@ export default function AdminPostDetailModal({
                     <td className="px-4 py-2">{post.besoin_livreurs}</td>
                   </tr>
                 )}
-                
+
                 {/* Prix de livraison */}
                 {post.besoin_livreurs === 'OUI' && post.prix_unitaire_livraison && (
                   <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
@@ -452,7 +453,7 @@ export default function AdminPostDetailModal({
               </tbody>
             </table>
           </div>
-          
+
           {/* Description */}
           {post.description && (
             <div className="mb-4">
@@ -460,7 +461,7 @@ export default function AdminPostDetailModal({
               <p className="text-sm whitespace-pre-line">{post.description}</p>
             </div>
           )}
-          
+
           {/* Conditions de livraison */}
           {post.besoin_livreurs === 'OUI' && post.conditions_livraison && (
             <div className="mb-4">
@@ -476,7 +477,7 @@ export default function AdminPostDetailModal({
               </ul>
             </div>
           )}
-          
+
           {/* Informations de contact */}
           <div className="mt-6 pt-4 border-t">
             <h3 className={`text-sm uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>CONTACT</h3>
@@ -487,21 +488,21 @@ export default function AdminPostDetailModal({
                   <span>{post.email}</span>
                 </div>
               )}
-              
+
               {post.contacts && (
                 <div className="flex items-center">
                   <PhoneIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span>{post.contacts}</span>
                 </div>
               )}
-              
+
               {post.adresse && (
                 <div className="flex items-center">
                   <MapPinIcon className="h-4 w-4 mr-2 text-primary-500" />
                   <span>{post.adresse}</span>
                 </div>
               )}
-              
+
               {post.lien && (
                 <div className="flex items-center">
                   <LinkIcon className="h-4 w-4 mr-2 text-primary-500" />
@@ -562,18 +563,18 @@ export default function AdminPostDetailModal({
                               PDF
                             </div>
                           </div>
-                          
+
                           {/* Titre du fichier */}
                           <h3 className={`text-lg font-bold mb-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                             {post.titre || post.title || 'Offre d\'emploi'}
                           </h3>
-                          
+
                           {/* Référence */}
                           <p className={`text-sm mb-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             {post.reference ? `Réf: ${post.reference}` : ''}
                             {post.company_name ? (post.reference ? ' | ' : '') + post.company_name : ''}
                           </p>
-                          
+
                           {/* Bouton de téléchargement */}
                           <a
                             href={post.offer_file_url}
@@ -601,17 +602,17 @@ export default function AdminPostDetailModal({
                               PDF
                             </div>
                           </div>
-                          
+
                           {/* Titre du fichier */}
                           <h3 className={`text-lg font-bold mb-2 text-center ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                             {post.titre || post.title || 'Opportunité d\'affaire'}
                           </h3>
-                          
+
                           {/* Secteur */}
                           <p className={`text-sm mb-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             {post.secteur ? `Secteur: ${post.secteur}` : ''}
                           </p>
-                          
+
                           {/* Bouton de téléchargement */}
                           <a
                             href={post.opportunity_file_url}
@@ -658,7 +659,7 @@ export default function AdminPostDetailModal({
                         </div>
                       </div>
                     )}
-                    
+
                     <button
                       onClick={onClose}
                       className="absolute top-2 right-2 p-1 rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-70"
@@ -666,7 +667,7 @@ export default function AdminPostDetailModal({
                       <XMarkIcon className="h-6 w-6" />
                     </button>
                   </div>
-                  
+
                   {/* Section droite: détails et actions d'administration */}
                   <div className={`w-1/2 flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     {/* En-tête */}
@@ -696,7 +697,7 @@ export default function AdminPostDetailModal({
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Contenu */}
                     <div className="p-4 overflow-y-auto flex-1">
                       {post.titre && (
@@ -707,20 +708,20 @@ export default function AdminPostDetailModal({
                       <p className={`whitespace-pre-line ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                         {post.description}
                       </p>
-                      
+
                       {renderTypeSpecificInfo()}
-                      
+
                       {/* Statut actuel */}
                       <div className={`mt-4 pt-3 flex justify-between text-sm ${isDarkMode ? 'text-gray-400 border-gray-700' : 'text-gray-500 border-gray-200'} border-t`}>
                         <div className="flex items-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             post.statut === 'en_attente' 
-                              ? 'bg-yellow-100 text-yellow-800' 
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
                               : post.statut === 'approuvé' 
-                                ? 'bg-green-100 text-green-800'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                                 : post.statut === 'rejeté'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                           }`}>
                             {post.statut === 'en_attente' 
                               ? 'En attente' 
@@ -734,27 +735,27 @@ export default function AdminPostDetailModal({
                         <div>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             post.etat === 'disponible' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' 
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                           }`}>
                             {post.etat === 'disponible' ? 'Disponible' : 'Terminé'}
                           </span>
                         </div>
                       </div>
-                      
+
                       {/* Actions d'administration */}
                       {!showRejectionForm ? (
                         <div className="mt-4 flex space-x-2">
                           <button
                             onClick={() => onApprove(post.id)}
-                            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800/30 transition-colors"
                           >
                             <CheckCircleIcon className="h-5 w-5 mr-2" />
                             Approuver
                           </button>
                           <button
                             onClick={handleRejectClick}
-                            className="flex-1 flex items-center justify-center px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/30 transition-colors"
                           >
                             <XCircleIcon className="h-5 w-5 mr-2" />
                             Rejeter
@@ -762,27 +763,19 @@ export default function AdminPostDetailModal({
                         </div>
                       ) : (
                         <div className="mt-4 space-y-3">
-                          <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          <h3 className="font-medium text-gray-900 dark:text-white">
                             Raison du rejet
                           </h3>
                           <textarea
                             value={rejectionReason}
                             onChange={(e) => setRejectionReason(e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-md ${
-                              isDarkMode 
-                                ? 'bg-gray-700 border-gray-600 text-white' 
-                                : 'bg-white border-gray-300 text-gray-900'
-                            } focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 h-32`}
+                            className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 h-32"
                             placeholder="Veuillez indiquer la raison du rejet..."
                           />
                           <div className="flex justify-end space-x-2">
                             <button
                               onClick={handleCancelReject}
-                              className={`px-4 py-2 border rounded-md ${
-                                isDarkMode 
-                                  ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                              }`}
+                              className="px-4 py-2 border rounded-md border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
                               Annuler
                             </button>

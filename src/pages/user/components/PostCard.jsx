@@ -242,7 +242,7 @@ export default function PostCard({
         
         {/* Images */}
         {post.images && post.images.length > 0 && (
-          <div className={`mt-3 relative ${post.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
+          <div className={`mt-3 relative ${post.images.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}>
             {/* Icône WhatsApp flottante */}
             {post.user?.phone && (
               <a
@@ -260,21 +260,17 @@ export default function PostCard({
             {post.images.slice(0, 4).map((image, index) => (
               <div 
                 key={index} 
-                className={`relative ${
-                  post.images.length === 1 ? 'w-full' : ''
-                } ${
-                  post.images.length > 4 && index === 3 ? 'relative' : ''
-                }`}
+                className="overflow-hidden"
               >
                 <img
                   src={image.url}
                   alt={`Image ${index + 1}`}
-                  className="rounded-lg object-cover w-full h-full"
-                  style={{ maxHeight: post.images.length === 1 ? '400px' : '200px' }}
+                  className="w-full h-auto object-cover cursor-pointer hover:opacity-90 transition-opacity duration-300"
+                  onClick={onViewDetails}
                 />
                 {post.images.length > 4 && index === 3 && (
                   <div 
-                    className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg"
+                    className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
                     onClick={onViewDetails}
                   >
                     <span className="text-white text-xl font-bold">+{post.images.length - 4}</span>

@@ -653,11 +653,40 @@ export default function Page() {
                         </svg>
                       </p>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
-                      </svg>
-                    </button>
+                    <Menu as="div" className="relative">
+                      <Menu.Button className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                        </svg>
+                      </Menu.Button>
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className={`absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'} shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}>
+                          <div className="py-1">
+                            <Menu.Item>
+                              {({ active }) => (
+                                <button
+                                  onClick={() => openPostDetail(publication.id, postType)}
+                                  className={`${
+                                    active ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : ''
+                                  } flex w-full items-center px-4 py-2 text-sm`}
+                                >
+                                  <InformationCircleIcon className="mr-3 h-5 w-5" aria-hidden="true" />
+                                  Voir les détails
+                                </button>
+                              )}
+                            </Menu.Item>
+                          </div>
+                        </Menu.Items>
+                      </Transition>
+                    </Menu>
                   </div>
                 </div>
               </div>
@@ -1120,7 +1149,7 @@ export default function Page() {
                           className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.172.2-.296.3-.495.099-.198.05-.371-.025-.52-.075-.148-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                            <path d="M17.472 14.382c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
                             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S17.385 0 12 0zm0 22c-5.523 0-10-4.477-10-10S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
                           </svg>
                           <span className="hidden sm:inline">WhatsApp</span>
@@ -1250,69 +1279,69 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-                                    <Tab.Panels>
-                                      {/* Onglet Publications */}
-                                      <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
-                                        <div className="space-y-4">
-                                          {getFilteredPublications('publicites').length > 0 ? (
-                                            getFilteredPublications('publicites').map((publication) => (
-                                              renderPublication(publication, 'publicites')
-                                            ))
-                                          ) : (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                              <NewspaperIcon className="h-12 w-12 text-gray-400 mb-4" />
-                                              <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                                Aucune publication
-                                              </h3>
-                                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                Cet utilisateur n'a pas encore publié de contenu ou aucun contenu ne correspond à votre recherche.
-                                              </p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </Tab.Panel>
-                        
-                                      {/* Onglet Offres d'emploi */}
-                                      <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
-                                        <div className="space-y-4">
-                                          {getFilteredPublications('offres-emploi').length > 0 ? (
-                                            getFilteredPublications('offres-emploi').map((offre) => (
-                                              renderPublication(offre, 'offres-emploi')
-                                            ))
-                                          ) : (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                              <BriefcaseIcon className="h-12 w-12 text-gray-400 mb-4" />
-                                              <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                                Aucune offre d'emploi
-                                              </h3>
-                                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                Cet utilisateur n'a pas encore publié d'offres d'emploi ou aucune offre ne correspond à votre recherche.
-                                              </p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </Tab.Panel>
-                        
-                                      {/* Onglet Opportunités d'affaires */}
-                                      <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
-                                        <div className="space-y-4">
-                                          {getFilteredPublications('opportunites-affaires').length > 0 ? (
-                                            getFilteredPublications('opportunites-affaires').map((opportunite) => (
-                                              renderPublication(opportunite, 'opportunites-affaires')
-                                            ))
-                                          ) : (
-                                            <div className="flex flex-col items-center justify-center py-12">
-                                              <LightBulbIcon className="h-12 w-12 text-gray-400 mb-4" />
-                                              <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                                Aucune opportunité d'affaires
-                                              </h3>
-                                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                Cet utilisateur n'a pas encore publié d'opportunités d'affaires ou aucune opportunité ne correspond à votre recherche.
-                                              </p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </Tab.Panel>
+                  <Tab.Panels>
+                    {/* Onglet Publications */}
+                    <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+                      <div className="space-y-4">
+                        {getFilteredPublications('publicites').length > 0 ? (
+                          getFilteredPublications('publicites').map((publication) => (
+                            renderPublication(publication, 'publicites')
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <NewspaperIcon className="h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              Aucune publication
+                            </h3>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Cet utilisateur n'a pas encore publié de contenu ou aucun contenu ne correspond à votre recherche.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </Tab.Panel>
+      
+                    {/* Onglet Offres d'emploi */}
+                    <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+                      <div className="space-y-4">
+                        {getFilteredPublications('offres-emploi').length > 0 ? (
+                          getFilteredPublications('offres-emploi').map((offre) => (
+                            renderPublication(offre, 'offres-emploi')
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <BriefcaseIcon className="h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              Aucune offre d'emploi
+                            </h3>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Cet utilisateur n'a pas encore publié d'offres d'emploi ou aucune offre ne correspond à votre recherche.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </Tab.Panel>
+      
+                    {/* Onglet Opportunités d'affaires */}
+                    <Tab.Panel className={`p-4 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+                      <div className="space-y-4">
+                        {getFilteredPublications('opportunites-affaires').length > 0 ? (
+                          getFilteredPublications('opportunites-affaires').map((opportunite) => (
+                            renderPublication(opportunite, 'opportunites-affaires')
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <LightBulbIcon className="h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              Aucune opportunité d'affaires
+                            </h3>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Cet utilisateur n'a pas encore publié d'opportunités d'affaires ou aucune opportunité ne correspond à votre recherche.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </Tab.Panel>
 
               {/* Onglet À propos */}
               <Tab.Panel className={`p-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>

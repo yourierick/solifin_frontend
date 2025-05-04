@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
 import TransactionFeeSettings from './components/TransactionFeeSettings';
 import CountryAccessSettings from './components/CountryAccessSettings';
+import GeneralSettings from './components/GeneralSettings';
 import { useTheme } from '../../contexts/ThemeContext';
 import { 
   CurrencyDollarIcon, 
@@ -22,11 +23,11 @@ const Settings = () => {
 
   // Configuration des onglets avec leurs icônes et titres
   const tabs = [
-    { name: 'FRAIS DE TRANSACTION', icon: CurrencyDollarIcon },
-    { name: 'PARAMÈTRES GÉNÉRAUX', icon: Cog6ToothIcon },
-    { name: 'NOTIFICATIONS', icon: BellIcon },
-    { name: 'SÉCURITÉ', icon: ShieldCheckIcon },
-    { name: 'PAYS AUTORISÉS', icon: GlobeAltIcon },
+    { name: 'Frais De Transaction', icon: CurrencyDollarIcon },
+    { name: 'Paramètres Généraux', icon: Cog6ToothIcon },
+    { name: 'Notifications', icon: BellIcon },
+    { name: 'Sécurité', icon: ShieldCheckIcon },
+    { name: 'Pays Autorisés', icon: GlobeAltIcon },
   ];
 
   return (
@@ -50,7 +51,7 @@ const Settings = () => {
                     : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] dark:hover:bg-white/[0.08] hover:text-primary-600 dark:hover:text-primary-400'
                 )}
               >
-                <tab.icon className="h-5 w-5 mr-2" />
+                <tab.icon className="h-5 w-5 mr-1" />
                 {tab.name}
               </Tab>
             ))}
@@ -70,7 +71,7 @@ const Settings = () => {
                   Paramètres généraux
                 </h2>
                 <div className="space-y-4">
-                  
+                  <GeneralSettings />
                 </div>
               </div>
             </Tab.Panel>

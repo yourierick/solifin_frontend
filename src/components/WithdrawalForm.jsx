@@ -272,6 +272,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   const [withdrawalFee, setWithdrawalFee] = useState(0);
   const [feePercentage, setFeePercentage] = useState(0);
   const [referralCommission, setReferralCommission] = useState(0);
+  const [referralCommissionPercentage, setReferralCommissionPercentage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingFees, setLoadingFees] = useState(false);
   const [feesError, setFeesError] = useState(false);
@@ -369,7 +370,29 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     };
 
     fetchWalletData();
+    fetchReferralCommissionPercentage();
   }, [walletId, walletType]);
+
+  // Fonction pour récupérer le pourcentage de commission de parrainage depuis les paramètres du système
+  const fetchReferralCommissionPercentage = async () => {
+    try {
+      const response = await axios.get('/api/withdrawal/referral-commission');
+      if (response.data.success) {
+        const percentage = parseFloat(response.data.percentage);
+        setReferralCommissionPercentage(percentage);
+        return percentage; // Retourner le pourcentage pour permettre son utilisation directe
+      } else {
+        // Si le paramètre n'est pas défini, utiliser 0% par défaut
+        setReferralCommissionPercentage(0);
+        return 0;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du pourcentage de commission:', error);
+      // En cas d'erreur, utiliser 0% par défaut
+      setReferralCommissionPercentage(0);
+      return 0;
+    }
+  };
 
   // Récupérer les frais de transaction depuis le backend
   const calculateFeesAsync = async () => {
@@ -377,6 +400,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       setWithdrawalFee(0);
       setFeePercentage(0);
       setReferralCommission(0);
+      // Ne pas réinitialiser le pourcentage de commission ici
+      // setReferralCommissionPercentage(0);
       return;
     }
 
@@ -384,6 +409,13 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     setFeesError(false);
 
     try {
+      // S'assurer que nous avons le pourcentage de commission à jour
+      let commissionPercentage = referralCommissionPercentage;
+      if (commissionPercentage === 0) {
+        // Si le pourcentage est 0, essayer de le récupérer à nouveau
+        commissionPercentage = await fetchReferralCommissionPercentage();
+      }
+      
       const response = await axios.post('/api/transaction-fees/withdrawal', {
         payment_method: selectedPaymentOption,
         payment_type: selectedType,
@@ -395,9 +427,9 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         setWithdrawalFee(fee);
         setFeePercentage(response.data.data.percentage);
         
-        // Calculer la commission du parrain (5% du montant demandé)
+        // Calculer la commission du parrain avec le pourcentage récupéré
         const requestedAmount = parseFloat(formData.amount);
-        const commission = requestedAmount * 0.05;
+        const commission = requestedAmount * (commissionPercentage / 100);
         setReferralCommission(commission);
       } else {
         setFeesError(true);
@@ -501,15 +533,16 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         requestData.id_number = formData.idNumber;  // Ajout du champ numéro de pièce d'identité
         requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber); // Ajout du numéro de téléphone
         requestData.payment_details = {
-          full_name: formData.fullName,
-          recipient_country: formData.country,
-          recipient_city: formData.recipientCity,
-          id_type: formData.idType,
-          id_number: formData.idNumber,
+          full_name: formData.fullName, 
+          recipient_country: formData.country, 
+          recipient_city: formData.recipientCity, 
+          id_type: formData.idType, 
+          id_number: formData.idNumber, 
           phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber)
         };
       }
-
+      
+      // Envoi du code OTP
       const response = await axios.post('/api/withdrawal/send-otp', requestData);
       
       if (response.data.success) {
@@ -532,6 +565,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     }
   };
 
+  // Fonction pour valider le formulaire
   const isFormValid = () => {
     if (!selectedPaymentOption || !formData.amount || parseFloat(formData.amount) <= 0) {
       return false;
@@ -676,7 +710,6 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       const response = await axios.post(`/api/withdrawal/request/${walletId}`, requestData);
       
       if (response.data.success) {
-        console.log('Retrait soumis avec succès:', response.data);
         setNotification({
           type: 'success',
           message: 'Votre demande de retrait a été soumise avec succès'
@@ -1240,7 +1273,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Commission parrainage (5%):</span>
+                            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Commission parrainage ({referralCommissionPercentage}%):</span>
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                               {referralCommission.toFixed(2)} $
                             </span>
@@ -1262,7 +1295,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                                   Commission parrainage
                                 </p>
                                 <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  Votre parrain direct recevra 5% du montant demandé, soit {referralCommission.toFixed(2)} $
+                                  Votre parrain direct recevra {referralCommissionPercentage}% du montant demandé, soit {referralCommission.toFixed(2)} $
                                 </p>
                               </div>
                             </div>

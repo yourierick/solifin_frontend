@@ -20,8 +20,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from '../../../config';
 
-// Prix par jour pour le boost d'une publication
-const PRICE_PER_DAY = 6; // USD
+// Prix par défaut par jour pour le boost d'une publication (si le paramètre n'est pas défini)
+const DEFAULT_PRICE_PER_DAY = 1; // USD
 
 // Configuration des champs de formulaire pour chaque méthode de paiement
 const paymentMethodFields = {
@@ -247,7 +247,8 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
   const [formFields, setFormFields] = useState({});
   const [days, setDays] = useState(7);
   const [walletBalance, setWalletBalance] = useState(0);
-  const [totalAmount, setTotalAmount] = useState(PRICE_PER_DAY * 7);
+  const [pricePerDay, setPricePerDay] = useState(DEFAULT_PRICE_PER_DAY);
+  const [totalAmount, setTotalAmount] = useState(DEFAULT_PRICE_PER_DAY * 7);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(1);
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
@@ -257,16 +258,17 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
   const [feesError, setFeesError] = useState(false);
   const [formIsValid, setFormIsValid] = useState(false);
 
-  // Récupérer le solde du wallet au chargement
+  // Récupérer le solde du wallet et le prix du boost au chargement
   useEffect(() => {
     if (isOpen) {
       fetchWalletBalance();
+      fetchBoostPrice();
       
       // Réinitialiser les états pour les méthodes de paiement
       setSelectedPaymentOption(paymentMethod === PAYMENT_TYPES.WALLET ? 'solifin-wallet' : '');
       
       // Calculer le montant total initial
-      const amount = PRICE_PER_DAY * days;
+      const amount = pricePerDay * days;
       setTotalAmount(amount);
       
       // Vérifier la validité du formulaire
@@ -276,12 +278,12 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
 
   // Effet pour mettre à jour le montant total lorsque le nombre de jours change
   useEffect(() => {
-    const amount = PRICE_PER_DAY * days;
+    const amount = pricePerDay * days;
     setTotalAmount(amount);
     
     // Vérifier la validité du formulaire
     validateForm();
-  }, [days]);
+  }, [days, pricePerDay]);
 
   // Effet pour surveiller les changements de méthode de paiement
   useEffect(() => {
@@ -327,6 +329,22 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
       console.error('Erreur lors de la récupération du solde:', error);
       setWalletBalance(0);
       toast.error('Impossible de récupérer le solde de votre wallet. Veuillez rafraîchir la page.');
+    }
+  };
+
+  // Récupérer le prix du boost
+  const fetchBoostPrice = async () => {
+    try {
+      const response = await axios.get('/api/boost-price');
+      if (response.data.success) {
+        setPricePerDay(parseFloat(response.data.price));
+      } else {
+        console.error('Erreur lors de la récupération du prix du boost:', response.data.message);
+        setPricePerDay(DEFAULT_PRICE_PER_DAY);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du prix du boost:', error);
+      setPricePerDay(DEFAULT_PRICE_PER_DAY);
     }
   };
 
@@ -699,7 +717,7 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
               
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mt-1">
                 <span>Prix par jour:</span>
-                <span>${PRICE_PER_DAY}.00</span>
+                <span>${pricePerDay.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-medium mt-1">
                 <span>Montant total:</span>

@@ -709,8 +709,14 @@ export default function PostDetailModal({
                     <div className="p-4 border-b flex items-center space-x-3">
                       {post.user?.picture ? (
                         <img
-                          src={post.user.picture}
-                          alt={post.user.name}
+                          src={post.user?.picture }
+                          alt={post.user?.name}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : post.page?.user?.picture ? (
+                        <img
+                          src={post.page?.user?.picture }
+                          alt={post.page?.user?.name}
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
@@ -890,9 +896,9 @@ export default function PostDetailModal({
                         <div className="mt-4 space-y-3">
                           {post.comments.map((comment) => (
                             <div key={comment.id} className="flex">
-                              {comment.user?.picture ? (
+                              {comment.user?.profile_picture ? (
                                 <img
-                                  src={comment.user.picture}
+                                  src={comment.user.profile_picture}
                                   alt={comment.user.name}
                                   className="h-8 w-8 rounded-full object-cover mr-2 flex-shrink-0"
                                 />
