@@ -1,8 +1,9 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import Notification from './Notification';
 import axios from '../utils/axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { 
   PhoneIcon, 
   CreditCardIcon,
@@ -266,6 +267,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     idType: '',  // Nouveau champ pour transfert d'argent
     idNumber: '',  // Nouveau champ pour transfert d'argent
     otpCode: '',
+    password: '', // Nouveau champ pour l'alternative au code OTP
     currency: 'USD'  // Devise par défaut: USD ($)
   });
   const [walletData, setWalletData] = useState(null);
@@ -276,8 +278,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   const [loading, setLoading] = useState(false);
   const [loadingFees, setLoadingFees] = useState(false);
   const [feesError, setFeesError] = useState(false);
-  const [notification, setNotification] = useState(null);
   const [showOtpField, setShowOtpField] = useState(false);
+  const [usePasswordInsteadOfOtp, setUsePasswordInsteadOfOtp] = useState(false); // État pour gérer l'alternative au code OTP
   const [formIsValid, setFormIsValid] = useState(false);
   const formRef = useRef(null);
 
@@ -433,18 +435,12 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         setReferralCommission(commission);
       } else {
         setFeesError(true);
-        setNotification({
-          type: 'error',
-          message: 'Erreur lors du calcul des frais'
-        });
+        toast.error('Erreur lors du calcul des frais');
       }
     } catch (error) {
       console.error('Erreur lors du calcul des frais:', error);
       setFeesError(true);
-      setNotification({
-        type: 'error',
-        message: error.response?.data?.message || 'Erreur lors du calcul des frais: ' + error.message
-      });
+      toast.error(error.response?.data?.message || 'Erreur lors du calcul des frais: ' + error.message);
     } finally {
       setLoadingFees(false);
     }
@@ -461,15 +457,9 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       // Vérifier spécifiquement si le problème est lié au solde insuffisant
       const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
       if (formData.amount && totalAmount > walletData?.balance) {
-        setNotification({
-          type: 'error',
-          message: 'Solde insuffisant. Le montant total (montant + frais + commission) dépasse votre solde disponible.'
-        });
+        toast.error('Solde insuffisant. Le montant total (montant + frais + commission) dépasse votre solde disponible.');
       } else {
-        setNotification({
-          type: 'error',
-          message: 'Veuillez remplir tous les champs obligatoires avant de demander un code OTP'
-        });
+        toast.error('Veuillez remplir tous les champs obligatoires avant de demander un code OTP');
       }
       return;
     }
@@ -547,19 +537,13 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       
       if (response.data.success) {
         setShowOtpField(true);
-        Notification.success('code OTP envoyé à votre numéro; et sur votre adresse mail, veuillez vérifier vos spam aussi')
+        toast.success('Code OTP envoyé à votre numéro; et sur votre adresse mail, veuillez vérifier vos spam aussi');
       } else {
-        setNotification({
-          type: 'error',
-          message: response.data.message || 'Erreur lors de l\'envoi du code OTP'
-        });
+        toast.error(response.data.message || 'Erreur lors de l\'envoi du code OTP');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi du code OTP:', error);
-      setNotification({
-        type: 'error',
-        message: error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP'
-      });
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP');
     } finally {
       setLoading(false);
     }
@@ -567,52 +551,75 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
 
   // Fonction pour valider le formulaire
   const isFormValid = () => {
-    if (!selectedPaymentOption || !formData.amount || parseFloat(formData.amount) <= 0) {
+    // Vérifier si le montant est valide
+    if (!formData.amount || isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
       return false;
     }
-
-    if (feesError) {
-      return false;
-    }
-
-    // Calculer le montant total à débiter (montant demandé + frais + commission)
-    const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
     
-    // Vérifier si le solde est suffisant pour couvrir le montant total
+    // Vérifier si le montant total ne dépasse pas le solde disponible
+    const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
     if (totalAmount > walletData?.balance) {
       return false;
     }
-
-    // Validation selon le type de paiement sélectionné
-    if (selectedType === PAYMENT_TYPES.MOBILE_MONEY && !formData.phoneNumber) {
-      return false;
-    } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER && 
-               (!formData.accountNumber || !formData.accountName || !formData.bankName)) {
-      return false;
-    } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD && 
-               (!formData.accountNumber || !formData.accountName)) {
-      return false;
-    } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER && 
-               (!formData.fullName || !formData.recipientCountry || !formData.recipientCity || !formData.idType || !formData.idNumber || !formData.phoneNumber)) {
+    
+    // Vérifier si une méthode de paiement a été sélectionnée
+    if (!selectedPaymentOption) {
       return false;
     }
-
-    if (showOtpField && !formData.otpCode) {
+    
+    // Vérifier les champs spécifiques selon le type de paiement
+    if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
+      if (!formData.phoneNumber || !validatePhoneNumber(formData.phoneNumber, formData.country)) {
+        return false;
+      }
+    } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER) {
+      if (!formData.accountNumber || !formData.accountName || !formData.bankName) {
+        return false;
+      }
+    } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD) {
+      if (!formData.accountNumber || !formData.accountName) {
+        return false;
+      }
+    } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER) {
+      if (!formData.fullName || !formData.recipientCity || !formData.idType || !formData.idNumber || !formData.phoneNumber || !validatePhoneNumber(formData.phoneNumber, formData.country)) {
+        return false;
+      }
+    }
+    
+    // Vérifier si le code OTP ou le mot de passe est présent selon l'option choisie
+    if (showOtpField && !usePasswordInsteadOfOtp && !formData.otpCode) {
       return false;
     }
-
+    
+    if (usePasswordInsteadOfOtp && !formData.password) {
+      return false;
+    }
+    
     return true;
   };
 
   // Vérifier si le formulaire est valide pour la soumission finale
   const isSubmitEnabled = () => {
-    // Le bouton ne doit être activé que si le code OTP a été envoyé et renseigné
-    return showOtpField && formData.otpCode && formData.otpCode.trim() !== '';
+    if (!isFormValid()) {
+      return false;
+    }
+    
+    // Si le champ OTP est affiché, vérifier qu'il est rempli
+    if (showOtpField && !usePasswordInsteadOfOtp && !formData.otpCode) {
+      return false;
+    }
+    
+    // Si l'option mot de passe est activée, vérifier qu'il est rempli
+    if (usePasswordInsteadOfOtp && !formData.password) {
+      return false;
+    }
+    
+    return true;
   };
 
   // Vérifier si le formulaire est valide pour l'envoi du code OTP
   const isOtpEnabled = () => {
-    return isFormValid() && !showOtpField;
+    return isFormValid() && !showOtpField && !usePasswordInsteadOfOtp;
   };
 
   // Effet pour mettre à jour la validité du formulaire
@@ -624,18 +631,15 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     e.preventDefault();
     
     if (!isSubmitEnabled()) {
-      setNotification({
-        type: 'error',
-        message: 'Veuillez remplir tous les champs obligatoires'
-      });
+      toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
     
     setLoading(true);
     
     try {
-      // Si le code OTP n'a pas encore été envoyé, l'envoyer d'abord
-      if (!showOtpField) {
+      // Si le code OTP n'a pas encore été envoyé et que l'option mot de passe n'est pas activée, envoyer d'abord l'OTP
+      if (!showOtpField && !usePasswordInsteadOfOtp) {
         await handleSendOtp();
         setLoading(false);
         return;
@@ -647,7 +651,6 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         payment_method: selectedPaymentOption,
         payment_type: selectedType,
         currency: formData.currency,
-        otp: formData.otpCode,
         // Résumé de la transaction
         withdrawal_fee: withdrawalFee,
         referral_commission: referralCommission,
@@ -656,6 +659,15 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         payment_details: {
         }
       };
+
+      // Ajouter soit le code OTP, soit le mot de passe selon l'option choisie
+      if (usePasswordInsteadOfOtp) {
+        requestData.password = formData.password;
+        requestData.use_password = true; // Indiquer au backend d'utiliser le mot de passe plutôt que l'OTP
+      } else {
+        requestData.otp = formData.otpCode;
+        requestData.use_password = false;
+      }
 
       // Ajout des données spécifiques selon le type de paiement
       if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
@@ -710,10 +722,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       const response = await axios.post(`/api/withdrawal/request/${walletId}`, requestData);
       
       if (response.data.success) {
-        setNotification({
-          type: 'success',
-          message: 'Votre demande de retrait a été soumise avec succès'
-        });
+        toast.success('Votre demande de retrait a été soumise avec succès');
         
         // Fermer le modal après 2 secondes
         setTimeout(() => {
@@ -721,17 +730,30 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         }, 2000);
       } else {
         console.error('Erreur lors du retrait:', response.data);
-        setNotification({
-          type: 'error',
-          message: response.data.message || 'Une erreur est survenue lors du traitement de votre demande'
-        });
+        toast.error(response.data.message || 'Une erreur est survenue lors du traitement de votre demande');
       }
     } catch (error) {
       console.error('Erreur lors du retrait:', error);
-      setNotification({
-        type: 'error',
-        message: error.response?.data?.message || 'Une erreur est survenue lors du traitement de votre demande'
-      });
+      
+      // Amélioration de la gestion des erreurs pour les réponses 422
+      if (error.response && error.response.status === 422) {
+        // Récupérer le message d'erreur spécifique du backend
+        const errorMessage = error.response.data.message || 'Validation échouée. Veuillez vérifier vos informations.';
+        
+        // Si le backend renvoie des erreurs de validation détaillées
+        if (error.response.data.errors) {
+          const errorDetails = Object.values(error.response.data.errors)
+            .flat()
+            .join(', ');
+          
+          toast.error(`${errorMessage} (${errorDetails})`);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        // Pour les autres types d'erreurs
+        toast.error(error.response?.data?.message || 'Une erreur est survenue lors du traitement de votre demande');
+      }
     } finally {
       setLoading(false);
     }
@@ -789,6 +811,18 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <style>{customStyles}</style>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? "dark" : "light"}
+      />
       <div className="modal-overlay">
         <div className="modal-container">
           <div className={`inline-block align-bottom rounded-lg text-left shadow-xl transform transition-all sm:align-middle sm:max-w-lg sm:w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
@@ -1197,7 +1231,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                       </div>
                     )}
 
-                    {showOtpField && (
+                    {showOtpField && !usePasswordInsteadOfOtp && (
                       <div className="mb-4 fade-in">
                         <label className="input-label dark:text-gray-200">
                           Code OTP <span className="text-red-500">*</span>
@@ -1228,6 +1262,47 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                             ) : (
                               'Renvoyer le code'
                             )}
+                          </button>
+                        </div>
+                        <div className="mt-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUsePasswordInsteadOfOtp(true);
+                              setShowOtpField(false);
+                            }}
+                            className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} hover:underline focus:outline-none`}
+                          >
+                            Problème de réception du code ? Utilisez votre mot de passe à la place
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {usePasswordInsteadOfOtp && (
+                      <div className="mb-4 fade-in">
+                        <label className="input-label dark:text-gray-200">
+                          Mot de passe <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          placeholder="Entrez votre mot de passe"
+                          className="input-field"
+                          required
+                        />
+                        <div className="mt-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUsePasswordInsteadOfOtp(false);
+                              setShowOtpField(true);
+                              setFormData({...formData, password: ''});
+                            }}
+                            className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} hover:underline focus:outline-none`}
+                          >
+                            Revenir à l'utilisation du code OTP
                           </button>
                         </div>
                       </div>

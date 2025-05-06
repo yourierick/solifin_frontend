@@ -11,7 +11,8 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
-  MenuItem
+  MenuItem,
+  Dialog
 } from '@mui/material';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,84 +20,8 @@ import axios from '../utils/axios';
 import Notification from './Notification';
 import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from '../config';
 
-// Style CSS pour les animations et effets visuels
+// Style CSS pour la barre de défilement personnalisée et les animations
 const customStyles = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  @keyframes slideIn {
-    from { transform: translateX(-20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-  
-  .fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
-  }
-  
-  .slide-in {
-    animation: slideIn 0.3s ease-out forwards;
-  }
-  
-  .pulse {
-    animation: pulse 2s infinite;
-  }
-  
-  .method-card {
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    padding: 12px;
-  }
-  
-  .method-card:hover {
-    background-color: rgba(0, 0, 0, 0.03);
-  }
-  
-  .method-card.selected {
-    border-color: #1976d2;
-    background-color: rgba(25, 118, 210, 0.05);
-  }
-  
-  .dark .method-card:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .dark .method-card.selected {
-    border-color: #90caf9;
-    background-color: rgba(144, 202, 249, 0.1);
-  }
-  
-  .summary-card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-    backdrop-filter: blur(5px);
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-  }
-  
-  .dark .summary-card {
-    background: linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.7) 100%);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  }
-  
-  .summary-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  }
-  
-  .dark .summary-card:hover {
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  }
-  
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
@@ -120,22 +45,103 @@ const customStyles = `
   .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.3);
   }
-  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  .slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  .method-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .method-card:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  .method-card.selected {
+    border-color: #1976d2;
+    background-color: rgba(25, 118, 210, 0.05);
+  }
+  .dark .method-card:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .dark .method-card.selected {
+    border-color: #90caf9;
+    background-color: rgba(144, 202, 249, 0.1);
+  }
+  .summary-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    backdrop-filter: blur(5px);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+  .dark .summary-card {
+    background: linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.7) 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  .summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+  .dark .summary-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
   /* Styles pour le menu déroulant en mode sombre */
   .MuiPaper-root.MuiMenu-paper.MuiPopover-paper.MuiPaper-elevation {
     background-color: #fff;
   }
-  
   .dark .MuiPaper-root.MuiMenu-paper.MuiPopover-paper.MuiPaper-elevation {
     background-color: #1e283b !important;
     color: white;
   }
-  
   .dark .MuiMenuItem-root:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
   }
 `;
 
+// Configuration des champs de formulaire pour chaque méthode de paiement
+const paymentMethodFields = {
+  [PAYMENT_TYPES.WALLET]: [],
+  [PAYMENT_TYPES.CREDIT_CARD]: [
+    { name: 'cardNumber', label: 'Numéro de carte', type: 'text', required: true, maxLength: 19, 
+      format: (value) => value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim() },
+    { name: 'cardHolder', label: 'Nom sur la carte', type: 'text', required: true },
+    { 
+      name: 'expiryDate', 
+      label: "Date d'expiration", 
+      type: 'text', 
+      required: true,
+      maxLength: 5,
+      format: (value) => value.replace(/\D/g, '').replace(/(\d{2})(\d{0,2})/, '$1/$2')
+    },
+    { name: 'cvv', label: 'CVV', type: 'text', required: true, maxLength: 3 }
+  ],
+  [PAYMENT_TYPES.MOBILE_MONEY]: [
+    { name: 'phoneNumber', label: 'Numéro de téléphone', type: 'tel', required: true }
+  ]
+};
+
+// Transformation des méthodes de paiement pour l'interface utilisateur
 const paymentMethods = [
   {
     id: PAYMENT_TYPES.WALLET,
@@ -150,20 +156,7 @@ const paymentMethods = [
     icon: 'credit-card',
     category: 'card',
     options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD],
-    fields: [
-      { name: 'cardNumber', label: 'Numéro de carte', type: 'text', required: true, maxLength: 19, 
-        format: (value) => value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim() },
-      { name: 'cardHolder', label: 'Nom sur la carte', type: 'text', required: true },
-      { 
-        name: 'expiryDate', 
-        label: 'Date d\'expiration', 
-        type: 'text', 
-        required: true,
-        maxLength: 5,
-        format: (value) => value.replace(/\D/g, '').replace(/(\d{2})(\d{0,2})/, '$1/$2')
-      },
-      { name: 'cvv', label: 'CVV', type: 'text', required: true, maxLength: 3 }
-    ]
+    fields: paymentMethodFields[PAYMENT_TYPES.CREDIT_CARD]
   },
   {
     id: PAYMENT_TYPES.MOBILE_MONEY,
@@ -171,11 +164,10 @@ const paymentMethods = [
     icon: 'phone',
     category: 'mobile',
     options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY],
-    fields: [
-      { name: 'phoneNumber', label: 'Numéro de téléphone', type: 'tel', required: true }
-    ]
+    fields: paymentMethodFields[PAYMENT_TYPES.MOBILE_MONEY]
   }
 ];
+
 
 export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   const { isDarkMode } = useTheme();
@@ -196,9 +188,21 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   const [feesError, setFeesError] = useState(false);
 
   useEffect(() => {
+  }, [pack]);
+
+  // Fonction utilitaire pour obtenir le prix du pack de façon robuste
+  const getPackPrice = () => {
+    if (!pack) return 0;
+    if (typeof pack.pack?.price === 'number') return pack.pack.price;
+    if (typeof pack.pack?.price === 'string') return Number(pack.pack.price) || 0;
+    return 0;
+  };
+
+  useEffect(() => {
     if (pack) {
-      setTotalAmount(pack.price * months);
-      setConvertedAmount(pack.price * months);
+      const basePrice = getPackPrice();
+      setTotalAmount(basePrice * months);
+      setConvertedAmount(basePrice * months);
     }
   }, [pack, months]);
 
@@ -227,7 +231,8 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
   useEffect(() => {
     // Calculer le montant total en fonction du nombre de mois
     if (pack) {
-      const newTotal = pack.price * months;
+      const basePrice = getPackPrice();
+      const newTotal = basePrice * months;
       setTotalAmount(newTotal);
       
       // Pour le wallet, recalculer les frais chaque fois que le montant change
@@ -306,6 +311,11 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
       
       if (paymentMethod === PAYMENT_TYPES.WALLET) {
         paymentOption = 'solifin-wallet';
+        // Frais de transaction toujours à 0 pour le wallet
+        setTransactionFees(0);
+        setFeePercentage(null);
+        setLoadingFees(false);
+        return;
       } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
         // Utiliser l'option de carte spécifique ou par défaut 'visa'
         paymentOption = selectedPaymentOption || 'visa';
@@ -556,14 +566,26 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     );
   };
 
-  if (!open) return null;
-
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ${isDarkMode ? 'dark' : ''}`}>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{
+        sx: {
+          backdropFilter: 'blur(10px)',
+          backgroundColor: isDarkMode ? 'rgba(31,41,55,0.85)' : 'rgba(255,255,255,0.85)',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+        }
+      }}
+    >
       <style>{customStyles}</style>
-      <div className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+      <div className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}
+        style={{
+          overflow: 'auto',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)' // pour Safari
+        }}
+      >
         {/* En-tête avec dégradé */}
-        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-700' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} text-white`}>
+        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-700' : 'bg-gradient-to-r from-green-500 to-green-600'} text-white`}>
           <div className="flex items-center justify-between">
             <Typography variant="h5" component="h2" className="font-bold">
               Renouveler {pack?.name}
@@ -775,6 +797,6 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

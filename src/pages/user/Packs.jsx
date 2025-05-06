@@ -140,14 +140,9 @@ const Packs = () => {
 
   if (loading) {
     return (
-      <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Box textAlign="center">
-          <CircularProgress size={60} thickness={4} />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Chargement des packs...
-          </Typography>
-        </Box>
-      </Container>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
     );
   }
 
@@ -164,12 +159,15 @@ const Packs = () => {
         {packs.map(pack => (
           <Grid item xs={12} sm={6} md={4} key={pack.id} sx={{ display: 'flex' }}>
             <PackCard featured={pack.featured} elevation={pack.featured ? 8 : 2} isDarkMode={isDarkMode}>
-              {pack.featured && (
+              {/* {pack.featured && (
                 <FeaturedBadge 
                   label="POPULAIRE" 
-                  icon={<StarOutlineIcon fontSize="small" />} 
+                  icon={<StarOutlineIcon fontSize="small" />}
+                  sx={{
+                    backgroundColor: 'rgba(59, 25, 180, 0.6)',
+                  }} 
                 />
-              )}
+              )} */}
               <PriceTag>
                 {pack.price}€/mois
               </PriceTag>

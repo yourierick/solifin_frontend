@@ -438,23 +438,30 @@ export default function PurchasePackForm({ open, onClose, pack }) {
   const calculateFees = async () => {
     setLoadingFees(true);
     setFeesError(false);
-    
+
     try {
       const amount = paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount;
-      const currency = paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency;
-      
-      // Vérifier que les valeurs sont valides avant de faire l'appel API
-      if (!selectedPaymentOption || !amount || amount <= 0) {
+
+      // Si le paiement est via le wallet, pas de frais de transfert
+      if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        setTransactionFees(0);
+        setFeePercentage(0);
+        setFeesError(false);
         setLoadingFees(false);
         return;
       }
-      
+
+      // Vérifier que les valeurs sont valides avant de faire l'appel API
+      if (!amount || amount <= 0) {
+        setLoadingFees(false);
+        return;
+      }
+
+      // Appel à l'API qui retourne maintenant le pourcentage global
       const response = await axios.post('/api/transaction-fees/transfer', {
-        amount: amount,
-        payment_method: selectedPaymentOption, // Envoyer la méthode spécifique (visa, m-pesa, solifin-wallet, etc.)
-        currency: currency
+        amount: amount
       });
-      
+
       if (response.data.success) {
         setTransactionFees(response.data.fee);
         setFeePercentage(response.data.percentage);
@@ -543,7 +550,7 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       <style>{customStyles}</style>
       <div className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
         {/* En-tête avec dégradé */}
-        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-900' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} text-white`}>
+        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-900' : 'bg-gradient-to-r from-green-500 to-green-600'} text-white`}>
           <div className="flex items-center justify-between">
             <Typography variant="h5" component="h2" className="font-bold">
               Acheter {pack?.name}

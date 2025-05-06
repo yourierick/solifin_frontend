@@ -33,7 +33,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Alert // Import Alert
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import axios from '../../utils/axios';
@@ -234,6 +235,9 @@ export default function MyPacks() {
     setDuration(1);
   };
 
+  useEffect(() => {
+  }, [selectedPack]);
+
   const calculateTotalPrice = () => {
     if (!selectedPack?.pack) return 0;
     return selectedPack.pack.price * duration;
@@ -312,14 +316,13 @@ export default function MyPacks() {
   const handleReferralsClick = async (packId) => {
     try {
       const response = await axios.get(`/api/packs/${packId}/referrals`);
-      //console.log('Données reçues du backend:', JSON.stringify(response.data.data, null, 2));
       
       // Vérification des données
-      if (response.data.data && Array.isArray(response.data.data)) {
-        response.data.data.forEach((generation, index) => {
-          //console.log(`Génération ${index + 1}:`, generation);
-        });
-      }
+      // if (response.data.data && Array.isArray(response.data.data)) {
+      //   response.data.data.forEach((generation, index) => {
+      //     //console.log(`Génération ${index + 1}:`, generation);
+      //   });
+      // }
       
       setCurrentPackReferrals(response.data.data);
       setCurrentTab(0);
@@ -410,8 +413,6 @@ export default function MyPacks() {
           } else {
             dateMatch = false;
           }
-        } else {
-          dateMatch = false;
         }
       }
       
@@ -756,29 +757,8 @@ export default function MyPacks() {
                 }}
               >
                 {/* En-tête avec statut */}
-                <Box sx={{ 
-                  p: 3, 
-                  borderBottom: '1px solid',
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  <Box sx={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '0 0 0 100%',
-                    bgcolor: userPack.status === 'active' 
-                      ? 'success.light' 
-                      : userPack.status === 'expired' 
-                        ? 'error.light' 
-                        : 'grey.300',
-                    opacity: 0.1,
-                    zIndex: 0
-                  }} />
-                  
+                <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', position: 'relative', overflow: 'hidden' }}>
+                  <Box sx={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', borderRadius: '0 0 0 100%', bgcolor: userPack.status === 'active' ? 'success.light' : userPack.status === 'expired' ? 'error.light' : 'grey.300', opacity: 0.1, zIndex: 0 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                     <Box>
                       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -788,190 +768,100 @@ export default function MyPacks() {
                         {userPack.pack.price}$/mois
                       </Typography>
                     </Box>
-                    
                     <Chip
                       label={getStatusLabel(userPack.status)}
                       color={getStatusColor(userPack.status)}
                       size="small"
-                      sx={{
-                        fontWeight: 600,
-                        borderRadius: '6px'
-                      }}
+                      sx={{ fontWeight: 600, borderRadius: '6px' }}
                     />
                   </Box>
                 </Box>
-                
                 {/* Description */}
                 <Box sx={{ p: 3, pb: 2 }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: 'text.secondary',
-                      mb: 2,
-                      height: '60px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                    }} 
-                  >
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, height: '60px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
                     {userPack.pack.description}
                   </Typography>
                 </Box>
-                
                 {/* Informations */}
                 <Box sx={{ px: 3, pb: 2, flexGrow: 1 }}>
+                  {/* ALERTE SI INACTIF */}
+                  {userPack.status === 'inactive' && (
+                    <Box sx={{ mb: 2 }}>
+                      <Alert severity="warning" sx={{ borderRadius: 2, mb: 2, fontWeight: 500 }}>
+                        Ce pack a été désactivé, contactez notre équipe pour sa réactivation.
+                      </Alert>
+                    </Box>
+                  )}
                   <List disablePadding>
                     {/* Code de parrainage */}
-                    <ListItem 
-                      disablePadding 
-                      sx={{ 
-                        py: 1.5,
-                        borderBottom: '1px solid',
-                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                      }}
-                    >
+                    <ListItem disablePadding sx={{ py: 1.5, borderBottom: '1px solid', borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}>
                       <ListItemIcon sx={{ minWidth: 36 }}>
                         <ContentCopy fontSize="small" color="action" />
                       </ListItemIcon>
-                      <ListItemText 
-                        primary="Code de parrainage" 
+                      <ListItemText
+                        primary="Code de parrainage"
                         secondary={userPack.referral_code}
-                        primaryTypographyProps={{ 
-                          variant: 'caption', 
-                          color: 'text.secondary' 
-                        }}
-                        secondaryTypographyProps={{ 
-                          variant: 'body2', 
-                          fontWeight: 600,
-                          sx: { mt: 0.5 }
-                        }}
+                        primaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                        secondaryTypographyProps={{ variant: 'body2', fontWeight: 600, sx: { mt: 0.5 } }}
                       />
                       <Tooltip title="Copier le code" placement="top">
-                        <IconButton 
-                          edge="end" 
-                          size="small"
-                          onClick={() => handleCopy(userPack.referral_code)}
-                        >
+                        <IconButton edge="end" size="small" onClick={() => handleCopy(userPack.referral_code)}>
                           <ContentCopy fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </ListItem>
-                    
                     {/* Lien de parrainage */}
-                    <ListItem 
-                      disablePadding 
-                      sx={{ 
-                        py: 1.5,
-                        borderBottom: '1px solid',
-                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                      }}
-                    >
+                    <ListItem disablePadding sx={{ py: 1.5, borderBottom: '1px solid', borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}>
                       <ListItemIcon sx={{ minWidth: 36 }}>
                         <ContentCopy fontSize="small" color="action" />
                       </ListItemIcon>
-                      <ListItemText 
-                        primary="Lien de parrainage" 
+                      <ListItemText
+                        primary="Lien de parrainage"
                         secondary={userPack.link_referral}
-                        primaryTypographyProps={{ 
-                          variant: 'caption', 
-                          color: 'text.secondary' 
-                        }}
-                        secondaryTypographyProps={{ 
-                          variant: 'body2', 
-                          fontWeight: 600,
-                          sx: { 
-                            mt: 0.5,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }
-                        }}
+                        primaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                        secondaryTypographyProps={{ variant: 'body2', fontWeight: 600, sx: { mt: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}
                       />
                       <Tooltip title="Copier le lien" placement="top">
-                        <IconButton 
-                          edge="end" 
-                          size="small"
-                          onClick={() => handleCopy(userPack.link_referral)}
-                        >
+                        <IconButton edge="end" size="small" onClick={() => handleCopy(userPack.link_referral)}>
                           <ContentCopy fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </ListItem>
-                    
                     {/* Date d'expiration */}
                     {userPack.expiry_date && (
-                      <ListItem 
-                        disablePadding 
-                        sx={{ 
-                          py: 1.5,
-                          borderBottom: '1px solid',
-                          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                        }}
-                      >
+                      <ListItem disablePadding sx={{ py: 1.5, borderBottom: '1px solid', borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}>
                         <ListItemIcon sx={{ minWidth: 36 }}>
                           <CalendarMonth fontSize="small" color={userPack.status === 'expired' ? 'error' : 'action'} />
                         </ListItemIcon>
-                        <ListItemText 
-                          primary={userPack.status === 'expired' ? "Expiré le" : "Expire le"} 
+                        <ListItemText
+                          primary={userPack.status === 'expired' ? "Expiré le" : "Expire le"}
                           secondary={new Date(userPack.expiry_date).toLocaleDateString()}
-                          primaryTypographyProps={{ 
-                            variant: 'caption', 
-                            color: userPack.status === 'expired' ? 'error.main' : 'text.secondary'
-                          }}
-                          secondaryTypographyProps={{ 
-                            variant: 'body2', 
-                            fontWeight: 600,
-                            color: userPack.status === 'expired' ? 'error.main' : undefined,
-                            sx: { mt: 0.5 }
-                          }}
+                          primaryTypographyProps={{ variant: 'caption', color: userPack.status === 'expired' ? 'error.main' : 'text.secondary' }}
+                          secondaryTypographyProps={{ variant: 'body2', fontWeight: 600, color: userPack.status === 'expired' ? 'error.main' : undefined, sx: { mt: 0.5 } }}
                         />
                       </ListItem>
                     )}
-                    
                     {/* Utilisateur */}
                     {userPack.user && (
-                      <ListItem 
-                        disablePadding 
-                        sx={{ 
-                          py: 1.5
-                        }}
-                      >
+                      <ListItem disablePadding sx={{ py: 1.5 }}>
                         <ListItemAvatar sx={{ minWidth: 50 }}>
                           <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
                             {userPack.user.name.charAt(0).toUpperCase()}
                           </Avatar>
                         </ListItemAvatar>
-                        <ListItemText 
-                          primary="Utilisateur" 
+                        <ListItemText
+                          primary="Utilisateur"
                           secondary={userPack.user.name}
-                          primaryTypographyProps={{ 
-                            variant: 'caption', 
-                            color: 'text.secondary' 
-                          }}
-                          secondaryTypographyProps={{ 
-                            variant: 'body2', 
-                            fontWeight: 600,
-                            sx: { mt: 0.5 }
-                          }}
+                          primaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                          secondaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
                         />
                       </ListItem>
                     )}
                   </List>
                 </Box>
-                
                 {/* Actions */}
-                <Box sx={{ 
-                  p: 2, 
-                  mt: 'auto',
-                  borderTop: '1px solid',
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  bgcolor: isDarkMode ? '#1a2433' : 'rgba(0, 0, 0, 0.02)'
-                }}>
+                <CardActions sx={{ px: 3, pb: 3, pt: 0, mt: 'auto', justifyContent: 'space-between' }}>
+                  {/* Groupe d'actions à gauche : téléchargement, stats, filleuls */}
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Tooltip title="Télécharger" placement="top">
                       <IconButton 
@@ -981,7 +871,6 @@ export default function MyPacks() {
                         <ArrowDownTrayIcon className="h-5 w-5" />
                       </IconButton>
                     </Tooltip>
-                    
                     <Tooltip title="Statistiques" placement="top">
                       <IconButton 
                         size="small"
@@ -990,7 +879,6 @@ export default function MyPacks() {
                         <ChartBarIcon className="h-5 w-5" />
                       </IconButton>
                     </Tooltip>
-                    
                     <Tooltip title="Filleuls" placement="top">
                       <IconButton 
                         size="small"
@@ -1000,23 +888,19 @@ export default function MyPacks() {
                       </IconButton>
                     </Tooltip>
                   </Box>
-                  
-                  {userPack.status !== 'active' && (
+                  {/* Bouton renouveler visible seulement si le pack est expiré */}
+                  {userPack.status === 'expired' && (
                     <Button
                       variant="contained"
-                      size="small"
+                      color="primary"
                       onClick={() => handleRenewClick(userPack)}
-                      startIcon={<Cached />}
-                      sx={{
-                        borderRadius: '6px',
-                        textTransform: 'none',
-                        fontWeight: 600
-                      }}
+                      disabled={renewing && selectedPack?.id === userPack.id}
+                      sx={{ borderRadius: '8px', fontWeight: 600, textTransform: 'none' }}
                     >
                       Renouveler
                     </Button>
                   )}
-                </Box>
+                </CardActions>
               </Paper>
             </Grid>
           ))}
@@ -1027,146 +911,30 @@ export default function MyPacks() {
         onClose={handleRenewClose} 
         maxWidth="sm" 
         fullWidth
+        sx={{
+          '& .MuiDialog-container': {
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(1px)',
+            backgroundColor: 'transparent', // Forcer la transparence totale de l'overlay
+          },
+          '& .MuiBackdrop-root': {
+            backgroundColor: 'transparent !important', // Override MUI backdrop
+          },
+        }}
         PaperProps={{
           sx: {
             borderRadius: '12px',
             bgcolor: isDarkMode ? '#1f2937' : 'background.paper',
-            backdropFilter: 'blur(10px)',
-            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
           }
         }}
       >
-        <DialogTitle sx={{ 
-          borderBottom: 1, 
-          borderColor: 'divider',
-          py: 2.5,
-          px: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5
-        }}>
-          <Cached sx={{ color: isDarkMode ? 'primary.light' : 'primary.main' }} />
-          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-            Renouveler {selectedPack?.pack?.name}
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Box sx={{ 
-              p: 2, 
-              mb: 3, 
-              borderRadius: 2, 
-              bgcolor: isDarkMode ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.05)',
-              border: isDarkMode ? '1px solid rgba(25, 118, 210, 0.2)' : '1px solid rgba(25, 118, 210, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2
-            }}>
-              <Box sx={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: '50%', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                bgcolor: isDarkMode ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.1)'
-              }}>
-                <Info sx={{ color: isDarkMode ? 'primary.light' : 'primary.main' }} />
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  Prix mensuel : {selectedPack?.pack?.price}$
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Le renouvellement prolonge la durée de votre pack
-                </Typography>
-              </Box>
-            </Box>
-
-            <TextField
-              fullWidth
-              type="number"
-              label="Durée (mois)"
-              value={duration}
-              onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
-              inputProps={{ min: 1 }}
-              margin="normal"
-              required
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: isDarkMode ? 'primary.light' : 'primary.main',
-                    borderWidth: '2px'
-                  }
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: isDarkMode ? 'primary.light' : 'primary.main'
-                }
-              }}
-            />
-
-            <Box sx={{ 
-              mt: 3, 
-              p: 2, 
-              borderRadius: 2, 
-              bgcolor: isDarkMode ? '#1a2433' : 'rgba(0, 0, 0, 0.03)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                Prix total :
-              </Typography>
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  fontWeight: 700,
-                  color: isDarkMode ? 'primary.light' : 'primary.main'
-                }}
-              >
-                {calculateTotalPrice()}$
-              </Typography>
-            </Box>
-          </motion.div>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Button 
-            onClick={handleRenewClose}
-            sx={{
-              color: isDarkMode ? '#1f2937' : 'grey.700',
-              '&:hover': {
-                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-              }
-            }}
-          >
-            Annuler
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleRenew}
-            disabled={renewing}
-            startIcon={renewing ? <CircularProgress size={20} /> : <Cached />}
-            sx={{
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              bgcolor: isDarkMode ? 'primary.dark' : 'primary.main',
-              '&:hover': {
-                bgcolor: isDarkMode ? 'primary.main' : 'primary.dark'
-              }
-            }}
-          >
-            {renewing ? 'Traitement en cours...' : 'Confirmer le renouvellement'}
-          </Button>
-        </DialogActions>
+        <RenewPackForm
+          open={renewDialog}
+          onClose={handleRenewClose}
+          pack={selectedPack}
+          onRenew={handleRenew}
+        />
       </Dialog>
       {/* Dialogs for Stats and Referrals */}
       <PackStatsModal
@@ -1189,8 +957,7 @@ export default function MyPacks() {
             minHeight: isFullScreen ? '100vh' : '80vh',
             maxHeight: isFullScreen ? '100vh' : '80vh',
             bgcolor: isDarkMode ? '#1f2937' : 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(10px)',
-            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
             boxShadow: isDarkMode ? '0 4px 20px rgba(0, 0, 0, 0.5)' : '0 4px 20px rgba(0, 0, 0, 0.15)',
             borderRadius: isFullScreen ? 0 : '12px',
             overflow: 'hidden'
@@ -1227,12 +994,9 @@ export default function MyPacks() {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
-                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                variant="contained"
                 onClick={() => setViewMode('table')}
                 size="small"
                 startIcon={<Box component="span" sx={{ display: 'flex', alignItems: 'center' }}>
@@ -1254,12 +1018,9 @@ export default function MyPacks() {
                 Vue tableau
               </Button>
             </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
-                variant={viewMode === 'tree' ? 'contained' : 'outlined'}
+                variant="contained"
                 onClick={() => setViewMode('tree')}
                 size="small"
                 startIcon={<Box component="span" sx={{ display: 'flex', alignItems: 'center' }}>

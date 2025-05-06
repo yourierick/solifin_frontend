@@ -18,7 +18,20 @@ import {
   ArrowDownTrayIcon,
   DocumentArrowDownIcon
 } from '@heroicons/react/24/outline';
-import { FaFilter, FaTimes, FaExchangeAlt, FaFileExcel } from "react-icons/fa";
+import { 
+  FaFilter, 
+  FaTimes, 
+  FaExchangeAlt, 
+  FaFileExcel, 
+  FaUser, 
+  FaDollarSign, 
+  FaFileAlt, 
+  FaPercent, 
+  FaCheckCircle, 
+  FaMoneyBillWave, 
+  FaLock, 
+  FaArrowLeft 
+} from "react-icons/fa";
 
 const getStatusColor = (status, isDarkMode) => {
   switch (status) {
@@ -125,6 +138,10 @@ export default function Wallets() {
     password: ''
   });
   const [transferLoading, setTransferLoading] = useState(false);
+  const [showConfirmTransferModal, setShowConfirmTransferModal] = useState(false);
+  const [recipientInfo, setRecipientInfo] = useState({});
+  const [transferFeePercentage, setTransferFeePercentage] = useState(0);
+  const [transferFeeAmount, setTransferFeeAmount] = useState(0);
 
   // Styles CSS pour l'ascenseur personnalisé
   const scrollbarStyles = {
@@ -239,6 +256,18 @@ export default function Wallets() {
     }
   };
   
+  const fetchTransferFeePercentage = async () => {
+    try {
+      const response = await axios.get('/api/transfer-fee-percentage');
+      if (response.data.success) {
+        setTransferFeePercentage(response.data.fee_percentage);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des frais de transfert:', error);
+      toast.error('Erreur lors de la récupération des frais de transfert');
+    }
+  };
+
   const handleConvertPoints = async (packId, points) => {
     try {
       const response = await axios.post('/api/user/bonus-points/convert', {
@@ -330,7 +359,7 @@ export default function Wallets() {
       return;
     }
     
-    axios.post(`/api/userwallet/cancel-withdrawal/${withdrawalToCancel}`)
+    axios.post(`/api/withdrawal/request/${withdrawalToCancel}/cancel`)
       .then(response => {
         if (response.data.success) {
           toast.success(response.data.message);
@@ -349,61 +378,6 @@ export default function Wallets() {
       });
   };
 
-  const handleTransferFunds = async () => {
-    // Validation des données
-    if (!transferData.recipient_account_id.trim()) {
-      toast.error("Veuillez entrer l'identifiant du compte destinataire");
-      return;
-    }
-    
-    if (!transferData.amount || parseFloat(transferData.amount) <= 0) {
-      toast.error("Veuillez entrer un montant valide");
-      return;
-    }
-    
-    if (parseFloat(transferData.amount) > userWallet.balance) {
-      toast.error("Montant insuffisant dans votre portefeuille");
-      return;
-    }
-    
-    if (!transferData.description.trim()) {
-      toast.error("Veuillez entrer une description pour ce transfert");
-      return;
-    }
-    
-    if (!transferData.password.trim()) {
-      toast.error("Veuillez entrer votre mot de passe pour confirmer le transfert");
-      return;
-    }
-    
-    try {
-      setTransferLoading(true);
-      
-      const response = await axios.post('/api/funds-transfer', transferData);
-      
-      if (response.data.success) {
-        toast.success(response.data.message);
-        // Réinitialiser le formulaire
-        setTransferData({
-          recipient_account_id: '',
-          amount: '',
-          description: '',
-          password: ''
-        });
-        // Fermer le modal
-        setShowTransferModal(false);
-        // Rafraîchir les données du portefeuille
-        fetchWalletData();
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      console.error('Erreur lors du transfert de fonds:', error);
-      toast.error(error.response?.data?.message || "Une erreur s'est produite lors du transfert");
-    } finally {
-      setTransferLoading(false);
-    }
-  };
 
   const handleTransactionClick = (transaction) => {
     setSelectedTransaction(transaction);
@@ -429,6 +403,98 @@ export default function Wallets() {
       toast.info(`Vous n'avez pas de points disponibles pour le pack ${packName}`);
     }
   };
+
+  const openTransferModal = () => {
+    // Réinitialiser les données de transfert
+    setTransferData({
+      recipient_account_id: '',
+      amount: '',
+      description: '',
+      password: ''
+    });
+    
+    // Récupérer les frais de transfert
+    fetchTransferFeePercentage();
+    
+    // Ouvrir le modal
+    setShowTransferModal(true);
+  };
+
+  const fetchRecipientInfo = async () => {
+    if (!transferData.recipient_account_id) {
+      toast.error('Veuillez entrer l\'identifiant du compte destinataire');
+      return;
+    }
+
+    if (!transferData.amount || parseFloat(transferData.amount) <= 0) {
+      toast.error('Veuillez entrer un montant valide');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`/api/recipient-info/${transferData.recipient_account_id}`);
+      if (response.data.success) {
+        setRecipientInfo(response.data.user);
+        setShowConfirmTransferModal(true);
+        setShowTransferModal(false); // Fermer le modal de transfert quand le modal de confirmation s'ouvre
+      } else {
+        toast.error(response.data.message || 'Destinataire introuvable');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des informations du destinataire:', error);
+      toast.error('Erreur lors de la récupération des informations du destinataire');
+    }
+  };
+
+  const handleTransferFunds = async () => {
+    if (!transferData.password) {
+      toast.error('Veuillez entrer votre mot de passe');
+      return;
+    }
+
+    setTransferLoading(true);
+    try {
+      // Calculer le montant total avec les frais
+      const totalAmount = parseFloat(transferData.amount) + transferFeeAmount;
+      
+      const response = await axios.post('/api/funds-transfer', {
+        recipient_account_id: transferData.recipient_account_id,
+        amount: totalAmount.toFixed(2), // Envoyer le montant total (avec frais)
+        original_amount: parseFloat(transferData.amount).toFixed(2), // Montant original sans frais
+        fee_amount: transferFeeAmount.toFixed(2), // Montant des frais
+        fee_percentage: transferFeePercentage, // Pourcentage des frais
+        description: transferData.description,
+        password: transferData.password
+      });
+
+      if (response.data.success) {
+        toast.success('Transfert effectué avec succès');
+        setShowConfirmTransferModal(false);
+        setShowTransferModal(false);
+        fetchWalletData(); // Rafraîchir les données du wallet
+      } else {
+        toast.error(response.data.message || 'Erreur lors du transfert');
+      }
+    } catch (error) {
+      console.error('Erreur lors du transfert de fonds:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors du transfert de fonds');
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, typeFilter, dateFilter]);
+
+  useEffect(() => {
+    if (transferData.amount && transferFeePercentage > 0) {
+      const fee = (parseFloat(transferData.amount) * transferFeePercentage) / 100;
+      setTransferFeeAmount(fee);
+    } else {
+      setTransferFeeAmount(0);
+    }
+  }, [transferData.amount, transferFeePercentage]);
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = JSON.stringify(transaction.metadata)
@@ -777,7 +843,7 @@ export default function Wallets() {
                   Faire un retrait
                 </button>
                 <button
-                  onClick={() => setShowTransferModal(true)}
+                  onClick={openTransferModal}
                   className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md ${
                     isDarkMode 
                       ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
@@ -1173,17 +1239,16 @@ export default function Wallets() {
                       </td>
                       <td 
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
-                          transaction.type === 'withdrawal' || transaction.type === 'sales' 
+                          transaction.type === 'withdrawal' || transaction.type === 'sales' || transaction.type === "transfer" 
                             ? 'text-red-500' 
                             : 'text-green-500'
                         } cursor-pointer`}
                         onClick={() => handleTransactionClick(transaction)}
                       >
-                        {transaction.type === 'withdrawal' || transaction.type === 'sales' ? '-' : '+'}
+                        {transaction.type === 'withdrawal' || transaction.type === 'sales' || transaction.type === "transfer" ? '-' : '+'}
                         {transaction.amount}
                       </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer"
                         onClick={() => handleTransactionClick(transaction)}
                       >
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -1389,7 +1454,7 @@ export default function Wallets() {
       )}
       {/* Modal de détails de transaction */}
       {showTransactionDetails && selectedTransaction && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]" 
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]" 
              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}>
           <div className={`relative p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4 ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
@@ -1590,16 +1655,7 @@ export default function Wallets() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]" 
-            style={{ 
-              position: 'fixed', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              bottom: 0,
-              width: '100vw',
-              height: '100vh'
-            }}
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
             onClick={() => setShowBonusPointsHistory(false)}
           >
             <motion.div
@@ -1692,16 +1748,7 @@ export default function Wallets() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]" 
-            style={{ 
-              position: 'fixed', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              bottom: 0,
-              width: '100vw',
-              height: '100vh'
-            }}
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
             onClick={() => setShowConversionModal(false)}
           >
             <motion.div
@@ -1772,6 +1819,7 @@ export default function Wallets() {
                             setPointsToConvert(value);
                           }
                         }}
+                        placeholder="0"
                         className={`w-full px-4 py-3 rounded-md text-center text-lg font-bold ${
                           isDarkMode
                             ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
@@ -1834,49 +1882,47 @@ export default function Wallets() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className={`relative p-6 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden ${
-                isDarkMode ? 'bg-gray-800' : 'bg-white'
+                isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
               }`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="space-y-4 overflow-y-auto modal-scrollbar pr-2 max-h-[calc(90vh-140px)]">
-                <div className="flex justify-between items-center">
+              <div className="space-y-5 overflow-y-auto modal-scrollbar pr-2 max-h-[calc(90vh-140px)]">
+                <div className="flex justify-between items-center border-b pb-3 mb-2">
                   <h2 className={`text-xl font-bold ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>
+                    <FaExchangeAlt className="inline-block mr-2 text-blue-500" />
                     Transférer des fonds
                   </h2>
                   <button
                     onClick={() => setShowTransferModal(false)}
-                    className={`p-1 rounded-full ${
-                      isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+                    className={`p-1.5 rounded-full transition-colors ${
+                      isDarkMode ? 'hover:bg-gray-700 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    <FaTimes className={`h-5 w-5 ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`} />
+                    <FaTimes className="h-5 w-5" />
                   </button>
                 </div>
                 
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <div className="mb-3">
+                <div className={`p-4 rounded-lg shadow-sm ${isDarkMode ? 'bg-gray-700/70' : 'bg-blue-50'} border ${isDarkMode ? 'border-blue-800' : 'border-blue-200'}`}>
+                  <div className="mb-1">
                     <h3 className={`font-medium ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       Solde disponible
                     </h3>
-                    <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {userWallet.balance} $
+                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {userWallet.balance} <span className="text-sm font-normal">USD</span>
                     </p>
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <label htmlFor="recipient_account_id" className={`block text-sm font-medium mb-1 ${
+                    <label htmlFor="recipient_account_id" className={`block text-sm font-medium mb-1.5 ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
+                      <FaUser className="inline-block mr-1.5 text-blue-500" />
                       Identifiant du compte destinataire
                     </label>
                     <input
@@ -1885,18 +1931,19 @@ export default function Wallets() {
                       value={transferData.recipient_account_id}
                       onChange={(e) => setTransferData({...transferData, recipient_account_id: e.target.value})}
                       placeholder="Entrez l'identifiant du compte"
-                      className={`w-full px-4 py-2 rounded-md ${
+                      className={`w-full px-4 py-2.5 rounded-md border ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500'
                           : 'border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500'
-                      }`}
+                      } transition-colors focus:outline-none focus:ring-2`}
                     />
                   </div>
                   
                   <div>
-                    <label htmlFor="amount" className={`block text-sm font-medium mb-1 ${
+                    <label htmlFor="amount" className={`block text-sm font-medium mb-1.5 ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
+                      <FaDollarSign className="inline-block mr-1.5 text-green-500" />
                       Montant à transférer
                     </label>
                     <div className="relative">
@@ -1920,77 +1967,85 @@ export default function Wallets() {
                         placeholder="0.00"
                         className={`w-full px-4 py-3 rounded-md text-center text-lg font-bold ${
                           isDarkMode
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                            : 'border-gray-300 text-gray-900 placeholder-gray-500'
-                        }`}
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-green-500 focus:border-green-500'
+                            : 'border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-green-500 focus:border-green-500'
+                        } transition-colors focus:outline-none focus:ring-2`}
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>$</span>
+                        <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'} font-medium`}>USD</span>
                       </div>
                     </div>
                   </div>
                   
+                  {transferFeePercentage > 0 && transferData.amount && (
+                    <div className={`p-4 rounded-md shadow-sm ${isDarkMode ? 'bg-gray-700/70' : 'bg-gray-100'}`}>
+                      <div className="flex justify-between items-center">
+                        <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
+                          <FaPercent className="inline-block mr-1.5 text-amber-500 h-3 w-3" />
+                          Frais de transfert ({transferFeePercentage}%):
+                        </span>
+                        <span className="font-medium">
+                          {transferFeeAmount.toFixed(2)} USD
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-dashed">
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-800'}`}>
+                          Montant total:
+                        </span>
+                        <span className={`font-bold text-lg ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                          {(parseFloat(transferData.amount) + transferFeeAmount).toFixed(2)} USD
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div>
-                    <label htmlFor="description" className={`block text-sm font-medium mb-1 ${
+                    <label htmlFor="description" className={`block text-sm font-medium mb-1.5 flex items-center justify-between ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
-                      Description (optionnel)
+                      <div>
+                        <FaFileAlt className="inline-block mr-1.5 text-gray-500" />
+                        Description
+                      </div>
+                      <span className={`text-xs italic ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Optionnel
+                      </span>
                     </label>
                     <textarea
                       id="description"
                       value={transferData.description}
                       onChange={(e) => setTransferData({...transferData, description: e.target.value})}
-                      placeholder="Ajoutez une description pour ce transfert"
+                      placeholder="Ajoutez une description pour ce transfert (optionnel)"
                       rows="3"
-                      className={`w-full px-4 py-2 rounded-md ${
+                      className={`w-full px-4 py-2.5 rounded-md border ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500'
                           : 'border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500'
-                      }`}
+                      } transition-colors focus:outline-none focus:ring-2`}
                     ></textarea>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="password" className={`block text-sm font-medium mb-1 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Mot de passe
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      value={transferData.password}
-                      onChange={(e) => setTransferData({...transferData, password: e.target.value})}
-                      placeholder="Mot de passe pour confirmer le transfert"
-                      className={`w-full px-4 py-2 rounded-md ${
-                        isDarkMode
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500'
-                          : 'border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500'
-                      }`}
-                    />
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex justify-end gap-3 mt-6 pt-3 border-t">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowTransferModal(false)}
-                  disabled={transferLoading}
-                  className={`px-4 py-2 rounded-md ${
+                  className={`px-4 py-2.5 rounded-md transition-colors ${
                     isDarkMode 
-                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
-                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
                   }`}
                 >
+                  <FaTimes className="inline-block mr-1.5 h-3 w-3" />
                   Annuler
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleTransferFunds}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={fetchRecipientInfo}
                   disabled={transferLoading}
-                  className={`px-4 py-2 rounded-md flex items-center ${
+                  className={`px-4 py-2.5 rounded-md flex items-center transition-colors ${
                     isDarkMode 
                       ? 'bg-blue-600 hover:bg-blue-700 text-white' 
                       : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -2004,7 +2059,169 @@ export default function Wallets() {
                   ) : (
                     <>
                       <FaExchangeAlt className="mr-2" />
-                      Transférer
+                      Continuer
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
+      {/* Modal de confirmation de transfert */}
+      {showConfirmTransferModal && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowConfirmTransferModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`relative p-6 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-hidden ${
+                isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="space-y-5 overflow-y-auto modal-scrollbar pr-2 max-h-[calc(90vh-140px)]">
+                <div className="flex justify-between items-center border-b pb-3 mb-2">
+                  <h2 className={`text-xl font-bold ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    <FaCheckCircle className="inline-block mr-2 text-green-500" />
+                    Confirmer le transfert
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowConfirmTransferModal(false);
+                      setShowTransferModal(true); // Réouvrir le modal de transfert si l'utilisateur annule
+                    }}
+                    className={`p-1.5 rounded-full transition-colors ${
+                      isDarkMode ? 'hover:bg-gray-700 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <FaTimes className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'} border ${isDarkMode ? 'border-blue-800' : 'border-blue-200'}`}>
+                  <p className={`text-center font-medium ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                    Vous êtes sur le point de faire un transfert de <span className="font-bold">{parseFloat(transferData.amount).toFixed(2)} USD</span> à <span className="font-bold">{recipientInfo.name}</span>
+                  </p>
+                </div>
+                
+                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700/70' : 'bg-gray-100'}`}>
+                  <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <FaUser className="mr-2 text-blue-500" />
+                    Informations du destinataire
+                  </h3>
+                  <ul className="space-y-2.5">
+                    <li className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Account ID:</span>
+                      <span className="font-medium">{recipientInfo.account_id}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Nom:</span>
+                      <span className="font-medium">{recipientInfo.name}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Téléphone:</span>
+                      <span className="font-medium">{recipientInfo.phone || 'Non disponible'}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>WhatsApp:</span>
+                      <span className="font-medium">{recipientInfo.whatsapp || 'Non disponible'}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Adresse:</span>
+                      <span className="font-medium">{recipientInfo.address || 'Non disponible'}</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                {transferFeePercentage > 0 && (
+                  <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700/70' : 'bg-gray-100'}`}>
+                    <h3 className={`font-medium mb-3 flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <FaMoneyBillWave className="mr-2 text-green-500" />
+                      Détails du transfert
+                    </h3>
+                    <ul className="space-y-2.5">
+                      <li className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Montant:</span>
+                        <span className="font-medium">{parseFloat(transferData.amount).toFixed(2)} USD</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Frais ({transferFeePercentage}%):</span>
+                        <span className="font-medium">{transferFeeAmount.toFixed(2)} USD</span>
+                      </li>
+                      <li className="flex justify-between font-medium border-t pt-2 mt-2">
+                        <span className={isDarkMode ? 'text-gray-300' : 'text-gray-800'}>Total:</span>
+                        <span className={`font-bold text-lg ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{(parseFloat(transferData.amount) + transferFeeAmount).toFixed(2)} USD</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+                
+                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-yellow-900/30' : 'bg-yellow-50'} border ${isDarkMode ? 'border-yellow-800' : 'border-yellow-200'}`}>
+                  <p className={`mb-3 ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+                    <FaLock className="inline-block mr-1.5" />
+                    Si les informations ci-dessus sont correctes, veuillez confirmer le transfert en insérant votre mot de passe.
+                  </p>
+                  <input
+                    type="password"
+                    value={transferData.password}
+                    onChange={(e) => setTransferData({...transferData, password: e.target.value})}
+                    placeholder="Entrez votre mot de passe"
+                    className={`w-full px-4 py-2.5 rounded-md border ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-yellow-500 focus:border-yellow-500'
+                        : 'border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-yellow-500 focus:border-yellow-500'
+                    } transition-colors focus:outline-none focus:ring-2`}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6 pt-3 border-t">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowConfirmTransferModal(false);
+                    setShowTransferModal(true); // Réouvrir le modal de transfert si l'utilisateur annule
+                  }}
+                  className={`px-4 py-2.5 rounded-md transition-colors ${
+                    isDarkMode 
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  <FaArrowLeft className="inline-block mr-1.5 h-3 w-3" />
+                  Retour
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleTransferFunds}
+                  disabled={transferLoading}
+                  className={`px-4 py-2.5 rounded-md flex items-center transition-colors ${
+                    isDarkMode 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-green-500 hover:bg-green-600 text-white'
+                  } ${transferLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {transferLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Traitement...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheckCircle className="mr-2" />
+                      Confirmer le transfert
                     </>
                   )}
                 </motion.button>
