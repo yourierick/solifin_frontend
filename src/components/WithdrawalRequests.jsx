@@ -311,21 +311,19 @@ export default function WithdrawalRequests() {
                       >
                         <EyeIcon className="h-4 w-4 mr-1" />
                       </button>
-                      {request.status === 'pending' && (
-                        <button
-                          onClick={() => {
-                            setRequestToDelete(request);
-                            setShowDeleteConfirmation(true);
-                          }}
-                          className={`inline-flex items-center px-3 py-1 border text-sm leading-4 font-medium rounded-md ${
-                            isDarkMode 
-                              ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
-                              : 'border-red-300 text-red-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          <TrashIcon className="h-4 w-4 mr-1" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setRequestToDelete(request);
+                          setShowDeleteConfirmation(true);
+                        }}
+                        className={`inline-flex items-center px-3 py-1 border text-sm leading-4 font-medium rounded-md ${
+                          isDarkMode 
+                            ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
+                            : 'border-red-300 text-red-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -510,14 +508,7 @@ export default function WithdrawalRequests() {
                       {selectedRequest.user.account_id || 'Non spécifié'}
                     </p>
                   </div>
-                  <div>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Solde actuel
-                    </p>
-                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedRequest.wallet_balance || '0'} $
-                    </p>
-                  </div>
+
                 </div>
               </div>
             </div>
