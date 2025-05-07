@@ -290,7 +290,7 @@ export default function WithdrawalRequests() {
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         getStatusColor(request.status)
                       }`}>
-                        {request.status}
+                        {request.status === 'pending' ? 'En attente' : request.status === 'approved' ? 'Approuvé' : request.status === 'rejected' ? 'Rejeté' : request.status === 'cancelled' ? 'Annulé' : 'Undefined status'}
                       </span>
                     </div>
                   </td>
