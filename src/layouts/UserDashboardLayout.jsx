@@ -64,6 +64,8 @@ import {
   UserCircleIcon,
   NewspaperIcon,
   MapIcon,
+  EnvelopeIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -72,6 +74,7 @@ const navigation = [
   { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
   { name: 'Finance', href: '/dashboard/wallet', icon: WalletIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
+  { name: 'Mes invitations', href: '/dashboard/invitations', icon: UserPlusIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
   { name: "Fil d'actualités", href: '/dashboard/news-feed', icon: NewspaperIcon },
   { name: "Ma page", href: "/dashboard/my-page", icon:  NewspaperIcon}

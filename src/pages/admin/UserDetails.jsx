@@ -449,7 +449,7 @@ export default function UserDetails({ userId }) {
   };
 
   // Fonction pour transformer les données des filleuls en structure d'arbre
-  const transformDataToTree = (referrals) => {
+  const transformDataToTree = (referralsData) => {
     const rootNode = {
       name: 'Vous',
       attributes: {
@@ -461,22 +461,44 @@ export default function UserDetails({ userId }) {
     };
 
     // Si pas de données, retourner juste le nœud racine
-    if (!referrals || referrals.length === 0) {
+    if (!referralsData || !Array.isArray(referralsData) || referralsData.length === 0) {
       return rootNode;
     }
 
-    // Première génération
-    rootNode.children = referrals.map(ref => ({
-      name: ref.name || 'Inconnu',
-      attributes: {
-        commission: `${parseFloat(ref.commission || ref.total_commission || 0).toFixed(2)}$`,
-        status: ref.pack_status || ref.status || 'N/A',
-        generation: 1,
-        userId: ref.id,
-        sponsorId: ref.sponsor_id
-      },
-      children: []
-    }));
+    // Vérifier si referralsData est un tableau de générations ou un tableau simple de filleuls
+    const isArrayOfGenerations = Array.isArray(referralsData[0]);
+    
+    // Si c'est un tableau simple (une seule génération), le traiter directement
+    if (!isArrayOfGenerations) {
+      // Première génération
+      rootNode.children = referralsData.map(ref => ({
+        name: ref.name || 'Inconnu',
+        attributes: {
+          commission: `${parseFloat(ref.commission || ref.total_commission || 0).toFixed(2)}$`,
+          status: ref.pack_status || ref.status || 'N/A',
+          generation: 1,
+          userId: ref.id,
+          sponsorId: ref.sponsor_id
+        },
+        children: []
+      }));
+      return rootNode;
+    }
+
+    // Si c'est un tableau de générations, traiter la première génération
+    if (referralsData[0] && referralsData[0].length > 0) {
+      rootNode.children = referralsData[0].map(ref => ({
+        name: ref.name || 'Inconnu',
+        attributes: {
+          commission: `${parseFloat(ref.commission || ref.total_commission || 0).toFixed(2)}$`,
+          status: ref.pack_status || ref.status || 'N/A',
+          generation: 1,
+          userId: ref.id,
+          sponsorId: ref.sponsor_id
+        },
+        children: []
+      }));
+    }
 
     // Fonction récursive pour trouver le nœud parent
     const findParentNode = (nodes, sponsorId) => {
@@ -525,8 +547,8 @@ export default function UserDetails({ userId }) {
 
     // Traiter les générations 2 à 4
     for (let gen = 2; gen <= 4; gen++) {
-      if (referrals && referrals.length > gen-1) {
-        processReferrals(referrals[gen-1], gen);
+      if (referralsData.length >= gen && referralsData[gen-1] && referralsData[gen-1].length > 0) {
+        processReferrals(referralsData[gen-1], gen);
       }
     }
 
@@ -1930,7 +1952,7 @@ export default function UserDetails({ userId }) {
                     >
                       <Tree
                         ref={treeRef}
-                        data={transformDataToTree(currentPackReferrals[currentTab])}
+                        data={transformDataToTree(currentPackReferrals)}
                         orientation="vertical"
                         renderCustomNodeElement={(props) => (
                           <CustomNode {...props} isDarkMode={isDarkMode} />

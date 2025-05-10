@@ -66,6 +66,8 @@ export default function Register() {
     province: '',
     city: '',
     sponsor_code: '',
+    invitation_code: '', // Code d'invitation
+    acquisition_source: '', // Comment l'utilisateur a connu SOLIFIN
     acceptTerms: false,
   });
   const [formErrors, setFormErrors] = useState({});
@@ -103,7 +105,39 @@ export default function Register() {
     if (referralCode) {
       setFormData((prev) => ({ ...prev, sponsor_code: referralCode }));
     }
+    
+    // Extract invitation code from URL if present
+    const invitationCode = queryParams.get('invitation');
+    if (invitationCode) {
+      setFormData((prev) => ({ ...prev, invitation_code: invitationCode }));
+      // Vérifier le code d'invitation
+      checkInvitationCode(invitationCode);
+    }
   }, [selectedPackId, location.search]);
+  
+  // Fonction pour vérifier le code d'invitation
+  const checkInvitationCode = async (code) => {
+    try {
+      const response = await axios.post('/api/check-invitation', { invitation_code: code });
+      if (response.data.success) {
+        const invitationData = response.data.data;
+        // Pré-remplir le code de parrainage avec celui du sponsor de l'invitation
+        setFormData((prev) => ({
+          ...prev,
+          sponsor_code: invitationData.referral_code,
+          // Pré-remplir d'autres champs si nécessaire
+        }));
+        Notification.success('Code d\'invitation valide');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification du code d\'invitation:', error);
+      if (error.response && error.response.data && error.response.data.message) {
+        Notification.error(error.response.data.message);
+      } else {
+        Notification.error('Code d\'invitation invalide');
+      }
+    }
+  };
 
   const validateForm = () => {
     const errors = {};
@@ -596,6 +630,61 @@ export default function Register() {
                       },
                     }}
                   />
+
+                  <TextField
+                    fullWidth
+                    name="invitation_code"
+                    label="Code d'invitation (optionnel)"
+                    value={formData.invitation_code}
+                    onChange={(e) => {
+                      handleChange(e);
+                      if (e.target.value) {
+                        checkInvitationCode(e.target.value);
+                      }
+                    }}
+                    error={!!formErrors.invitation_code}
+                    helperText={formErrors.invitation_code}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2E7D32',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#2E7D32',
+                      },
+                    }}
+                  />
+
+                  <FormControl fullWidth>
+                    <InputLabel id="acquisition-source-label">Comment avez-vous connu SOLIFIN ?</InputLabel>
+                    <Select
+                      labelId="acquisition-source-label"
+                      name="acquisition_source"
+                      value={formData.acquisition_source}
+                      onChange={handleChange}
+                      label="Comment avez-vous connu SOLIFIN ?"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#2E7D32',
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#2E7D32',
+                        },
+                      }}
+                    >
+                      <MenuItem value=""><em>Sélectionnez une option</em></MenuItem>
+                      <MenuItem value="referral">Parrain/Marraine</MenuItem>
+                      <MenuItem value="social_media">Réseaux sociaux</MenuItem>
+                      <MenuItem value="search_engine">Moteur de recherche</MenuItem>
+                      <MenuItem value="friend">Ami(e)</MenuItem>
+                      <MenuItem value="advertisement">Publicité</MenuItem>
+                      <MenuItem value="event">Événement</MenuItem>
+                      <MenuItem value="other">Autre</MenuItem>
+                    </Select>
+                  </FormControl>
 
                   <FormControlLabel
                     control={

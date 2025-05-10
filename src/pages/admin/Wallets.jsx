@@ -893,11 +893,6 @@ export default function Wallets() {
                     <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                       isDarkMode ? 'text-gray-400' : 'text-gray-500'
                     }`}>
-                      Détails
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
                       Date
                     </th>
                   </tr>
@@ -944,7 +939,7 @@ export default function Wallets() {
                                 transaction.type === 'transfer' ? 'Transfert des fonds' :
                                 transaction.type === 'reception' ? 'Dépot des fonds' :
                                 transaction.type === 'commission' ? 'Commission' :
-                                transaction.type === 'sales' ? 'Achat' :
+                                transaction.type === 'sales' ? 'Vente' :
                                 transaction.type}
                             </div>
                           </div>
@@ -964,60 +959,6 @@ export default function Wallets() {
                         }`}>
                           {transaction.status}
                         </span>
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                      }`}>
-                        {transaction.metadata && typeof transaction.metadata === 'object'
-                          ? (
-                            <div className="max-w-xs overflow-hidden">
-                              {Object.entries(transaction.metadata).slice(0, 3).map(([key, value], index) => {
-                                // Traduire les clés en français
-                                const frenchLabels = {
-                                  'withdrawal_request_id': 'Demande de retrait',
-                                  'payment_method': 'Méthode de paiement',
-                                  'montant_a_retirer': 'Montant à retirer',
-                                  'fee_percentage': 'Frais %',
-                                  'frais_de_retrait': 'Frais de retrait',
-                                  'frais_de_commission': 'Commission',
-                                  'montant_total_a_payer': 'Total à payer',
-                                  'devise': 'Devise',
-                                  'payment_details': 'Détails paiement',
-                                  'status': 'Statut',
-                                  'source': 'Source',
-                                  'type': 'Type',
-                                  'amount': 'Montant',
-                                  'currency': 'Devise',
-                                  'description': 'Description',
-                                  'reference': 'Référence'
-                                };
-                                
-                                const label = frenchLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                
-                                // Formater la valeur
-                                let formattedValue = typeof value === 'object' 
-                                  ? JSON.stringify(value).substring(0, 15) 
-                                  : String(value).substring(0, 15);
-                                
-                                if (formattedValue.length > 14) formattedValue += '...';
-                                
-                                return (
-                                  <div key={index} className="text-xs mb-1">
-                                    <span className="font-medium">{label}:</span> {formattedValue}
-                                  </div>
-                                );
-                              })}
-                              {Object.keys(transaction.metadata).length > 3 && (
-                                <div className="text-xs italic">
-                                  +{Object.keys(transaction.metadata).length - 3} autres champs
-                                </div>
-                              )}
-                            </div>
-                          )
-                          : typeof transaction.metadata === 'string'
-                            ? transaction.metadata.substring(0, 30) + '...'
-                            : 'Pas de détails'
-                        }
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-500'

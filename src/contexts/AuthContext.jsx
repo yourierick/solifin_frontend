@@ -86,12 +86,23 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       setLoading(true);
       try {
+        // Vérifier si nous sommes sur la page d'inscription avec un code de parrainage
+        const currentPath = window.location.pathname;
+        const queryParams = new URLSearchParams(window.location.search);
+        const hasReferralCode = queryParams.has('referral_code');
+        
+        // Ignorer la vérification d'authentification si nous sommes sur la page d'inscription avec un code de parrainage
+        if (currentPath === '/register' && hasReferralCode) {
+          console.log('Page d\'inscription avec code de parrainage - ignorer la vérification d\'authentification');
+          setLoading(false);
+          return;
+        }
+        
         const isAuthenticated = await checkAuth();
         isAuthenticatedRef.current = isAuthenticated;
         
         // Si l'utilisateur est authentifié et qu'il est sur une route publique comme login
         if (isAuthenticated && user) {
-          const currentPath = window.location.pathname;
           if (['/login', '/register'].includes(currentPath)) {
             // Rediriger vers le dashboard approprié
             const isAdmin = user.is_admin === 1 || user.is_admin === true || user.role === 'admin';

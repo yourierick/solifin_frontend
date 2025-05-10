@@ -226,6 +226,7 @@ export default function PurchasePackForm({ open, onClose, pack }) {
 
   useEffect(() => {
     fetchWalletBalance();
+    fetchTransferFees();
   }, []);
 
   useEffect(() => {
@@ -234,15 +235,18 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     setSelectedPaymentOption('');
     setFeesError(false);
     
-    // Pour le wallet, définir automatiquement l'option solifin-wallet
+    // Pour le wallet, définir automatiquement l'option solifin-wallet et mettre les frais à 0
     if (paymentMethod === PAYMENT_TYPES.WALLET) {
       setSelectedPaymentOption('solifin-wallet');
-      // Déclencher immédiatement le calcul des frais pour le wallet
-      setTimeout(() => {
-        calculateFees();
-      }, 0);
+      setTransactionFees(0);
+    } else if (feePercentage > 0 && totalAmount > 0) {
+      // Pour les autres méthodes, calculer les frais en fonction du pourcentage global
+      const fees = (totalAmount * feePercentage) / 100;
+      setTransactionFees(fees);
     }
-  }, [paymentMethod]);
+    
+    validateForm();
+  }, [paymentMethod, feePercentage, totalAmount]);
 
   useEffect(() => {
     // Calculer le montant total en fonction du nombre de mois
@@ -250,14 +254,17 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       const newTotal = pack.price * months;
       setTotalAmount(newTotal);
       
-      // Pour le wallet, recalculer les frais chaque fois que le montant change
-      if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
-        setTimeout(() => {
-          calculateFees();
-        }, 0);
+      // Mettre à jour les frais en fonction du type de paiement
+      if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        // Pas de frais pour le wallet
+        setTransactionFees(0);
+      } else if (feePercentage > 0) {
+        // Calculer les frais en fonction du pourcentage global
+        const fees = (newTotal * feePercentage) / 100;
+        setTransactionFees(fees);
       }
     }
-  }, [pack, months]);
+  }, [pack, months, paymentMethod, feePercentage]);
 
   useEffect(() => {
     // Lorsque le montant total change, effectuer la conversion si nécessaire
@@ -265,21 +272,27 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
         // Pour les méthodes autres que wallet, convertir d'abord la devise
         convertCurrency();
-      } else if (paymentMethod === PAYMENT_TYPES.WALLET && selectedPaymentOption) {
-        // Pour wallet, utiliser USD directement et calculer les frais si une méthode est sélectionnée
+      } else if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        // Pour wallet, utiliser USD directement et pas de frais
         setConvertedAmount(totalAmount);
-        calculateFees();
+        setTransactionFees(0);
       }
     }
   }, [totalAmount, paymentMethod, selectedCurrency]);
 
   useEffect(() => {
-    // Calculer les frais lorsque la méthode de paiement spécifique change ou après une conversion de devise
-    if (selectedPaymentOption && convertedAmount > 0 && 
-        (paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY)) {
-      calculateFees();
+    // Mettre à jour les frais lorsque la méthode de paiement spécifique change ou après une conversion de devise
+    if (selectedPaymentOption && convertedAmount > 0) {
+      if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        setTransactionFees(0);
+      } else if (feePercentage > 0) {
+        // Calculer les frais en fonction du pourcentage global
+        const fees = (convertedAmount * feePercentage) / 100;
+        setTransactionFees(fees);
+      }
+      validateForm();
     }
-  }, [selectedPaymentOption, convertedAmount]);
+  }, [selectedPaymentOption, convertedAmount, paymentMethod, feePercentage]);
 
   useEffect(() => {
     validateForm();
@@ -435,41 +448,35 @@ export default function PurchasePackForm({ open, onClose, pack }) {
     );
   };
 
-  const calculateFees = async () => {
+  // Récupérer les frais de transfert globaux au chargement du modal
+  const fetchTransferFees = async () => {
     setLoadingFees(true);
     setFeesError(false);
 
     try {
-      const amount = paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount;
-
-      // Si le paiement est via le wallet, pas de frais de transfert
-      if (paymentMethod === PAYMENT_TYPES.WALLET) {
-        setTransactionFees(0);
-        setFeePercentage(0);
-        setFeesError(false);
-        setLoadingFees(false);
-        return;
-      }
-
-      // Vérifier que les valeurs sont valides avant de faire l'appel API
-      if (!amount || amount <= 0) {
-        setLoadingFees(false);
-        return;
-      }
-
-      // Appel à l'API qui retourne maintenant le pourcentage global
+      // Appel à l'API qui retourne le pourcentage global des frais
       const response = await axios.post('/api/transaction-fees/transfer', {
-        amount: amount
+        amount: 100 // Montant de référence pour calculer le pourcentage
       });
 
       if (response.data.success) {
-        setTransactionFees(response.data.fee);
+        // Stocker le pourcentage plutôt que le montant des frais
         setFeePercentage(response.data.percentage);
+        
+        // Calculer les frais initiaux si nécessaire
+        if (paymentMethod !== PAYMENT_TYPES.WALLET && totalAmount > 0) {
+          const fees = (totalAmount * response.data.percentage) / 100;
+          setTransactionFees(fees);
+        } else {
+          setTransactionFees(0);
+        }
+        
         setFeesError(false);
       } else {
         setFeesError(true);
       }
     } catch (error) {
+      console.error('Erreur lors de la récupération des frais:', error);
       setFeesError(true);
     } finally {
       setLoadingFees(false);
@@ -488,7 +495,12 @@ export default function PurchasePackForm({ open, onClose, pack }) {
       if (response.data.success) {
         const convertedAmt = response.data.convertedAmount;
         setConvertedAmount(convertedAmt);
-        // Le calcul des frais sera déclenché par l'effet qui surveille convertedAmount
+        
+        // Calculer les frais directement ici plutôt que de déclencher un autre appel API
+        if (paymentMethod !== PAYMENT_TYPES.WALLET && feePercentage > 0) {
+          const fees = (convertedAmt * feePercentage) / 100;
+          setTransactionFees(fees);
+        }
       } else {
         console.error('Erreur lors de la conversion:', response.data.message);
         // En cas d'erreur, on utilise le montant original
@@ -729,7 +741,7 @@ export default function PurchasePackForm({ open, onClose, pack }) {
                       <IconButton 
                         size="small" 
                         color="primary" 
-                        onClick={calculateFees} 
+                        onClick={fetchTransferFees} 
                         className="mr-2"
                         title="Recalculer les frais"
                       >

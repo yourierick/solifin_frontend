@@ -266,8 +266,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     recipientCity: '',  // Nouveau champ pour transfert d'argent
     idType: '',  // Nouveau champ pour transfert d'argent
     idNumber: '',  // Nouveau champ pour transfert d'argent
-    otpCode: '',
-    password: '', // Nouveau champ pour l'alternative au code OTP
+    password: '', // Mot de passe pour confirmer le retrait
+    otpCode: '', // Champ OTP conservé pour compatibilité mais non utilisé
     currency: 'USD'  // Devise par défaut: USD ($)
   });
   const [walletData, setWalletData] = useState(null);
@@ -278,9 +278,10 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
   const [loading, setLoading] = useState(false);
   const [loadingFees, setLoadingFees] = useState(false);
   const [feesError, setFeesError] = useState(false);
-  const [showOtpField, setShowOtpField] = useState(false);
-  const [usePasswordInsteadOfOtp, setUsePasswordInsteadOfOtp] = useState(false); // État pour gérer l'alternative au code OTP
   const [formIsValid, setFormIsValid] = useState(false);
+  // Ces variables sont définies avec des valeurs par défaut pour l'authentification par mot de passe uniquement
+  const [showOtpField, setShowOtpField] = useState(false);
+  const [usePasswordInsteadOfOtp, setUsePasswordInsteadOfOtp] = useState(true);
   const formRef = useRef(null);
 
   // Fonction pour formater le numéro de carte de crédit (ajouter des espaces tous les 4 chiffres)
@@ -347,19 +348,24 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     return `+${code}${cleanNumber}`;
   };
 
-  // Récupérer les données du portefeuille
+  // Récupérer les données du portefeuille et les frais
   useEffect(() => {
-    const fetchWalletData = async () => {
+    const initializeData = async () => {
       try {
-        const response = await axios.get('/api/userwallet/data');
+        // Récupérer les données du portefeuille et les pourcentages en parallèle
+        const [walletResponse, feePercentage, commissionPercentage] = await Promise.all([
+          axios.get('/api/userwallet/data'),
+          fetchWithdrawalFeePercentage(),
+          fetchReferralCommissionPercentage()
+        ]);
         
-        if (response.data.success && response.data.userWallet) {
+        if (walletResponse.data.success && walletResponse.data.userWallet) {
           // Convertir les valeurs numériques formatées en nombres
           const walletData = {
-            ...response.data.userWallet,
-            balance: parseFloat(response.data.userWallet.balance) || 0,
-            total_earned: parseFloat(response.data.userWallet.total_earned) || 0,
-            total_withdrawn: parseFloat(response.data.userWallet.total_withdrawn) || 0
+            ...walletResponse.data.userWallet,
+            balance: parseFloat(walletResponse.data.userWallet.balance) || 0,
+            total_earned: parseFloat(walletResponse.data.userWallet.total_earned) || 0,
+            total_withdrawn: parseFloat(walletResponse.data.userWallet.total_withdrawn) || 0
           };
           
           setWalletData(walletData);
@@ -367,187 +373,114 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
           console.error('Données du portefeuille non disponibles ou format incorrect');
         }
       } catch (error) {
-        console.error('Erreur lors de la récupération des données du portefeuille', error);
+        console.error('Erreur lors de l\'initialisation des données:', error);
       }
     };
 
-    fetchWalletData();
-    fetchReferralCommissionPercentage();
+    initializeData();
   }, [walletId, walletType]);
 
   // Fonction pour récupérer le pourcentage de commission de parrainage depuis les paramètres du système
   const fetchReferralCommissionPercentage = async () => {
     try {
       const response = await axios.get('/api/withdrawal/referral-commission');
+
       if (response.data.success) {
-        const percentage = parseFloat(response.data.percentage);
+        const percentage = parseFloat(response.data.percentage) || 0;
         setReferralCommissionPercentage(percentage);
-        return percentage; // Retourner le pourcentage pour permettre son utilisation directe
-      } else {
-        // Si le paramètre n'est pas défini, utiliser 0% par défaut
-        setReferralCommissionPercentage(0);
-        return 0;
+        return percentage;
       }
+      setReferralCommissionPercentage(0);
+      return 0;
     } catch (error) {
       console.error('Erreur lors de la récupération du pourcentage de commission:', error);
-      // En cas d'erreur, utiliser 0% par défaut
       setReferralCommissionPercentage(0);
       return 0;
     }
   };
-
-  // Récupérer les frais de transaction depuis le backend
-  const calculateFeesAsync = async () => {
-    if (!selectedPaymentOption || !formData.amount || parseFloat(formData.amount) <= 0) {
-      setWithdrawalFee(0);
-      setFeePercentage(0);
-      setReferralCommission(0);
-      // Ne pas réinitialiser le pourcentage de commission ici
-      // setReferralCommissionPercentage(0);
-      return;
-    }
-
+  
+  // Fonction pour récupérer le pourcentage de frais de retrait global
+  const fetchWithdrawalFeePercentage = async () => {
     setLoadingFees(true);
     setFeesError(false);
 
     try {
-      // S'assurer que nous avons le pourcentage de commission à jour
-      let commissionPercentage = referralCommissionPercentage;
-      if (commissionPercentage === 0) {
-        // Si le pourcentage est 0, essayer de le récupérer à nouveau
-        commissionPercentage = await fetchReferralCommissionPercentage();
-      }
-      
+      // Appel à l'API qui retourne le pourcentage global des frais
       const response = await axios.post('/api/transaction-fees/withdrawal', {
-        payment_method: selectedPaymentOption,
-        payment_type: selectedType,
-        amount: parseFloat(formData.amount)
+        amount: 100 // Montant de référence pour calculer le pourcentage
       });
 
       if (response.data.status === 'success') {
-        const { fee, total } = response.data.data;
-        setWithdrawalFee(fee);
-        setFeePercentage(response.data.data.percentage);
-        
-        // Calculer la commission du parrain avec le pourcentage récupéré
-        const requestedAmount = parseFloat(formData.amount);
-        const commission = requestedAmount * (commissionPercentage / 100);
-        setReferralCommission(commission);
+        // Stocker le pourcentage plutôt que le montant des frais
+        const percentage = response.data.data.percentage || 0;
+        setFeePercentage(percentage);
+        setFeesError(false);
+        return percentage;
       } else {
         setFeesError(true);
-        toast.error('Erreur lors du calcul des frais');
+        toast.error('Erreur lors de la récupération des frais');
+        setFeePercentage(0);
+        return 0;
       }
     } catch (error) {
-      console.error('Erreur lors du calcul des frais:', error);
+      console.error('Erreur lors de la récupération des frais:', error);
       setFeesError(true);
-      toast.error(error.response?.data?.message || 'Erreur lors du calcul des frais: ' + error.message);
+      toast.error(error.response?.data?.message || 'Erreur lors de la récupération des frais: ' + error.message);
+      setFeePercentage(0);
+      return 0;
     } finally {
       setLoadingFees(false);
     }
   };
 
-  // Effet pour calculer les frais lorsque le montant ou la méthode de paiement change
-  useEffect(() => {
-    calculateFeesAsync();
-  }, [formData.amount, selectedPaymentOption]);
+  // Récupérer les frais de transaction depuis le backend
+  // Fonction pour recalculer les frais manuellement (en cas d'erreur)
+  const recalculateFees = async () => {
+    setLoadingFees(true);
+    setFeesError(false);
 
-  // Fonction pour envoyer le code OTP
-  const handleSendOtp = async () => {
-    if (!isFormValid()) {
-      // Vérifier spécifiquement si le problème est lié au solde insuffisant
-      const totalAmount = parseFloat(formData.amount) + withdrawalFee + referralCommission;
-      if (formData.amount && totalAmount > walletData?.balance) {
-        toast.error('Solde insuffisant. Le montant total (montant + frais + commission) dépasse votre solde disponible.');
-      } else {
-        toast.error('Veuillez remplir tous les champs obligatoires avant de demander un code OTP');
-      }
-      return;
-    }
-    
-    setLoading(true);
-    
     try {
-      // Préparation des données de base communes à tous les types de paiement
-      const requestData = {
-        payment_method: selectedPaymentOption,
-        payment_type: selectedType,
-        amount: parseFloat(formData.amount),
-        currency: formData.currency,
-        // Résumé de la transaction
-        withdrawal_fee: withdrawalFee,
-        referral_commission: referralCommission,
-        total_amount: parseFloat(formData.amount) + withdrawalFee + referralCommission,
-        fee_percentage: feePercentage,
-        devise: formData.currency,
-        payment_details: {
-        }
-      };
-
-      // Ajout des données spécifiques selon le type de paiement
-      if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
-        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber);
-        requestData.country = formData.country; // Ajouter le pays sélectionné
-        requestData.payment_details = {
-          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber),
-          country: formData.country
-        };
-      } else if (selectedType === PAYMENT_TYPES.BANK_TRANSFER) {
-        requestData.account_number = formData.accountNumber;
-        requestData.account_name = formData.accountName;
-        requestData.bank_name = formData.bankName;
-        requestData.swift_code = formData.swiftCode;
-        requestData.iban = formData.iban;  // Ajout du champ IBAN
-        requestData.country = formData.country; // Ajouter le pays sélectionné
-        requestData.payment_details = {
-          account_number: formData.accountNumber,
-          account_name: formData.accountName,
-          bank_name: formData.bankName,
-          swift_code: formData.swiftCode,
-          iban: formData.iban,
-          country: formData.country
-        };
-      } else if (selectedType === PAYMENT_TYPES.CREDIT_CARD) {
-        requestData.account_number = formData.accountNumber;
-        requestData.account_name = formData.accountName;
-        requestData.country = formData.country; // Ajouter le pays sélectionné
-        requestData.payment_details = {
-          account_number: formData.accountNumber,
-          account_name: formData.accountName,
-          country: formData.country
-        };
-      } else if (selectedType === PAYMENT_TYPES.MONEY_TRANSFER) {
-        requestData.full_name = formData.fullName;  // Ajout du champ nom complet
-        requestData.recipient_country = formData.country;  // Utiliser le pays sélectionné
-        requestData.recipient_city = formData.recipientCity;  // Ajout du champ ville
-        requestData.id_type = formData.idType;  // Ajout du champ type de pièce d'identité
-        requestData.id_number = formData.idNumber;  // Ajout du champ numéro de pièce d'identité
-        requestData.phone_number = formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber); // Ajout du numéro de téléphone
-        requestData.payment_details = {
-          full_name: formData.fullName, 
-          recipient_country: formData.country, 
-          recipient_city: formData.recipientCity, 
-          id_type: formData.idType, 
-          id_number: formData.idNumber, 
-          phone_number: formatFullPhoneNumber(formData.phoneCode, formData.phoneNumber)
-        };
-      }
+      // Récupérer les pourcentages à nouveau
+      const [feePercentage, commissionPercentage] = await Promise.all([
+        fetchWithdrawalFeePercentage(),
+        fetchReferralCommissionPercentage()
+      ]);
+     
       
-      // Envoi du code OTP
-      const response = await axios.post('/api/withdrawal/send-otp', requestData);
-      
-      if (response.data.success) {
-        setShowOtpField(true);
-        toast.success('Code OTP envoyé à votre numéro; et sur votre adresse mail, veuillez vérifier vos spam aussi');
-      } else {
-        toast.error(response.data.message || 'Erreur lors de l\'envoi du code OTP');
-      }
+      // Les frais seront recalculés automatiquement via l'effet qui surveille formData.amount et feePercentage
     } catch (error) {
-      console.error('Erreur lors de l\'envoi du code OTP:', error);
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi du code OTP');
+      setFeesError(true);
+      toast.error('Erreur lors du recalcul des frais');
     } finally {
-      setLoading(false);
+      setLoadingFees(false);
     }
   };
+
+  // Effet pour calculer les frais lorsque le montant ou les pourcentages changent
+  useEffect(() => {
+    if (formData.amount && parseFloat(formData.amount) > 0) {
+      // Calculer les frais localement en fonction du pourcentage global
+      const amount = parseFloat(formData.amount);
+      
+      // Calculer les frais de retrait
+      if (feePercentage > 0) {
+        const fee = amount * (feePercentage / 100);
+        setWithdrawalFee(fee);
+      }
+      
+      // Calculer la commission du parrain
+      if (referralCommissionPercentage > 0) {
+        const commission = amount * (referralCommissionPercentage / 100);
+        setReferralCommission(commission);
+      }
+    } else {
+      // Réinitialiser les frais si le montant n'est pas valide
+      setWithdrawalFee(0);
+      setReferralCommission(0);
+    }
+  }, [formData.amount, feePercentage, referralCommissionPercentage]);
+
+  // Fonction handleSendOtp supprimée - Authentification par mot de passe uniquement
 
   // Fonction pour valider le formulaire
   const isFormValid = () => {
@@ -586,12 +519,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
       }
     }
     
-    // Vérifier si le code OTP ou le mot de passe est présent selon l'option choisie
-    if (showOtpField && !usePasswordInsteadOfOtp && !formData.otpCode) {
-      return false;
-    }
-    
-    if (usePasswordInsteadOfOtp && !formData.password) {
+    // Vérifier si le mot de passe est présent
+    if (!formData.password) {
       return false;
     }
     
@@ -600,32 +529,31 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
 
   // Vérifier si le formulaire est valide pour la soumission finale
   const isSubmitEnabled = () => {
+    if (loadingFees) {
+      return false;
+    }
+    
     if (!isFormValid()) {
       return false;
     }
     
-    // Si le champ OTP est affiché, vérifier qu'il est rempli
-    if (showOtpField && !usePasswordInsteadOfOtp && !formData.otpCode) {
-      return false;
-    }
-    
-    // Si l'option mot de passe est activée, vérifier qu'il est rempli
-    if (usePasswordInsteadOfOtp && !formData.password) {
+    // Vérifier que le mot de passe est rempli
+    if (!formData.password) {
       return false;
     }
     
     return true;
   };
 
-  // Vérifier si le formulaire est valide pour l'envoi du code OTP
+  // Cette fonction n'est plus utilisée - Authentification par mot de passe uniquement
   const isOtpEnabled = () => {
-    return isFormValid() && !showOtpField && !usePasswordInsteadOfOtp;
+    return false; // Désactivée car nous n'utilisons plus l'OTP
   };
 
   // Effet pour mettre à jour la validité du formulaire
   useEffect(() => {
     setFormIsValid(isFormValid());
-  }, [formData, selectedPaymentOption, selectedType, feesError, showOtpField]);
+  }, [formData, selectedPaymentOption, selectedType, feesError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -638,13 +566,6 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
     setLoading(true);
     
     try {
-      // Si le code OTP n'a pas encore été envoyé et que l'option mot de passe n'est pas activée, envoyer d'abord l'OTP
-      if (!showOtpField && !usePasswordInsteadOfOtp) {
-        await handleSendOtp();
-        setLoading(false);
-        return;
-      }
-      
       // Préparation des données de base communes à tous les types de paiement
       const requestData = {
         amount: parseFloat(formData.amount),
@@ -657,17 +578,10 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
         total_amount: parseFloat(formData.amount) + withdrawalFee + referralCommission,
         fee_percentage: feePercentage,
         payment_details: {
-        }
+        },
+        // Authentification par mot de passe uniquement
+        password: formData.password
       };
-
-      // Ajouter soit le code OTP, soit le mot de passe selon l'option choisie
-      if (usePasswordInsteadOfOtp) {
-        requestData.password = formData.password;
-        requestData.use_password = true; // Indiquer au backend d'utiliser le mot de passe plutôt que l'OTP
-      } else {
-        requestData.otp = formData.otpCode;
-        requestData.use_password = false;
-      }
 
       // Ajout des données spécifiques selon le type de paiement
       if (selectedType === PAYMENT_TYPES.MOBILE_MONEY) {
@@ -1231,55 +1145,8 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                       </div>
                     )}
 
-                    {showOtpField && !usePasswordInsteadOfOtp && (
-                      <div className="mb-4 fade-in">
-                        <label className="input-label dark:text-gray-200">
-                          Code OTP <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.otpCode}
-                          onChange={(e) => setFormData({ ...formData, otpCode: e.target.value })}
-                          placeholder="Entrez le code reçu"
-                          className="input-field"
-                          required
-                        />
-                        <div className="flex justify-between items-center mt-2">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Code envoyé {formData.phoneNumber ? `au ${formData.phoneNumber}` : 'à votre adresse email'}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleSendOtp}
-                            disabled={loading}
-                            className="text-primary-500 text-sm hover:underline focus:outline-none"
-                          >
-                            {loading ? (
-                              <span className="flex items-center">
-                                <ArrowPathIcon className="h-3 w-3 mr-1 animate-spin" />
-                                Envoi...
-                              </span>
-                            ) : (
-                              'Renvoyer le code'
-                            )}
-                          </button>
-                        </div>
-                        <div className="mt-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUsePasswordInsteadOfOtp(true);
-                              setShowOtpField(false);
-                            }}
-                            className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} hover:underline focus:outline-none`}
-                          >
-                            Problème de réception du code ? Utilisez votre mot de passe à la place
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {usePasswordInsteadOfOtp && (
+                    {/* Champ de mot de passe */}
+                    {selectedPaymentOption && formData.amount && parseFloat(formData.amount) > 0 && (
                       <div className="mb-4 fade-in">
                         <label className="input-label dark:text-gray-200">
                           Mot de passe <span className="text-red-500">*</span>
@@ -1288,52 +1155,33 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                           type="password"
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          placeholder="Entrez votre mot de passe"
+                          placeholder="Entrez votre mot de passe pour confirmer"
                           className="input-field"
                           required
+                          autoComplete="current-password"
                         />
-                        <div className="mt-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUsePasswordInsteadOfOtp(false);
-                              setShowOtpField(true);
-                              setFormData({...formData, password: ''});
-                            }}
-                            className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'} hover:underline focus:outline-none`}
-                          >
-                            Revenir à l'utilisation du code OTP
-                          </button>
+                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          <p>Veuillez saisir votre mot de passe pour confirmer cette demande de retrait</p>
                         </div>
-                      </div>
-                    )}
-                    
-                    {!showOtpField && selectedPaymentOption && formData.amount && parseFloat(formData.amount) > 0 && (
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={loading || !isOtpEnabled()}
-                          className="btn-primary w-full"
-                        >
-                          {loading ? (
-                            <span className="flex items-center justify-center">
-                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                              Envoi du code...
-                            </span>
-                          ) : (
-                            'Recevoir le code OTP'
-                          )}
-                        </button>
                       </div>
                     )}
 
                     {/* Résumé de la transaction */}
                     {selectedPaymentOption && formData.amount && parseFloat(formData.amount) > 0 && (
                       <div className={`mt-6 p-4 rounded-lg summary-card ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                        <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Résumé de la transaction
-                        </h4>
+                        <div className="flex justify-between items-center">
+                          <h4 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Résumé de la transaction
+                          </h4>
+                          {loadingFees && (
+                            <div className="flex items-center">
+                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin text-blue-500" />
+                              <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                Calcul des frais...
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Montant à retirer:</span>
@@ -1381,7 +1229,7 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                             <div className="mt-2">
                               <button
                                 type="button"
-                                onClick={calculateFeesAsync}
+                                onClick={recalculateFees}
                                 className="flex items-center justify-center w-full py-2 px-3 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
                               >
                                 <ArrowPathIcon className="h-4 w-4 mr-2" />
@@ -1408,13 +1256,18 @@ export default function WithdrawalForm({ walletId, walletType, onClose }) {
                     <button
                       type="submit"
                       form="withdrawalForm"
-                      disabled={loading || !isSubmitEnabled()}
-                      className={`btn-primary ${isSubmitEnabled() && !loading ? 'pulse' : ''}`}
+                      disabled={loading || loadingFees || !isSubmitEnabled()}
+                      className={`btn-primary ${isSubmitEnabled() && !loading && !loadingFees ? 'pulse' : ''}`}
                     >
                       {loading ? (
                         <span className="flex items-center justify-center">
                           <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
                           Traitement...
+                        </span>
+                      ) : loadingFees ? (
+                        <span className="flex items-center justify-center">
+                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                          Calcul des frais...
                         </span>
                       ) : (
                         'Confirmer le retrait'

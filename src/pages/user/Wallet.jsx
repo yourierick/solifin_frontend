@@ -256,15 +256,27 @@ export default function Wallets() {
     }
   };
   
-  const fetchTransferFeePercentage = async () => {
+  const fetchSendingFeePercentage = async () => {
     try {
-      const response = await axios.get('/api/transfer-fee-percentage');
+      const response = await axios.get('/api/sending-fee-percentage');
       if (response.data.success) {
-        setTransferFeePercentage(response.data.fee_percentage);
+        const feePercentage = parseFloat(response.data.fee_percentage) || 0;
+        setTransferFeePercentage(feePercentage);
+        
+        // Calculer les frais initiaux si un montant est déjà défini
+        if (transferData.amount && parseFloat(transferData.amount) > 0) {
+          const amount = parseFloat(transferData.amount);
+          const feeAmount = amount * (feePercentage / 100);
+          setTransferFeeAmount(feeAmount);
+        }
+        
+        return feePercentage;
       }
+      return 0;
     } catch (error) {
       console.error('Erreur lors de la récupération des frais de transfert:', error);
       toast.error('Erreur lors de la récupération des frais de transfert');
+      return 0;
     }
   };
 
@@ -403,21 +415,25 @@ export default function Wallets() {
       toast.info(`Vous n'avez pas de points disponibles pour le pack ${packName}`);
     }
   };
-
-  const openTransferModal = () => {
-    // Réinitialiser les données de transfert
+  
+  // Fonction pour ouvrir le modal de transfert et récupérer les frais
+  const handleTransferButtonClick = async () => {
+    // Réinitialiser les données du formulaire de transfert
     setTransferData({
       recipient_account_id: '',
       amount: '',
-      description: '',
+      note: '',
       password: ''
     });
     
-    // Récupérer les frais de transfert
-    fetchTransferFeePercentage();
+    // Réinitialiser le montant des frais
+    setTransferFeeAmount(0);
     
     // Ouvrir le modal
     setShowTransferModal(true);
+    
+    // Récupérer les frais de transfert
+    await fetchSendingFeePercentage();
   };
 
   const fetchRecipientInfo = async () => {
@@ -463,7 +479,7 @@ export default function Wallets() {
         original_amount: parseFloat(transferData.amount).toFixed(2), // Montant original sans frais
         fee_amount: transferFeeAmount.toFixed(2), // Montant des frais
         fee_percentage: transferFeePercentage, // Pourcentage des frais
-        description: transferData.description,
+        note: transferData.note,
         password: transferData.password
       });
 
@@ -843,11 +859,11 @@ export default function Wallets() {
                   Faire un retrait
                 </button>
                 <button
-                  onClick={openTransferModal}
+                  onClick={handleTransferButtonClick}
                   className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md ${
                     isDarkMode 
                       ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <FaExchangeAlt className="h-5 w-5 mr-2" />
@@ -1141,7 +1157,7 @@ export default function Wallets() {
                     } transition-all duration-200`}
                   >
                     <option value="all">Tous les types</option>
-                    <option value="sales">Achat</option>
+                    <option value="purchase">Achat</option>
                     <option value="withdrawal">Retrait</option>
                     <option value="commission">Commissions</option>
                     <option value="transfer">Transfert</option>
@@ -1205,11 +1221,6 @@ export default function Wallets() {
                     <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                       isDarkMode ? 'text-gray-400' : 'text-gray-500'
                     }`}>
-                      Détails
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
                       Date
                     </th>
                     {hasActionableTransactions && (
@@ -1235,17 +1246,17 @@ export default function Wallets() {
                         } cursor-pointer`}
                         onClick={() => handleTransactionClick(transaction)}
                       >
-                        {transaction.type === "withdrawal" ? "Retrait" : transaction.type === "sales" ? "Achat" : transaction.type === "reception" ? "Dépot des fonds" : transaction.type === "transfer" ? "Transfert des fonds":"Commission"}
+                        {transaction.type === "withdrawal" ? "Retrait" : transaction.type === "purchase" ? "Achat" : transaction.type === "reception" ? "Dépot des fonds" : transaction.type === "transfer" ? "Transfert des fonds":"Commission"}
                       </td>
                       <td 
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
-                          transaction.type === 'withdrawal' || transaction.type === 'sales' || transaction.type === "transfer" 
+                          transaction.type === 'withdrawal' || transaction.type === 'purchase' || transaction.type === "transfer" 
                             ? 'text-red-500' 
                             : 'text-green-500'
                         } cursor-pointer`}
                         onClick={() => handleTransactionClick(transaction)}
                       >
-                        {transaction.type === 'withdrawal' || transaction.type === 'sales' || transaction.type === "transfer" ? '-' : '+'}
+                        {transaction.type === 'withdrawal' || transaction.type === 'purchase' || transaction.type === "transfer" ? '-' : '+'}
                         {transaction.amount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap cursor-pointer"
@@ -1256,60 +1267,6 @@ export default function Wallets() {
                         }`}>
                           {transaction.status === "pending" ? 'en attente': transaction.status === "approved" ? 'approuvé' : transaction.status === "rejected" ? 'rejeté' : transaction.status === "cancelled" ? 'annulé' : transaction.status === "completed" ? 'completé': 'inconnu'}
                         </span>
-                      </td>
-                      <td 
-                        className={`px-6 py-4 text-sm ${
-                          isDarkMode ? 'text-gray-200' : 'text-gray-900'
-                        } cursor-pointer`}
-                        onClick={() => handleTransactionClick(transaction)}
-                      >
-                        <div className="flex flex-col">
-                          {transaction.type === "commission" || transaction.type === "sales" || transaction.type === "transfer" || transaction.type === "reception" ? (
-                            <div>
-                              {transaction.metadata.source && (
-                                <div>Source: {transaction.metadata.source}</div>
-                              )}
-                              {transaction.metadata.pack_name && (
-                                <div>{transaction.metadata.pack_name}</div>
-                              )}
-                              {transaction.metadata.duration && (
-                                <div>{transaction.metadata.duration} mois</div>
-                              )}
-                              {transaction.metadata.payment_method && (
-                                <div>Méthode: {transaction.metadata.payment_method}</div>
-                              )}
-                              {transaction.metadata.bénéficiaire && (
-                                <div>Bénéficiaire: {transaction.metadata.bénéficiaire}</div>
-                              )}
-                              {transaction.metadata.montant && (
-                                <div>Montant: {transaction.metadata.montant} $</div>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              {transaction.metadata.withdrawal_request_id && (
-                                <div>ID de la demande: {transaction.metadata.withdrawal_request_id}</div>
-                              )}
-                              {transaction.metadata.payment_method && (
-                                <div>Méthode: {transaction.metadata.payment_method}</div>
-                              )}
-                              {transaction.metadata.payment_details && (
-                                <div className="mt-1">
-                                {transaction.metadata.payment_details.phone_number ? (
-                                  <div>Numéro: {transaction.metadata.payment_details.phone_number}</div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div>Carte: ****{transaction.metadata.payment_details.number.slice(-4)}</div>
-                                    <div>Propriétaire: {transaction.metadata.payment_details.holder_name}</div>
-                                    <div>Date d'expiration: {transaction.metadata.payment_details.expiry}</div>
-                                  </div>
-                                )}
-                              </div>
-                              )}
-                            </>
-                          )}
-
-                        </div>
                       </td>
                       <td 
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
@@ -1482,16 +1439,16 @@ export default function Wallets() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Type de transaction</p>
-                  <p className="font-medium capitalize">{selectedTransaction.type === "withdrawal" ? "retrait": selectedTransaction.type === "sales" ? "achat" : selectedTransaction.type === "transfer" ? "Transfert des fonds" : selectedTransaction.type === "reception" ? "Réception des fonds" : "commission"}</p>
+                  <p className="font-medium capitalize">{selectedTransaction.type === "withdrawal" ? "retrait": selectedTransaction.type === "purchase" ? "achat" : selectedTransaction.type === "transfer" ? "Transfert des fonds" : selectedTransaction.type === "reception" ? "Réception des fonds" : "commission"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Montant de la transaction</p>
                   <p className={`font-medium ${
-                    selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'sales' 
+                    selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'purchase' 
                       ? 'text-red-500' 
                       : 'text-green-500'
                   }`}>
-                    {selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'sales' ? '-' : '+'}
+                    {selectedTransaction.type === 'withdrawal' || selectedTransaction.type === 'purchase' ? '-' : '+'}
                     {selectedTransaction.amount}
                   </p>
                 </div>
@@ -1695,12 +1652,8 @@ export default function Wallets() {
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {entry.description}
-                          </p>
-                          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {formatDate(entry.date)}
-                          </p>
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</p>
+                          <p className="font-medium">{entry.description}</p>
                         </div>
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${
                           entry.type === 'gain' 
@@ -1784,13 +1737,13 @@ export default function Wallets() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Points disponibles</p>
-                        <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           {selectedPackInfo.availablePoints}
                         </p>
                       </div>
                       <div>
                         <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Valeur par point</p>
-                        <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           {selectedPackInfo.pointValue} $
                         </p>
                       </div>
@@ -1958,10 +1911,17 @@ export default function Wallets() {
                           const value = parseFloat(e.target.value);
                           if (isNaN(value) || value < 0) {
                             setTransferData({...transferData, amount: ''});
+                            setTransferFeeAmount(0);
                           } else if (value > userWallet.balance) {
                             setTransferData({...transferData, amount: userWallet.balance.toString()});
+                            // Calculer les frais pour le montant maximum
+                            const feeAmount = userWallet.balance * (transferFeePercentage / 100);
+                            setTransferFeeAmount(feeAmount);
                           } else {
                             setTransferData({...transferData, amount: e.target.value});
+                            // Calculer les frais pour le montant saisi
+                            const feeAmount = value * (transferFeePercentage / 100);
+                            setTransferFeeAmount(feeAmount);
                           }
                         }}
                         placeholder="0.00"

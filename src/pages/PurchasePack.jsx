@@ -73,7 +73,7 @@ const PurchasePack = () => {
 
       // Créer le compte utilisateur avec les informations de paiement
       const registerResponse = await axios.post(`/api/register/${pack.id}`, registrationDataWithPayment);
-      
+      console.log(registerResponse)
       if (!registerResponse.data.success) {
         throw new Error('Erreur lors de la création du compte');
       }
@@ -84,6 +84,7 @@ const PurchasePack = () => {
       navigate('/login');
 
     } catch (error) {
+      console.log(error)
       Notification.error(error.response?.data?.message || 'Une erreur est survenue');
       return false;
     } finally {

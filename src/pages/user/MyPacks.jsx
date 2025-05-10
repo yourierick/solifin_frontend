@@ -246,14 +246,53 @@ export default function MyPacks() {
   const handleRenew = async () => {
     try {
       setRenewing(true);
-      const response = await axios.post(`/api/packs/${selectedPack.pack_id}/renew`, {
-        duration_months: duration
-      });
+      
+      // Créer un objet avec les données de paiement
+      const paymentData = {
+        duration_months: duration,
+        payment_method: 'solifin-wallet', // Valeur par défaut
+        payment_type: 'wallet',
+        amount: selectedPack?.pack?.price * duration || 0,
+        currency: 'USD',
+        fees: 0
+      };
+      
+      console.log('Renouvellement du pack avec les données:', paymentData);
+      
+      const response = await axios.post(`/api/packs/${selectedPack.pack_id}/renew`, paymentData);
 
       if (response.data.success) {
         Notification.success('Pack renouvelé avec succès');
-        fetchUserPacks();
-        handleRenewClose();
+        
+        console.log('Réponse du serveur:', response.data);
+        
+        // Mettre à jour directement l'état des packs
+        setUserPacks(prevPacks => {
+          return prevPacks.map(pack => {
+            // Vérifier la correspondance par pack_id
+            if (pack.pack_id.toString() === selectedPack.pack_id.toString()) {
+              console.log('Mise à jour du pack:', pack.pack_id);
+              
+              // Créer un nouvel objet avec les données mises à jour
+              const updatedPack = {
+                ...pack,
+                status: 'active',
+                expiry_date: new Date(new Date(pack.expiry_date || new Date()).getTime() + (duration * 30 * 24 * 60 * 60 * 1000)).toISOString()
+              };
+              
+              console.log('Pack mis à jour:', updatedPack);
+              return updatedPack;
+            }
+            return pack;
+          });
+        });
+        
+        // Attendre un court instant avant de fermer le dialogue
+        setTimeout(() => {
+          handleRenewClose();
+          // Rafraîchir les données depuis le serveur après la fermeture du dialogue
+          fetchUserPacks();
+        }, 1000);
       }
     } catch (error) {
       console.error('Erreur lors du renouvellement:', error);
@@ -952,6 +991,13 @@ export default function MyPacks() {
         maxWidth="lg" 
         fullWidth
         fullScreen={isFullScreen}
+        BackdropProps={{
+          style: {
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)'
+          }
+        }}
         PaperProps={{
           sx: {
             minHeight: isFullScreen ? '100vh' : '80vh',

@@ -80,30 +80,6 @@ const paymentMethods = [
     category: 'mobile',
     options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY],
     fields: paymentMethodFields[PAYMENT_TYPES.MOBILE_MONEY]
-  },
-  {
-    id: PAYMENT_TYPES.BANK_TRANSFER,
-    name: 'Virement bancaire',
-    icon: 'bank',
-    category: 'bank',
-    options: PAYMENT_METHODS[PAYMENT_TYPES.BANK_TRANSFER],
-    fields: paymentMethodFields[PAYMENT_TYPES.BANK_TRANSFER]
-  },
-  {
-    id: PAYMENT_TYPES.MONEY_TRANSFER,
-    name: 'Transfert d\'argent',
-    icon: 'money-transfer',
-    category: 'transfer',
-    options: PAYMENT_METHODS[PAYMENT_TYPES.MONEY_TRANSFER],
-    fields: paymentMethodFields[PAYMENT_TYPES.MONEY_TRANSFER]
-  },
-  {
-    id: PAYMENT_TYPES.CASH,
-    name: 'Espèces',
-    icon: 'cash',
-    category: 'cash',
-    options: PAYMENT_METHODS[PAYMENT_TYPES.CASH],
-    fields: paymentMethodFields[PAYMENT_TYPES.CASH]
   }
 ];
 
@@ -263,6 +239,7 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     if (isOpen) {
       fetchWalletBalance();
       fetchBoostPrice();
+      fetchTransferFees();
       
       // Réinitialiser les états pour les méthodes de paiement
       setSelectedPaymentOption(paymentMethod === PAYMENT_TYPES.WALLET ? 'solifin-wallet' : '');
@@ -281,9 +258,16 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     const amount = pricePerDay * days;
     setTotalAmount(amount);
     
+    // Mettre à jour les frais si ce n'est pas un paiement par wallet
+    if (paymentMethod !== PAYMENT_TYPES.WALLET && feePercentage > 0) {
+      // Calculer les frais en fonction du pourcentage global
+      const fees = (amount * feePercentage) / 100;
+      setTransactionFees(fees);
+    }
+    
     // Vérifier la validité du formulaire
     validateForm();
-  }, [days, pricePerDay]);
+  }, [days, pricePerDay, paymentMethod, feePercentage]);
 
   // Effet pour surveiller les changements de méthode de paiement
   useEffect(() => {
@@ -302,17 +286,27 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     if (selectedCurrency !== 'USD' && paymentMethod !== PAYMENT_TYPES.WALLET) {
       convertCurrency();
     } else {
-      setConvertedAmount(totalAmount);
+      setConvertedAmount({ convertedAmount: totalAmount, rate: 1 });
       setExchangeRate(1);
+      
+      // Mettre à jour les frais si ce n'est pas un paiement par wallet
+      if (paymentMethod !== PAYMENT_TYPES.WALLET && feePercentage > 0) {
+        const fees = (totalAmount * feePercentage) / 100;
+        setTransactionFees(fees);
+      }
     }
-  }, [selectedCurrency, totalAmount, paymentMethod]);
+  }, [selectedCurrency, totalAmount, paymentMethod, feePercentage]);
   
-  // Effet pour calculer les frais lorsque les paramètres de paiement changent
+  // Appliquer les frais lorsque les paramètres de paiement changent
   useEffect(() => {
     if (isOpen && selectedPaymentOption) {
-      calculateFees();
+      // Si le paiement est par wallet, pas de frais de transaction
+      if (paymentMethod === PAYMENT_TYPES.WALLET) {
+        setTransactionFees(0);
+      }
+      validateForm();
     }
-  }, [selectedPaymentOption, convertedAmount, selectedCurrency]);
+  }, [selectedPaymentOption, convertedAmount, selectedCurrency, paymentMethod]);
 
   // Récupérer le solde du wallet
   const fetchWalletBalance = async () => {
@@ -348,42 +342,30 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     }
   };
 
-  // Calculer les frais de transaction
-  const calculateFees = async () => {
+  // Récupérer les frais de transfert globaux
+  const fetchTransferFees = async () => {
     setLoadingFees(true);
     setFeesError(false);
     
-    try {
-      const amount = paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount.convertedAmount;
-      const currency = paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency;
-      
-      // Vérifier que les valeurs sont valides avant de faire l'appel API
-      if (!selectedPaymentOption || !amount || amount <= 0) {
-        setLoadingFees(false);
-        return;
-      }
-      
+    try {    
       const response = await axios.post('/api/transaction-fees/transfer', {
-        amount: amount,
-        payment_method: selectedPaymentOption, // Envoyer la méthode spécifique (visa, m-pesa, solifin-wallet, etc.)
-        currency: currency
+        amount: 100, // Montant de référence (à défaut) pour calculer le pourcentage
       });
       
       if (response.data.success) {
-        setTransactionFees(response.data.fee);
+        // Stocker le pourcentage plutôt que le montant des frais
         setFeePercentage(response.data.percentage);
         setFeesError(false);
       } else {
         setFeesError(true);
-        toast.error(response.data.message || 'Erreur lors du calcul des frais de transaction');
+        toast.error(response.data.message || 'Erreur lors de la récupération des frais de transaction');
       }
     } catch (error) {
-      console.error('Erreur lors du calcul des frais:', error);
+      console.error('Erreur lors de la récupération des frais:', error);
       setFeesError(true);
-      toast.error('Erreur lors du calcul des frais de transaction. Veuillez réessayer.');
+      toast.error('Erreur lors de la récupération des frais de transaction. Veuillez réessayer.');
     } finally {
       setLoadingFees(false);
-      validateForm();
     }
   };
   
@@ -399,20 +381,24 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
       
       if (response.data.success) {
         const convertedAmt = response.data;
-        console.log(convertedAmt);
         setConvertedAmount(convertedAmt);
-        // Le calcul des frais sera déclenché par l'effet qui surveille convertedAmount
+        
+        // Calculer les frais en fonction du pourcentage global
+        if (paymentMethod !== PAYMENT_TYPES.WALLET && feePercentage > 0) {
+          const fees = (convertedAmt.convertedAmount * feePercentage) / 100;
+          setTransactionFees(fees);
+        }
       } else {
         console.error('Erreur lors de la conversion:', response.data.message);
         // En cas d'erreur, on utilise le montant original
-        setConvertedAmount(totalAmount);
+        setConvertedAmount({ convertedAmount: totalAmount, rate: 1 });
         setFeesError(true);
         toast.error(response.data.message || 'Erreur lors de la conversion de devise');
       }
     } catch (error) {
       console.error('Erreur lors de la conversion:', error);
       console.error('Détails de l\'erreur:', error.response?.data || 'Pas de détails disponibles');
-      setConvertedAmount(totalAmount);
+      setConvertedAmount({ convertedAmount: totalAmount, rate: 1 });
       setFeesError(true);
       toast.error('Erreur lors de la conversion de devise. Veuillez réessayer.');
     } finally {
@@ -444,9 +430,16 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     setSelectedPaymentOption('');
     setFormFields({});
     
-    // Si on choisit le wallet, on sélectionne automatiquement solifin-wallet
+    // Si on choisit le wallet, on sélectionne automatiquement solifin-wallet et on met les frais à 0
     if (method === PAYMENT_TYPES.WALLET) {
       setSelectedPaymentOption('solifin-wallet');
+      setTransactionFees(0);
+    } else {
+      // Pour les autres méthodes, calculer les frais en fonction du pourcentage global
+      if (convertedAmount && convertedAmount.convertedAmount) {
+        const fees = (convertedAmount.convertedAmount * feePercentage) / 100;
+        setTransactionFees(fees);
+      }
     }
     
     validateForm();
@@ -481,17 +474,6 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
       // Pour le mobile money, vérifier le numéro de téléphone
       isValid = isValid && formFields.phoneNumber && formFields.phoneNumber.trim() !== '';
-    } else if (paymentMethod === PAYMENT_TYPES.BANK_TRANSFER) {
-      // Pour le virement bancaire, vérifier les champs requis
-      const requiredFields = ['accountName', 'accountNumber'];
-      isValid = isValid && requiredFields.every(field => formFields[field] && formFields[field].trim() !== '');
-    } else if (paymentMethod === PAYMENT_TYPES.MONEY_TRANSFER) {
-      // Pour le transfert d'argent, vérifier les champs requis
-      const requiredFields = ['senderName', 'referenceNumber'];
-      isValid = isValid && requiredFields.every(field => formFields[field] && formFields[field].trim() !== '');
-    } else if (paymentMethod === PAYMENT_TYPES.CASH) {
-      // Pour le paiement en espèces, vérifier le lieu de paiement
-      isValid = isValid && formFields.paymentLocation && formFields.paymentLocation.trim() !== '';
     }
     
     // Vérifier que le montant est positif
@@ -511,7 +493,7 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
     setError('');
     
     // Vérifier si le solde du wallet est suffisant
-    if (paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + transactionFees > walletBalance) {
+    if (paymentMethod === PAYMENT_TYPES.WALLET && totalAmount > walletBalance) {
       setError('Solde insuffisant dans votre wallet');
       setLoading(false);
       return;
@@ -550,7 +532,7 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
         paymentOption: selectedPaymentOption, // Garder pour compatibilité avec l'ancien code
         currency: selectedCurrency,
         amount: paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount.convertedAmount,
-        fees: transactionFees,
+        fees: paymentMethod === PAYMENT_TYPES.WALLET ? 0 : transactionFees,
       };
       
       // Envoyer la demande de boost
@@ -861,7 +843,10 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
                         <CircularProgress size={16} className="mr-2" />
                       ) : null}
                       <Typography variant="subtitle1" color="primary" className="font-bold">
-                        {(((paymentMethod === PAYMENT_TYPES.WALLET ? (totalAmount || 0) : (convertedAmount.convertedAmount || 0)) + (transactionFees || 0))).toFixed(2)} {paymentMethod === PAYMENT_TYPES.WALLET ? CURRENCIES.USD.symbol : CURRENCIES[selectedCurrency].symbol}
+                        {paymentMethod === PAYMENT_TYPES.WALLET 
+                          ? (totalAmount || 0).toFixed(2) + ' ' + CURRENCIES.USD.symbol
+                          : ((convertedAmount.convertedAmount || 0) + (transactionFees || 0)).toFixed(2) + ' ' + CURRENCIES[selectedCurrency].symbol
+                        }
                       </Typography>
                     </div>
                   </div>
@@ -872,9 +857,9 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
         </div>
         
         {/* Alerte pour solde insuffisant */}
-        {paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + (transactionFees || 0) > walletBalance && (
+        {paymentMethod === PAYMENT_TYPES.WALLET && totalAmount > walletBalance && (
           <Alert severity="error" className="mx-6 mb-3">
-            Solde insuffisant dans votre wallet. Vous avez besoin de {(totalAmount + (transactionFees || 0)).toFixed(2)} USD mais votre solde est de {walletBalance.toFixed(2)} USD.
+            Solde insuffisant dans votre wallet. Vous avez besoin de {totalAmount.toFixed(2)} USD mais votre solde est de {walletBalance.toFixed(2)} USD.
           </Alert>
         )}
         
@@ -902,7 +887,7 @@ export default function BoostPublicationModal({ isOpen, onClose, publication, pu
                 loading || 
                 loadingFees || 
                 feesError || 
-                (paymentMethod === PAYMENT_TYPES.WALLET && totalAmount + (transactionFees || 0) > walletBalance)
+                (paymentMethod === PAYMENT_TYPES.WALLET && totalAmount > walletBalance)
               }
               className="px-6 py-2"
               onClick={handleSubmit}

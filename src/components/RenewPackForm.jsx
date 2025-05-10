@@ -12,9 +12,25 @@ import {
   Alert,
   CircularProgress,
   MenuItem,
-  Dialog
+  Dialog,
+  Avatar
 } from '@mui/material';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { 
+  XMarkIcon, 
+  CreditCardIcon, 
+  PhoneIcon, 
+  WalletIcon,
+  BanknotesIcon,
+  ArrowPathIcon
+} from '@heroicons/react/24/outline';
+import {
+  CreditCard as CreditCardIcon2,
+  Wallet as WalletIcon2,
+  Phone as PhoneIcon2,
+  Payment as PaymentIcon,
+  CreditScore as CreditScoreIcon,
+  AccountBalance as BankIcon
+} from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import axios from '../utils/axios';
 import Notification from './Notification';
@@ -146,24 +162,46 @@ const paymentMethods = [
   {
     id: PAYMENT_TYPES.WALLET,
     name: 'Mon Wallet',
-    icon: 'wallet',
+    icon: <WalletIcon2 sx={{ color: '#3B82F6' }} />,
+    heroIcon: <WalletIcon className="h-5 w-5 text-blue-500" />,
+    color: '#3B82F6', // Bleu
     category: 'direct',
     options: PAYMENT_METHODS[PAYMENT_TYPES.WALLET]
   },
   {
     id: PAYMENT_TYPES.CREDIT_CARD,
     name: 'Carte de crédit',
-    icon: 'credit-card',
+    icon: <CreditCardIcon2 sx={{ color: '#8B5CF6' }} />,
+    heroIcon: <CreditCardIcon className="h-5 w-5 text-purple-500" />,
+    color: '#8B5CF6', // Violet
     category: 'card',
-    options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD],
+    options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD].map(option => ({
+      ...option,
+      icon: option.id === 'visa' ? 
+        <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/800px-Visa_Inc._logo.svg.png" alt="Visa" variant="square" sx={{ width: 40, height: 24, bgcolor: 'transparent' }} /> :
+        option.id === 'mastercard' ? 
+        <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/800px-Mastercard-logo.svg.png" alt="Mastercard" variant="square" sx={{ width: 40, height: 24, bgcolor: 'transparent' }} /> :
+        <CreditScoreIcon sx={{ color: '#8B5CF6' }} />
+    })),
     fields: paymentMethodFields[PAYMENT_TYPES.CREDIT_CARD]
   },
   {
     id: PAYMENT_TYPES.MOBILE_MONEY,
     name: 'Mobile Money',
-    icon: 'phone',
+    icon: <PhoneIcon2 sx={{ color: '#10B981' }} />,
+    heroIcon: <PhoneIcon className="h-5 w-5 text-green-500" />,
+    color: '#10B981', // Vert
     category: 'mobile',
-    options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY],
+    options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY].map(option => ({
+      ...option,
+      icon: option.id === 'm-pesa' ? 
+        <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/M-PESA_LOGO-01.svg/320px-M-PESA_LOGO-01.svg.png" alt="M-Pesa" sx={{ width: 24, height: 24 }} /> :
+        option.id === 'orange-money' ? 
+        <Avatar src="https://upload.wikimedia.org/wikipedia/fr/thumb/8/83/Orange_Money.svg/320px-Orange_Money.svg.png" alt="Orange Money" sx={{ width: 24, height: 24 }} /> :
+        option.id === 'airtel-money' ? 
+        <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Airtel_logo.svg/320px-Airtel_logo.svg.png" alt="Airtel Money" sx={{ width: 24, height: 24, bgcolor: '#ff0000' }} /> :
+        <PhoneIcon2 sx={{ color: '#10B981' }} />
+    })),
     fields: paymentMethodFields[PAYMENT_TYPES.MOBILE_MONEY]
   }
 ];
@@ -443,39 +481,50 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     }
 
     try {
-      // Déterminer la méthode spécifique de paiement
-      let specificPaymentMethod = selectedPaymentOption;
-      
-      // Si aucune méthode spécifique n'est sélectionnée, utiliser une valeur par défaut selon le type
-      if (!specificPaymentMethod) {
-        if (paymentMethod === PAYMENT_TYPES.WALLET) {
-          specificPaymentMethod = 'solifin-wallet';
-        } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
-          specificPaymentMethod = 'visa';
-        } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
-          specificPaymentMethod = 'm-pesa';
-        }
-      }
-      
-      // Préparer les données à envoyer
-      const paymentData = {
-        payment_method: specificPaymentMethod, // Méthode spécifique (visa, mastercard, m-pesa, etc.)
-        payment_type: paymentMethod, // Type générique (wallet, credit-card, mobile-money)
-        payment_details: formFields,
-        duration_months: months,
-        amount: paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount,
-        currency: paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency,
-        fees: transactionFees || 0
-      };
-      
-      // Appel à l'API pour renouveler le pack
-      const response = await axios.post(`/api/packs/${pack.id}/renew`, paymentData);
-      
-      if (response.data.success) {
-        Notification.success('Pack renouvelé avec succès!');
+      // Utiliser la fonction onRenew fournie par le parent (MyPacks.jsx)
+      // au lieu de faire l'appel API directement ici
+      if (typeof onRenew === 'function') {
+        // Appeler la fonction onRenew du parent avec les données nécessaires
+        await onRenew();
         onClose();
       } else {
-        setError(response.data.message || 'Une erreur est survenue lors du renouvellement du pack');
+        // Fallback au cas où onRenew n'est pas fourni (ne devrait pas arriver)
+        console.error('La fonction onRenew n\'est pas définie');
+        
+        // Déterminer la méthode spécifique de paiement
+        let specificPaymentMethod = selectedPaymentOption;
+        
+        // Si aucune méthode spécifique n'est sélectionnée, utiliser une valeur par défaut selon le type
+        if (!specificPaymentMethod) {
+          if (paymentMethod === PAYMENT_TYPES.WALLET) {
+            specificPaymentMethod = 'solifin-wallet';
+          } else if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
+            specificPaymentMethod = 'visa';
+          } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
+            specificPaymentMethod = 'm-pesa';
+          }
+        }
+        
+        // Préparer les données à envoyer
+        const paymentData = {
+          payment_method: specificPaymentMethod, // Méthode spécifique (visa, mastercard, m-pesa, etc.)
+          payment_type: paymentMethod, // Type générique (wallet, credit-card, mobile-money)
+          payment_details: formFields,
+          duration_months: months,
+          amount: paymentMethod === PAYMENT_TYPES.WALLET ? totalAmount : convertedAmount,
+          currency: paymentMethod === PAYMENT_TYPES.WALLET ? 'USD' : selectedCurrency,
+          fees: transactionFees || 0
+        };
+        
+        // Appel à l'API pour renouveler le pack
+        const response = await axios.post(`/api/packs/${pack.pack_id}/renew`, paymentData);
+        
+        if (response.data.success) {
+          Notification.success('Pack renouvelé avec succès!');
+          onClose();
+        } else {
+          setError(response.data.message || 'Une erreur est survenue lors du renouvellement du pack');
+        }
       }
     } catch (error) {
       console.error('Erreur lors du renouvellement du pack:', error);
@@ -492,48 +541,70 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
     return (
       <div className="space-y-2">
         {(paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) && (
-          <div className="mb-2">
-            <Typography variant="subtitle2" gutterBottom>
+          <div className="mb-4">
+            <Typography variant="subtitle2" gutterBottom className="text-primary-600 dark:text-primary-400">
               Choisissez votre opérateur
             </Typography>
-            <RadioGroup
-              row
-              value={selectedPaymentOption}
-              onChange={(e) => setSelectedPaymentOption(e.target.value)}
-              className="gap-4"
-            >
+            <div className="grid grid-cols-3 gap-3 mt-2">
               {selectedMethod.options.map((option) => (
-                <FormControlLabel
+                <div 
                   key={option.id}
-                  value={option.id}
-                  control={<Radio size="small" />}
-                  label={option.name}
-                />
+                  onClick={() => setSelectedPaymentOption(option.id)}
+                  className={`border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${selectedPaymentOption === option.id ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                  style={{ height: '100px' }}
+                >
+                  <div className="mb-3" style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {option.icon}
+                  </div>
+                  <Typography variant="body2" className="text-center font-medium">
+                    {option.name}
+                  </Typography>
+                  <Radio 
+                    checked={selectedPaymentOption === option.id}
+                    size="small"
+                    sx={{ 
+                      padding: '4px',
+                      marginTop: '4px',
+                      '&.Mui-checked': { color: '#10B981' } 
+                    }}
+                  />
+                </div>
               ))}
-            </RadioGroup>
+            </div>
           </div>
         )}
 
         {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD) && (
-          <div className="mb-2">
-            <Typography variant="subtitle2" gutterBottom>
+          <div className="mb-4">
+            <Typography variant="subtitle2" gutterBottom className="text-primary-600 dark:text-primary-400">
               Choisissez votre type de carte
             </Typography>
-            <RadioGroup
-              row
-              value={selectedPaymentOption}
-              onChange={(e) => setSelectedPaymentOption(e.target.value)}
-              className="gap-4"
-            >
+            <div className="grid grid-cols-3 gap-3 mt-2">
               {selectedMethod.options.map((option) => (
-                <FormControlLabel
+                <div 
                   key={option.id}
-                  value={option.id}
-                  control={<Radio size="small" />}
-                  label={option.name}
-                />
+                  onClick={() => setSelectedPaymentOption(option.id)}
+                  className={`border rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${selectedPaymentOption === option.id ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                  style={{ height: '100px' }}
+                >
+                  <div className="mb-3" style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {option.icon}
+                  </div>
+                  <Typography variant="body2" className="text-center font-medium">
+                    {option.name}
+                  </Typography>
+                  <Radio 
+                    checked={selectedPaymentOption === option.id}
+                    size="small"
+                    sx={{ 
+                      padding: '4px',
+                      marginTop: '4px',
+                      '&.Mui-checked': { color: '#8B5CF6' } 
+                    }}
+                  />
+                </div>
               ))}
-            </RadioGroup>
+            </div>
           </div>
         )}
 
@@ -619,30 +690,60 @@ export default function RenewPackForm({ open, onClose, pack, onRenew }) {
                     key={method.id}
                     className={`method-card cursor-pointer ${paymentMethod === method.id ? 'selected' : ''}`}
                     onClick={() => setPaymentMethod(method.id)}
+                    style={{
+                      borderColor: paymentMethod === method.id ? method.color : 'transparent',
+                      transition: 'all 0.3s ease'
+                    }}
                   >
                     <div className="flex items-center">
                       <Radio 
                         checked={paymentMethod === method.id} 
                         onChange={() => setPaymentMethod(method.id)}
                         size="small"
+                        sx={{
+                          '&.Mui-checked': {
+                            color: method.color,
+                          },
+                        }}
                       />
-                      <div className="ml-2">
-                        <Typography variant="subtitle2">{method.name}</Typography>
-                        {method.id === PAYMENT_TYPES.WALLET && (
-                          <Typography variant="caption" color="textSecondary">
-                            Solde disponible: {walletBalance} USD
-                          </Typography>
-                        )}
-                        {method.id === PAYMENT_TYPES.CREDIT_CARD && (
-                          <Typography variant="caption" color="textSecondary">
-                            Visa, Mastercard, American Express
-                          </Typography>
-                        )}
-                        {method.id === PAYMENT_TYPES.MOBILE_MONEY && (
-                          <Typography variant="caption" color="textSecondary">
-                            Orange Money, Airtel Money, M-Pesa
-                          </Typography>
-                        )}
+                      <div className="flex items-center">
+                        <div className="mr-4 flex items-center justify-center" 
+                          style={{ 
+                            width: '42px', 
+                            height: '42px', 
+                            borderRadius: '50%',
+                            backgroundColor: `${method.color}15`, // Couleur avec 15% d'opacité
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '8px'
+                          }}>
+                          {method.icon}
+                        </div>
+                        <div>
+                          <Typography variant="subtitle2">{method.name}</Typography>
+                          {method.id === PAYMENT_TYPES.WALLET && (
+                            <Typography variant="caption" color="textSecondary" className="flex items-center">
+                              <BanknotesIcon className="h-3 w-3 mr-1" />
+                              Solde disponible: {walletBalance} USD
+                            </Typography>
+                          )}
+                          {method.id === PAYMENT_TYPES.CREDIT_CARD && (
+                            <Typography variant="caption" color="textSecondary" className="flex items-center">
+                              <div className="flex items-center gap-2 mt-1">
+                                <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/800px-Visa_Inc._logo.svg.png" alt="Visa" variant="square" sx={{ width: 28, height: 18, bgcolor: 'transparent' }} />
+                                <Avatar src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/800px-Mastercard-logo.svg.png" alt="Mastercard" variant="square" sx={{ width: 28, height: 18, bgcolor: 'transparent' }} />
+                                <span className="ml-1 text-xs">Visa, Mastercard, American Express</span>
+                              </div>
+                            </Typography>
+                          )}
+                          {method.id === PAYMENT_TYPES.MOBILE_MONEY && (
+                            <Typography variant="caption" color="textSecondary" className="flex items-center">
+                              <PhoneIcon className="h-3 w-3 mr-1" />
+                              Orange Money, Airtel Money, M-Pesa
+                            </Typography>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

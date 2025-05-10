@@ -1266,6 +1266,13 @@ const PackStatsModal = ({ open, onClose, packId }) => {
       maxWidth="lg"
       fullWidth
       fullScreen={isFullScreen}
+      BackdropProps={{
+        style: {
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)'
+        }
+      }}
       PaperProps={{
         sx: {
           bgcolor: isDarkMode ? '#1f2937' : '#f8f9fa',

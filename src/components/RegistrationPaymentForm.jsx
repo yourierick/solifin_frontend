@@ -194,25 +194,48 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
     }
   }, [pack, months]);
 
-  // Effet pour déclencher la conversion de devise lorsque le montant total, la devise ou la méthode de paiement change
+  // Effet pour initialiser les données lorsque le modal s'ouvre
   useEffect(() => {
-    if (pack && totalAmount > 0 && !localLoading) {
+    if (open && pack) {
+      setTotalAmount(pack.price * months);
+      
+      // Récupérer le pourcentage de frais global une seule fois à l'ouverture du modal
+      const fetchGlobalFeePercentage = async () => {
+        try {
+          const response = await axios.post('/api/transaction-fees/transfer', {
+            amount: 100 // Montant de référence pour obtenir le pourcentage
+          });
+          
+          if (response.data.success) {
+            const percentage = response.data.percentage || 0;
+            setFeePercentage(percentage);
+            
+            // Après avoir récupéré le pourcentage, initialiser la conversion de devise
+            convertCurrency(percentage);
+          } else {
+            setFeePercentage(0);
+            convertCurrency(0);
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération du pourcentage de frais:', error);
+          setFeePercentage(0);
+          convertCurrency(0);
+        }
+      };
+      
+      fetchGlobalFeePercentage();
+    }
+  }, [open, pack]);
+  
+  // Effet pour déclencher la conversion de devise lorsque le montant total ou la devise change
+  useEffect(() => {
+    if (pack && totalAmount > 0 && !localLoading && open && feePercentage !== null) {
       convertCurrency();
     }
-  }, [totalAmount, selectedCurrency, paymentMethod]);
+  }, [totalAmount, selectedCurrency]);
 
-  // Effet pour déclencher le calcul des frais après que le montant converti est disponible
-  useEffect(() => {
-    if (convertedAmount > 0 && !localLoading) {
-      // Utiliser la méthode spécifique de paiement pour calculer les frais
-      const specificMethod = 
-        paymentMethod === PAYMENT_TYPES.CREDIT_CARD && selectedCardOption ? selectedCardOption :
-        paymentMethod === PAYMENT_TYPES.MOBILE_MONEY && selectedMobileOption ? selectedMobileOption :
-        paymentMethod;
-      
-      fetchTransactionFees(convertedAmount, specificMethod, selectedCurrency);
-    }
-  }, [convertedAmount, selectedCardOption, selectedMobileOption]);
+  // Nous n'avons plus besoin de recalculer les frais lorsque les options de paiement changent
+  // car nous utilisons le pourcentage global récupéré à l'ouverture du modal
 
   useEffect(() => {
     // Réinitialiser les champs du formulaire et l'option mobile lors du changement de méthode
@@ -228,59 +251,77 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
   // Récupérer les frais de transaction depuis l'API
   const fetchTransactionFees = async (amount, method, currency) => {
     try {
+      setLocalLoading(true);
       const response = await axios.post('/api/transaction-fees/transfer', {
-        payment_method: method,
         amount: amount,
-        currency: currency
       });
       
+      console.log(response)
       if (response.data.success) {
         // Stocker les frais et le pourcentage tels que retournés par l'API
         // L'API applique déjà la logique de fee_fixed pour toutes les devises
-        setTransactionFees(response.data.fee);
-        setFeePercentage(response.data.percentage);
+        const fee = response.data.fee || 0;
+        const percentage = response.data.percentage || 0;
+        setTransactionFees(fee);
+        setFeePercentage(percentage);
+        return { fee, percentage };
       } else {
         // En cas d'échec de l'API, réinitialiser les frais
         setTransactionFees(null);
         setFeePercentage(null);
+        return { fee: 0, percentage: 0 };
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des frais de transaction:', error);
       // En cas d'erreur, réinitialiser les frais
       setTransactionFees(null);
       setFeePercentage(null);
+      return { fee: 0, percentage: 0 };
+    } finally {
+      setLocalLoading(false);
     }
   };
 
-  const convertCurrency = async () => {
+  const convertCurrency = async (globalFeePercentage = null) => {
     try {
       setLocalLoading(true);
+      let convertedAmt = totalAmount;
       
       // Si la devise est USD, pas besoin de conversion
       if (selectedCurrency === 'USD') {
         setConvertedAmount(totalAmount);
-        setLocalLoading(false);
-        return;
-      }
-      
-      const response = await axios.post('/api/currency/convert', {
-        amount: totalAmount,
-        from: 'USD',
-        to: selectedCurrency
-      });
-      
-      if (response.data.success) {
-        const convertedAmt = response.data.convertedAmount;
-        setConvertedAmount(convertedAmt);
       } else {
-        console.error('Erreur lors de la conversion:', response.data.message);
-        // En cas d'erreur, on utilise le montant original
-        setConvertedAmount(totalAmount);
+        // Conversion de devise nécessaire
+        const response = await axios.post('/api/currency/convert', {
+          amount: totalAmount,
+          from: 'USD',
+          to: selectedCurrency
+        });
+        
+        if (response.data.success) {
+          convertedAmt = response.data.convertedAmount;
+          setConvertedAmount(convertedAmt);
+        } else {
+          console.error('Erreur lors de la conversion:', response.data.message);
+          // En cas d'erreur, on utilise le montant original
+          setConvertedAmount(totalAmount);
+        }
       }
-      setLocalLoading(false);
+      
+      // Calculer les frais localement avec le pourcentage global
+      const percentage = globalFeePercentage !== null ? globalFeePercentage : feePercentage;
+      if (percentage > 0) {
+        const fee = convertedAmt * (percentage / 100);
+        setTransactionFees(fee);
+      } else {
+        setTransactionFees(0);
+      }
+      
     } catch (error) {
       console.error('Erreur lors de la conversion:', error);
       setConvertedAmount(totalAmount);
+      setTransactionFees(0);
+    } finally {
       setLocalLoading(false);
     }
   };
