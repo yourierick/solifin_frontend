@@ -60,6 +60,8 @@ import WithdrawalRequests from './components/WithdrawalRequests';
 import Settings from './pages/admin/Settings';
 import Page from './pages/user/Page';
 import ReferralInvitations from './pages/user/ReferralInvitations';
+import Commissions from './pages/admin/Commissions';
+import Finances from './pages/admin/Finances';
 
 function App() {
   return (
@@ -134,6 +136,8 @@ function App() {
               <Route path="packs/edit/:id" element={<EditPack />} />
               <Route path="validations" element={<AdvertisementValidation />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="commissions" element={<Commissions />} />
+              <Route path="finances" element={<Finances />} />
             </Route>
         
             <Route path="/dashboard/*"

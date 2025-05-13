@@ -76,12 +76,6 @@ const navigation = [
 ];
 
 export default function AdminDashboardLayout() {
-  const sidebarRef = useRef(null);
-  const [sidebarStyle, setSidebarStyle] = useState({
-    overflowY: 'auto',
-    scrollbarWidth: 'none', /* Pour Firefox */
-    msOverflowStyle: 'none'  /* Pour Internet Explorer et Edge */
-  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const location = useLocation();
@@ -265,30 +259,11 @@ export default function AdminDashboardLayout() {
       <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
         isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
       } transition-all duration-300`}>
-        <div 
-          className={`flex grow flex-col gap-y-5 border-r px-6 pb-4 overflow-y-auto transition-all duration-300 ${
-            isDarkMode
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-200'
-          }`}
-          ref={sidebarRef}
-          style={sidebarStyle}
-          onMouseEnter={() => {
-            // Vérifier si le défilement est nécessaire
-            if (sidebarRef.current && sidebarRef.current.scrollHeight > sidebarRef.current.clientHeight) {
-              setSidebarStyle({
-                overflowY: 'auto',
-                scrollbarWidth: 'thin',
-                msOverflowStyle: 'auto'
-              });
-            }
-          }}
-          onMouseLeave={() => setSidebarStyle({
-            overflowY: 'auto',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          })}
-        >
+        <div className={`flex grow flex-col gap-y-5 overflow-y-auto border-r px-6 pb-4 ${
+          isDarkMode
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex h-16 shrink-0 items-center">
             <Link to="/admin" className="flex items-center gap-3">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
