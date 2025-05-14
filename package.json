@@ -21,6 +21,7 @@
     "@mui/icons-material": "^6.4.6",
     "@mui/material": "^6.4.6",
     "@mui/x-data-grid": "^7.27.2",
+    "@mui/x-date-pickers": "^8.3.0",
     "animate.css": "^4.1.1",
     "axios": "^1.7.9",
     "bootstrap-notify": "^3.1.3",

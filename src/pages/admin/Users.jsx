@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   TextField,
   FormControl,
@@ -12,30 +12,40 @@ import {
   Button,
   IconButton,
   Tooltip,
-} from '@mui/material';
-import { 
-  Person as PersonIcon, 
-  Lock as LockIcon, 
-  Visibility as VisibilityIcon, 
+  CircularProgress,
+  InputAdornment,
+} from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import frLocale from "date-fns/locale/fr";
+import {
+  Person as PersonIcon,
+  Lock as LockIcon,
+  Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Info as InfoIcon,
   LockReset as LockResetIcon,
   ToggleOn as ToggleOnIcon,
   ToggleOff as ToggleOffIcon,
-  Close as CloseIcon
-} from '@mui/icons-material';
-import axios from '../../utils/axios';
-import ReferralStats from '../../components/ReferralStats';
-import ReferralList from '../../components/ReferralList';
-import { useToast } from '../../contexts/ToastContext';
-import Notification from '../../components/Notification';
-import { useTheme } from '../../contexts/ThemeContext';
-import UserDetails from './UserDetails';
+  Close as CloseIcon,
+  Clear as ClearIcon,
+  FilterList as FilterListIcon,
+  FilterListOff as FilterListOffIcon,
+  Search as SearchIcon,
+} from "@mui/icons-material";
+import axios from "../../utils/axios";
+import ReferralStats from "../../components/ReferralStats";
+import ReferralList from "../../components/ReferralList";
+import { useToast } from "../../contexts/ToastContext";
+import Notification from "../../components/Notification";
+import { useTheme } from "../../contexts/ThemeContext";
+import UserDetails from "./UserDetails";
 
 // Style personnalisé pour l'overlay des modals avec effet de flou
 const backdropStyle = {
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  backdropFilter: 'blur(4px)',
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backdropFilter: "blur(4px)",
 };
 
 const Users = () => {
@@ -46,9 +56,11 @@ const Users = () => {
   const [error, setError] = useState(null);
   const [statistiques, setStatistiques] = useState([]);
   const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    has_pack: '',
+    search: "",
+    status: "",
+    has_pack: "",
+    start_date: null,
+    end_date: null,
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -60,30 +72,39 @@ const Users = () => {
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [resetPasswordData, setResetPasswordData] = useState({
     userId: null,
-    userName: '',
-    newPassword: '',
-    adminPassword: '',
+    userName: "",
+    newPassword: "",
+    adminPassword: "",
   });
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
   // États pour la réinitialisation de mot de passe
 
   const fetchUsers = async () => {
-    //console.log('Fetching users...'); // Debug log
     try {
       setLoading(true);
       setError(null);
-      
-      //console.log('Making API request...'); // Debug log
-      const response = await axios.get('/api/admin/users', {
-        params: {
-          ...filters,
-          page: pagination.currentPage,
-        },
-      });
+
+      // Préparer les paramètres avec les dates formatées
+      const params = {
+        ...filters,
+        page: pagination.currentPage,
+      };
+
+      // Formater les dates si elles existent
+      if (filters.start_date) {
+        params.start_date = filters.start_date.toISOString().split("T")[0]; // Format YYYY-MM-DD
+      }
+
+      if (filters.end_date) {
+        params.end_date = filters.end_date.toISOString().split("T")[0]; // Format YYYY-MM-DD
+      }
+
+      const response = await axios.get("/api/admin/users", { params });
       //console.log('API Response:', response.data); // Debug log
 
       if (response.data.success) {
@@ -94,11 +115,16 @@ const Users = () => {
           totalItems: response.data.data.total,
         });
       } else {
-        throw new Error(response.data.message || 'Erreur lors de la récupération des utilisateurs');
+        throw new Error(
+          response.data.message ||
+            "Erreur lors de la récupération des utilisateurs"
+        );
       }
     } catch (err) {
       //console.error('Error in fetchUsers:', err); // Debug log
-      setError(err.message || 'Erreur lors de la récupération des utilisateurs');
+      setError(
+        err.message || "Erreur lors de la récupération des utilisateurs"
+      );
     } finally {
       setLoading(false);
     }
@@ -125,17 +151,19 @@ const Users = () => {
     try {
       setSelectedUser(user);
       setOpenDialog(true);
-      
+
       // Récupérer les statistiques de parrainage
-      const statsResponse = await axios.get(`/api/admin/users/${user.id}/referrals`);
+      const statsResponse = await axios.get(
+        `/api/admin/users/${user.id}/referrals`
+      );
       if (statsResponse.data.success) {
         setStatistiques(statsResponse.data.referrals || []);
       }
     } catch (err) {
-      console.error('Error fetching user details:', err);
+      console.error("Error fetching user details:", err);
       toast({
-        type: 'error',
-        message: 'Erreur lors de la récupération des détails de l\'utilisateur'
+        type: "error",
+        message: "Erreur lors de la récupération des détails de l'utilisateur",
       });
     }
   };
@@ -150,8 +178,8 @@ const Users = () => {
     setResetPasswordData({
       userId: user.id,
       userName: user.name,
-      newPassword: '',
-      adminPassword: '',
+      newPassword: "",
+      adminPassword: "",
     });
     setResetPasswordDialog(true);
   };
@@ -160,9 +188,9 @@ const Users = () => {
     setResetPasswordDialog(false);
     setResetPasswordData({
       userId: null,
-      userName: '',
-      newPassword: '',
-      adminPassword: '',
+      userName: "",
+      newPassword: "",
+      adminPassword: "",
     });
     setShowNewPassword(false);
     setShowAdminPassword(false);
@@ -170,43 +198,59 @@ const Users = () => {
 
   const handleResetPasswordChange = (e) => {
     const { name, value } = e.target;
-    setResetPasswordData(prev => ({
+    setResetPasswordData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleResetPasswordSubmit = async () => {
     try {
       setResetPasswordLoading(true);
-      
+
       // Validation basique
-      if (!resetPasswordData.newPassword || resetPasswordData.newPassword.length < 8) {
-        toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères');
+      if (
+        !resetPasswordData.newPassword ||
+        resetPasswordData.newPassword.length < 8
+      ) {
+        toast.error(
+          "Le nouveau mot de passe doit contenir au moins 8 caractères"
+        );
         setResetPasswordLoading(false);
         return;
       }
-      
+
       if (!resetPasswordData.adminPassword) {
-        toast.error('Veuillez entrer votre mot de passe administrateur');
+        toast.error("Veuillez entrer votre mot de passe administrateur");
         setResetPasswordLoading(false);
         return;
       }
-      
-      const response = await axios.post(`/api/admin/users/${resetPasswordData.userId}/reset-password`, {
-        new_password: resetPasswordData.newPassword,
-        admin_password: resetPasswordData.adminPassword
-      });
-      
+
+      const response = await axios.post(
+        `/api/admin/users/${resetPasswordData.userId}/reset-password`,
+        {
+          new_password: resetPasswordData.newPassword,
+          admin_password: resetPasswordData.adminPassword,
+        }
+      );
+
       if (response.data.success) {
-        toast.success(response.data.message || 'Mot de passe réinitialisé avec succès');
+        toast.success(
+          response.data.message || "Mot de passe réinitialisé avec succès"
+        );
         handleCloseResetPassword();
       } else {
-        throw new Error(response.data.message || 'Erreur lors de la réinitialisation du mot de passe');
+        throw new Error(
+          response.data.message ||
+            "Erreur lors de la réinitialisation du mot de passe"
+        );
       }
     } catch (err) {
-      console.error('Error in handleResetPasswordSubmit:', err);
-      toast.error(err.response?.data?.message || 'Erreur lors de la réinitialisation du mot de passe');
+      console.error("Error in handleResetPasswordSubmit:", err);
+      toast.error(
+        err.response?.data?.message ||
+          "Erreur lors de la réinitialisation du mot de passe"
+      );
     } finally {
       setResetPasswordLoading(false);
     }
@@ -214,37 +258,50 @@ const Users = () => {
 
   const toggleUserStatus = async (userId) => {
     try {
-      const response = await axios.patch(`/api/admin/users/toggle-status/${userId}`);
-      
+      const response = await axios.patch(
+        `/api/admin/users/toggle-status/${userId}`
+      );
+
       if (response.data.success) {
         // Rafraîchir la liste des utilisateurs
         fetchUsers();
         // Afficher un message de succès
-        toast.success('Statut modifié avec succès');
+        toast.success("Statut modifié avec succès");
       } else {
         // Gérer le cas où success est false
-        toast.error(response.data.message || 'Erreur lors de la modification du statut');
+        toast.error(
+          response.data.message || "Erreur lors de la modification du statut"
+        );
       }
     } catch (err) {
-      console.error('Error in toggleUserStatus:', err);
+      console.error("Error in toggleUserStatus:", err);
       // Afficher le message d'erreur de l'API si disponible
       toast.error(
-        err.response?.data?.message || 
-        'Erreur lors de la modification du statut'
+        err.response?.data?.message ||
+          "Erreur lors de la modification du statut"
       );
     }
   };
 
   // Fonction pour formater correctement les dates
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('fr-FR');
+      if (isNaN(date.getTime())) return "N/A";
+      return date.toLocaleDateString("fr-FR");
     } catch (error) {
-      return 'N/A';
+      return "N/A";
     }
+  };
+
+  // Gestionnaire de changement de page
+  const handlePageChange = (page) => {
+    setPagination((prev) => ({
+      ...prev,
+      currentPage: page,
+    }));
+    fetchUsers();
   };
 
   if (loading && !users.length) {
@@ -259,157 +316,520 @@ const Users = () => {
   //console.log('Rendering main content'); // Debug log
 
   return (
-    <div className="max-w-7xl mx-auto py-8">
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="mb-8 max-w-4xl">
+        <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white flex items-center">
+          <PersonIcon className="mr-3" sx={{ fontSize: 32 }} />
+          Gestion des utilisateurs
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 text-lg">
+          Gérez les utilisateurs, consultez leurs informations et modifiez leurs
+          statuts.
+        </p>
+      </div>
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
       )}
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Gestion des Utilisateurs
-        </h1>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <TextField
-            fullWidth
-            label="Rechercher"
+      <div className="mb-6 max-w-5xl mx-auto">
+        <div className="mt-3 flex justify-between items-center">
+          <Button
             variant="outlined"
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Statut</InputLabel>
-            <Select
-              value={filters.status}
-              label="Statut"
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-            >
-              <MenuItem value="">Tous</MenuItem>
-              <MenuItem value="active">Actif</MenuItem>
-              <MenuItem value="inactive">Inactif</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth>
-            <InputLabel>Possède un pack</InputLabel>
-            <Select
-              value={filters.has_pack}
-              label="Possède un pack"
-              onChange={(e) => handleFilterChange('has_pack', e.target.value)}
-            >
-              <MenuItem value="">Tous</MenuItem>
-              <MenuItem value="1">Oui</MenuItem>
-              <MenuItem value="0">Non</MenuItem>
-            </Select>
-          </FormControl>
+            color="primary"
+            size="small"
+            startIcon={showFilters ? <FilterListOffIcon /> : <FilterListIcon />}
+            onClick={() => setShowFilters(!showFilters)}
+            className="mb-2"
+          >
+            {showFilters ? "Masquer les filtres" : "Afficher les filtres"}
+          </Button>
+
+          {!showFilters &&
+            (filters.search ||
+              filters.status ||
+              filters.has_pack ||
+              filters.start_date ||
+              filters.end_date) && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  Filtres actifs
+                </span>
+                <Button
+                  variant="text"
+                  color="primary"
+                  size="small"
+                  onClick={() => {
+                    setFilters({
+                      search: "",
+                      status: "",
+                      has_pack: "",
+                      start_date: null,
+                      end_date: null,
+                    });
+                    fetchUsers();
+                  }}
+                >
+                  Réinitialiser
+                </Button>
+              </div>
+            )}
         </div>
 
-        {loading && !users.length ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        {showFilters && (
+          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 ease-in-out">
+            <div className="flex flex-wrap gap-3 items-start">
+              <div className="w-full">
+                <TextField
+                  size="small"
+                  label="Rechercher"
+                  variant="outlined"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  className="w-full mb-3"
+                  placeholder="Rechercher par nom, email ou ID..."
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" color="action" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: filters.search && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={() => handleFilterChange("search", "")}
+                          aria-label="Effacer la recherche"
+                        >
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-3 items-center justify-between w-full">
+                <div className="flex flex-wrap gap-3">
+                  <FormControl size="small" className="w-full sm:w-40">
+                    <InputLabel>Statut</InputLabel>
+                    <Select
+                      value={filters.status}
+                      label="Statut"
+                      onChange={(e) => handleFilterChange("status", e.target.value)}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: "#1f2937",
+                            "& .MuiMenuItem-root": {
+                              color: "white",
+                              "&:hover": {
+                                bgcolor: "rgba(255, 255, 255, 0.08)",
+                              },
+                              "&.Mui-selected": {
+                                bgcolor: "rgba(255, 255, 255, 0.16)",
+                                "&:hover": {
+                                  bgcolor: "rgba(255, 255, 255, 0.24)",
+                                },
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="">Tous</MenuItem>
+                      <MenuItem value="active">Actif</MenuItem>
+                      <MenuItem value="inactive">Inactif</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" className="w-full sm:w-44">
+                    <InputLabel>Possède un pack</InputLabel>
+                    <Select
+                      value={filters.has_pack}
+                      label="Possède un pack"
+                      onChange={(e) => handleFilterChange("has_pack", e.target.value)}
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            bgcolor: "#1f2937",
+                            "& .MuiMenuItem-root": {
+                              color: "white",
+                              "&:hover": {
+                                bgcolor: "rgba(255, 255, 255, 0.08)",
+                              },
+                              "&.Mui-selected": {
+                                bgcolor: "rgba(255, 255, 255, 0.16)",
+                                "&:hover": {
+                                  bgcolor: "rgba(255, 255, 255, 0.24)",
+                                },
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="">Tous</MenuItem>
+                      <MenuItem value="1">Oui</MenuItem>
+                      <MenuItem value="0">Non</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <LocalizationProvider
+                    dateAdapter={AdapterDateFns}
+                    adapterLocale={frLocale}
+                  >
+                    <DatePicker
+                      label="Inscrit depuis"
+                      value={filters.start_date}
+                      onChange={(date) => handleFilterChange("start_date", date)}
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          className: "w-full sm:w-40",
+                          variant: "outlined",
+                          InputProps: {
+                            endAdornment: filters.start_date && (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  edge="end"
+                                  size="small"
+                                  onClick={() =>
+                                    handleFilterChange("start_date", null)
+                                  }
+                                >
+                                  <ClearIcon fontSize="small" />
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          },
+                        },
+                        popper: {
+                          sx: {
+                            "& .MuiPaper-root": {
+                              bgcolor: "#1f2937",
+                              color: "white",
+                              "& .MuiPickersDay-root": {
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "rgba(255, 255, 255, 0.08)",
+                                },
+                                "&.Mui-selected": {
+                                  bgcolor: "rgba(255, 255, 255, 0.16)",
+                                  "&:hover": {
+                                    bgcolor: "rgba(255, 255, 255, 0.24)",
+                                  },
+                                },
+                              },
+                              "& .MuiDayCalendar-header": {
+                                color: "rgba(255, 255, 255, 0.7)",
+                              },
+                              "& .MuiPickersCalendarHeader-label": {
+                                color: "white",
+                              },
+                              "& .MuiIconButton-root": {
+                                color: "white",
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    />
+
+                    <DatePicker
+                      label="Inscrit jusqu'à"
+                      value={filters.end_date}
+                      onChange={(date) => handleFilterChange("end_date", date)}
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          className: "w-full sm:w-40",
+                          variant: "outlined",
+                          InputProps: {
+                            endAdornment: filters.end_date && (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  edge="end"
+                                  size="small"
+                                  onClick={() => handleFilterChange("end_date", null)}
+                                >
+                                  <ClearIcon fontSize="small" />
+                                </IconButton>
+                              </InputAdornment>
+                            ),
+                          },
+                        },
+                        popper: {
+                          sx: {
+                            "& .MuiPaper-root": {
+                              bgcolor: "#1f2937",
+                              color: "white",
+                              "& .MuiPickersDay-root": {
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "rgba(255, 255, 255, 0.08)",
+                                },
+                                "&.Mui-selected": {
+                                  bgcolor: "rgba(255, 255, 255, 0.16)",
+                                  "&:hover": {
+                                    bgcolor: "rgba(255, 255, 255, 0.24)",
+                                  },
+                                },
+                              },
+                              "& .MuiDayCalendar-header": {
+                                color: "rgba(255, 255, 255, 0.7)",
+                              },
+                              "& .MuiPickersCalendarHeader-label": {
+                                color: "white",
+                              },
+                              "& .MuiIconButton-root": {
+                                color: "white",
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+                </div>
+                
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => {
+                    setFilters({
+                      search: "",
+                      status: "",
+                      has_pack: "",
+                      start_date: null,
+                      end_date: null,
+                    });
+                    fetchUsers();
+                  }}
+                  startIcon={<ClearIcon />}
+                  className="mt-1"
+                >
+                  Réinitialiser
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="mt-8 bg-white dark:bg-gray-800 shadow-xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 p-12 flex justify-center items-center">
+            <CircularProgress size={60} thickness={4} />
+            <span className="ml-4 text-gray-600 dark:text-gray-300 text-lg">
+              Chargement des utilisateurs...
+            </span>
           </div>
         ) : users.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400">
-              Aucun utilisateur trouvé
-            </p>
+          <div className="mt-8 bg-white dark:bg-gray-800 shadow-xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <PersonIcon sx={{ fontSize: 60, color: "#9ca3af" }} />
+              <p className="mt-4 text-lg text-gray-500 dark:text-gray-400">
+                Aucun utilisateur trouvé avec les filtres actuels.
+              </p>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => {
+                  setFilters({
+                    search: "",
+                    status: "",
+                    has_pack: "",
+                    start_date: null,
+                    end_date: null,
+                  });
+                  fetchUsers();
+                }}
+                className="mt-4"
+              >
+                Réinitialiser les filtres
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="mt-8 flex flex-col">
-            <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-              <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-10 md:rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-600">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Nom
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Email
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Date d'inscription
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Statut
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Packs
-                        </th>
-                        <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-200">
-                          Actions
-                        </th>
+          <div>
+            <div className="mt-6 bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-5xl mx-auto">
+              <div className="overflow-x-auto">
+                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                      >
+                        Utilisateur
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell"
+                      >
+                        Email
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell"
+                      >
+                        Date
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                      >
+                        Statut
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {users.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900 dark:hover:bg-opacity-10 transition-colors duration-150"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {user.picture ? (
+                              <img
+                                src={user.picture}
+                                alt={user.name}
+                                className="flex-shrink-0 h-8 w-8 rounded-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                    user.name
+                                  )}&background=6366f1&color=fff`;
+                                }}
+                              />
+                            ) : (
+                              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-sm font-medium">
+                                {user.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {user.name}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {user.packs_count || 0} pack(s)
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">
+                          {user.email}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
+                          {formatDate(user.created_at)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.status === "active"
+                                ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                                : "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
+                            }`}
+                          >
+                            {user.status === "active" ? "Actif" : "Inactif"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end items-center space-x-2">
+                            <button
+                              onClick={() => handleViewDetails(user)}
+                              className="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800"
+                              title="Détails"
+                              aria-label="Voir les détails de l'utilisateur"
+                            >
+                              <InfoIcon fontSize="small" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenResetPassword(user)}
+                              className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800"
+                              title="Réinitialiser mot de passe"
+                              aria-label="Réinitialiser le mot de passe de l'utilisateur"
+                            >
+                              <LockResetIcon fontSize="small" />
+                            </button>
+                            <button
+                              onClick={() => toggleUserStatus(user.id)}
+                              className={`flex items-center justify-center h-8 w-8 rounded-full transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-gray-800 ${
+                                user.status === "active"
+                                  ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-800/40 focus:ring-green-500"
+                                  : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/40 focus:ring-red-500"
+                              }`}
+                              title={
+                                user.status === "active"
+                                  ? "Désactiver"
+                                  : "Activer"
+                              }
+                              aria-label={
+                                user.status === "active"
+                                  ? "Désactiver l'utilisateur"
+                                  : "Activer l'utilisateur"
+                              }
+                            >
+                              {user.status === "active" ? (
+                                <ToggleOnIcon fontSize="small" />
+                              ) : (
+                                <ToggleOffIcon fontSize="small" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
-                      {users.map((user) => (
-                        <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                            {user.name}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                            {user.email}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {formatDate(user.created_at)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              user.status === 'active'
-                                ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                            }`}>
-                              {user.status === 'active' ? 'Actif' : 'Inactif'}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                            {user.packs?.length || 0} pack(s)
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-right space-x-4">
-                            <Tooltip title="Voir les détails de l'utilisateur" arrow>
-                              <IconButton
-                                onClick={() => handleViewDetails(user)}
-                                className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300"
-                                size="small"
-                              >
-                                <InfoIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            
-                            <Tooltip title="Réinitialiser le mot de passe" arrow>
-                              <IconButton
-                                onClick={() => handleOpenResetPassword(user)}
-                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                                size="small"
-                              >
-                                <LockResetIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            
-                            <Tooltip title={user.status === 'active' ? "Désactiver l'utilisateur" : "Activer l'utilisateur"} arrow>
-                              <IconButton
-                                onClick={() => toggleUserStatus(user.id)}
-                                className={`${
-                                  user.status === 'active'
-                                    ? 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'
-                                    : 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300'
-                                }`}
-                                size="small"
-                              >
-                                {user.status === 'active' ? 
-                                  <ToggleOnIcon fontSize="small" /> : 
-                                  <ToggleOffIcon fontSize="small" />
-                                }
-                              </IconButton>
-                            </Tooltip>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-4 flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                Affichage de {users.length} utilisateurs sur{" "}
+                {pagination.totalItems}
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  disabled={pagination.currentPage <= 1}
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  size="small"
+                  className="min-w-[40px]"
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled
+                  size="small"
+                  className="min-w-[40px]"
+                >
+                  {pagination.currentPage}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  size="small"
+                  className="min-w-[40px]"
+                >
+                  Suivant
+                </Button>
               </div>
             </div>
           </div>
@@ -422,107 +842,128 @@ const Users = () => {
         maxWidth="sm"
         fullWidth
         BackdropProps={{
-          style: backdropStyle
+          style: backdropStyle,
         }}
         PaperProps={{
           style: {
-            backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff',
-            color: isDarkMode ? '#fff' : '#000',
+            backgroundColor: isDarkMode ? "rgb(31, 41, 55)" : "#fff",
+            color: isDarkMode ? "#fff" : "#000",
           },
         }}
       >
         <DialogTitle>
           <div className="flex items-center">
-            <LockIcon className="mr-2" style={{ color: isDarkMode ? '#fff' : '#000' }} />
-            <span style={{ color: isDarkMode ? '#fff' : '#000' }}>Réinitialiser le mot de passe</span>
+            <LockIcon
+              className="mr-2"
+              style={{ color: isDarkMode ? "#fff" : "#000" }}
+            />
+            <span style={{ color: isDarkMode ? "#fff" : "#000" }}>
+              Réinitialiser le mot de passe
+            </span>
           </div>
         </DialogTitle>
         <DialogContent>
           <div className="mt-2 mb-4">
-            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Vous êtes sur le point de réinitialiser le mot de passe de l'utilisateur : 
-              <span className="font-bold ml-1">{resetPasswordData.userName}</span>
+            <p className={`${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+              Vous êtes sur le point de réinitialiser le mot de passe de
+              l'utilisateur :
+              <span className="font-bold ml-1">
+                {resetPasswordData.userName}
+              </span>
             </p>
             <p className="text-sm text-red-400 mt-1">
-              Cette action est irréversible et le nouveau mot de passe prendra effet immédiatement.
+              Cette action est irréversible et le nouveau mot de passe prendra
+              effet immédiatement.
             </p>
           </div>
-          
+
           <div className="space-y-4 mt-4">
             <div className="relative">
               <TextField
                 label="Nouveau mot de passe"
                 variant="outlined"
-                type={showNewPassword ? 'text' : 'password'}
+                type={showNewPassword ? "text" : "password"}
                 value={resetPasswordData.newPassword}
                 onChange={handleResetPasswordChange}
                 name="newPassword"
                 fullWidth
                 helperText="Minimum 8 caractères"
-                InputLabelProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
-                InputProps={{ style: { color: isDarkMode ? '#fff' : undefined } }}
-                FormHelperTextProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                InputLabelProps={{
+                  style: { color: isDarkMode ? "#9ca3af" : undefined },
+                }}
+                InputProps={{
+                  style: { color: isDarkMode ? "#fff" : undefined },
+                }}
+                FormHelperTextProps={{
+                  style: { color: isDarkMode ? "#9ca3af" : undefined },
+                }}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: isDarkMode ? '#4b5563' : undefined,
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: isDarkMode ? "#4b5563" : undefined,
                     },
-                    '&:hover fieldset': {
-                      borderColor: isDarkMode ? '#6b7280' : undefined,
+                    "&:hover fieldset": {
+                      borderColor: isDarkMode ? "#6b7280" : undefined,
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: isDarkMode ? '#3b82f6' : undefined,
+                    "&.Mui-focused fieldset": {
+                      borderColor: isDarkMode ? "#3b82f6" : undefined,
                     },
                   },
                 }}
               />
               <IconButton
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                style={{ 
-                  position: 'absolute', 
-                  right: '10px', 
-                  top: '10px',
-                  color: isDarkMode ? '#9ca3af' : undefined
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "10px",
+                  color: isDarkMode ? "#9ca3af" : undefined,
                 }}
               >
                 {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
               </IconButton>
             </div>
-            
+
             <div className="relative mt-4">
               <TextField
                 label="Votre mot de passe administrateur"
                 variant="outlined"
-                type={showAdminPassword ? 'text' : 'password'}
+                type={showAdminPassword ? "text" : "password"}
                 value={resetPasswordData.adminPassword}
                 onChange={handleResetPasswordChange}
                 name="adminPassword"
                 fullWidth
                 helperText="Requis pour confirmer l'action"
-                InputLabelProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
-                InputProps={{ style: { color: isDarkMode ? '#fff' : undefined } }}
-                FormHelperTextProps={{ style: { color: isDarkMode ? '#9ca3af' : undefined } }}
+                InputLabelProps={{
+                  style: { color: isDarkMode ? "#9ca3af" : undefined },
+                }}
+                InputProps={{
+                  style: { color: isDarkMode ? "#fff" : undefined },
+                }}
+                FormHelperTextProps={{
+                  style: { color: isDarkMode ? "#9ca3af" : undefined },
+                }}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: isDarkMode ? '#4b5563' : undefined,
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: isDarkMode ? "#4b5563" : undefined,
                     },
-                    '&:hover fieldset': {
-                      borderColor: isDarkMode ? '#6b7280' : undefined,
+                    "&:hover fieldset": {
+                      borderColor: isDarkMode ? "#6b7280" : undefined,
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: isDarkMode ? '#3b82f6' : undefined,
+                    "&.Mui-focused fieldset": {
+                      borderColor: isDarkMode ? "#3b82f6" : undefined,
                     },
                   },
                 }}
               />
               <IconButton
                 onClick={() => setShowAdminPassword(!showAdminPassword)}
-                style={{ 
-                  position: 'absolute', 
-                  right: '10px', 
-                  top: '10px',
-                  color: isDarkMode ? '#9ca3af' : undefined
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "10px",
+                  color: isDarkMode ? "#9ca3af" : undefined,
                 }}
               >
                 {showAdminPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
@@ -530,23 +971,31 @@ const Users = () => {
             </div>
           </div>
         </DialogContent>
-        <DialogActions style={{ backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff' }}>
-          <Button 
-            onClick={handleCloseResetPassword} 
-            style={{ color: isDarkMode ? '#9ca3af' : undefined }}
+        <DialogActions
+          style={{ backgroundColor: isDarkMode ? "rgb(31, 41, 55)" : "#fff" }}
+        >
+          <Button
+            onClick={handleCloseResetPassword}
+            style={{ color: isDarkMode ? "#9ca3af" : undefined }}
           >
             Annuler
           </Button>
-          <Button 
-            onClick={handleResetPasswordSubmit} 
+          <Button
+            onClick={handleResetPasswordSubmit}
             variant="contained"
             disabled={resetPasswordLoading}
-            style={{ 
-              backgroundColor: !resetPasswordLoading ? (isDarkMode ? '#3b82f6' : undefined) : undefined,
-              color: isDarkMode ? '#fff' : undefined
+            style={{
+              backgroundColor: !resetPasswordLoading
+                ? isDarkMode
+                  ? "#3b82f6"
+                  : undefined
+                : undefined,
+              color: isDarkMode ? "#fff" : undefined,
             }}
           >
-            {resetPasswordLoading ? 'En cours...' : 'Réinitialiser le mot de passe'}
+            {resetPasswordLoading
+              ? "En cours..."
+              : "Réinitialiser le mot de passe"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -557,29 +1006,40 @@ const Users = () => {
         maxWidth="lg"
         fullWidth
         BackdropProps={{
-          style: backdropStyle
+          style: backdropStyle,
         }}
         PaperProps={{
           style: {
-            backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : '#fff',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }
+            backgroundColor: isDarkMode ? "rgb(31, 41, 55)" : "#fff",
+            maxHeight: "90vh",
+            overflowY: "auto",
+          },
         }}
       >
-        <DialogTitle style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: '#14532d' }}>
+        <DialogTitle
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px 24px",
+            backgroundColor: "#14532d",
+          }}
+        >
           <div className="flex items-center">
             <PersonIcon className="mr-2" />
             <span>Informations sur l'utilisateur</span>
           </div>
-          <IconButton edge="end" color="inherit" onClick={handleCloseDialog} aria-label="close">
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleCloseDialog}
+            aria-label="close"
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers style={{ padding: 0 }}>
-          {selectedUser && (
-            <UserDetails userId={selectedUser.id} />
-          )}
+          {selectedUser && <UserDetails userId={selectedUser.id} />}
         </DialogContent>
       </Dialog>
     </div>

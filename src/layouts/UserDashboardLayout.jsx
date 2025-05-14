@@ -72,7 +72,8 @@ import NotificationsDropdown from '../components/NotificationsDropdown';
 const navigation = [
   { name: 'Tableau de bord', href: '/dashboard', icon: HomeIcon },
   { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
-  { name: 'Finance', href: '/dashboard/wallet', icon: WalletIcon },
+  { name: 'Portefeuille', href: '/dashboard/wallet', icon: WalletIcon },
+  { name: 'Mes finances', href: '/dashboard/finances', icon: BanknotesIcon },
   { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
   { name: 'Mes invitations', href: '/dashboard/invitations', icon: UserPlusIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },

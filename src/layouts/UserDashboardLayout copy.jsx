@@ -1,34 +1,40 @@
 /**
- * AdminDashboardLayout.jsx - Layout principal du tableau de bord administrateur
+ * UserDashboardLayout.jsx - Layout du tableau de bord utilisateur
  * 
- * Ce composant définit la structure de base de l'interface administrateur.
- * Il fournit une mise en page cohérente pour toutes les pages d'administration.
+ * Layout spécifique pour l'interface utilisateur standard.
+ * Hérite du DashboardLayout avec des fonctionnalités spécifiques aux utilisateurs.
  * 
- * Structure :
- * - Barre de navigation latérale (sidebar)
- * - En-tête avec informations utilisateur
- * - Zone de contenu principal
- * - Pied de page
+ * Navigation :
+ * - Tableau de bord
+ * - Mes investissements
+ * - Mon réseau
+ * - Profil
+ * - Portefeuille
+ * - Support
  * 
- * Fonctionnalités :
- * - Navigation responsive
- * - Menu rétractable
- * - Gestion des droits d'accès
- * - Déconnexion
- * - Thème clair/sombre
+ * Widgets :
+ * - Résumé du compte
+ * - Notifications
+ * - Activité récente
+ * - Performance
+ * - Statistiques
  * 
- * Éléments de navigation :
- * - Dashboard
- * - Gestion des utilisateurs
- * - Gestion des packs
- * - Validation des contenus
- * - Gestion des retraits
- * - Configuration
+ * Fonctionnalités spécifiques :
+ * - Suivi des investissements
+ * - Gestion du réseau
+ * - Transactions
+ * - Profil et paramètres
  * 
- * Contextes utilisés :
- * - AuthContext : Gestion de l'authentification
- * - ThemeContext : Gestion du thème
- * - ToastContext : Notifications
+ * Intégrations :
+ * - Système de parrainage
+ * - Notifications en temps réel
+ * - Chat support
+ * - Alertes personnalisées
+ * 
+ * Sécurité :
+ * - Vérification des permissions
+ * - Protection des routes
+ * - Validation des actions
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -36,178 +42,77 @@ import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import useWithdrawalRequests from '../hooks/useWithdrawalRequests';
+import GlobalStatsModal from '../components/GlobalStatsModal';
 import {
-  ChartBarIcon,
+  HomeIcon,
+  UserIcon,
+  BanknotesIcon,
   UsersIcon,
-  CurrencyEuroIcon,
-  Cog6ToothIcon,
+  ChartBarIcon,
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   SunIcon,
   MoonIcon,
-  CubeIcon,
-  BanknotesIcon,
-  ClipboardDocumentCheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  LightBulbIcon,
   MegaphoneIcon,
+  BriefcaseIcon,
   WalletIcon,
-  HomeIcon,
+  CubeIcon,
   UserCircleIcon,
-  CheckBadgeIcon,
-  ListBulletIcon,
-  CreditCardIcon,
+  NewspaperIcon,
+  MapIcon,
+  EnvelopeIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
 const navigation = [
-  { name: 'Tableau de bord', href: '/admin', icon: HomeIcon },
-  { name: 'Utilisateurs', href: '/admin/users', icon: UsersIcon },
-  { name: 'Demandes de retrait', href: '/admin/withdrawal-requests', icon: BanknotesIcon },
-  { name: 'Portefeuilles', href: '/admin/wallets', icon: WalletIcon },
-  { name: 'Packs', href: '/admin/packs', icon: ListBulletIcon },
-  { name: 'Mes packs', href: '/admin/mespacks', icon: CubeIcon },
-  { name: 'Commissions', href: '/admin/commissions', icon: CreditCardIcon },
-  { name: 'Finances', href: '/admin/finances', icon: ChartBarIcon },
-  { name: 'Validations', href: '/admin/validations', icon: CheckBadgeIcon },
-  { name: 'Paramètres', href: '/admin/settings', icon: Cog6ToothIcon },
+  { name: 'Tableau de bord', href: '/dashboard', icon: HomeIcon },
+  { name: 'Mon profil', href: '/dashboard/profile', icon: UserIcon },
+  { name: 'Finance', href: '/dashboard/wallet', icon: WalletIcon },
+  { name: 'Mes packs', href: '/dashboard/packs', icon: CubeIcon },
+  { name: 'Mes invitations', href: '/dashboard/invitations', icon: UserPlusIcon },
+  { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
+  { name: "Fil d'actualités", href: '/dashboard/news-feed', icon: NewspaperIcon },
+  { name: "Ma page", href: "/dashboard/my-page", icon:  NewspaperIcon}
 ];
 
-export default function AdminDashboardLayout() {
+export default function UserDashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openSubmenu, setOpenSubmenu] = useState(null);
-  const location = useLocation();
-  const { isDarkMode, isSidebarCollapsed, toggleSidebar, toggleTheme } = useTheme();
-  const { logout, user } = useAuth();
-  const [userData, setUserData] = useState(null);
-  const { pendingCount } = useWithdrawalRequests();
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const { isDarkMode, toggleTheme, isSidebarCollapsed, toggleSidebar } = useTheme();
+  const location = useLocation();
+  const { logout, user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      try {
-        const parsedUser = typeof user === 'string' ? JSON.parse(user) : user;
-        setUserData(parsedUser);
-      } catch (error) {
-        console.error('Erreur lors du parsing des données utilisateur:', error);
-        setUserData(null);
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
       }
-    }
-  }, [user]);
+    };
 
-  const handleSubmenuClick = (itemName) => {
-    setOpenSubmenu(openSubmenu === itemName ? null : itemName);
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
   };
 
-  // Fermer le menu déroulant lorsqu'on clique à l'extérieur
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowProfileMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownRef]);
-
-  const renderNavLink = (item, isMobile = false) => {
-    const isActive = location.pathname === item.href;
-    const hasChildren = item.children && item.children.length > 0;
-    const isSubmenuOpen = openSubmenu === item.name;
-    
-    // Vérifier si c'est le lien des demandes de retrait
-    const isWithdrawalRequests = item.href === '/admin/withdrawal-requests';
-
-    if (hasChildren) {
-      return (
-        <div key={item.name}>
-          <button
-            onClick={() => handleSubmenuClick(item.name)}
-            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-              isDarkMode
-                ? 'text-gray-300 hover:bg-gray-700'
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-x-3">
-              <item.icon className="h-5 w-5" />
-              {(!isSidebarCollapsed || isMobile) && <span>{item.name}</span>}
-            </div>
-            <ChevronRightIcon className={`h-4 w-4 transition-transform ${isSubmenuOpen ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {isSubmenuOpen && (!isSidebarCollapsed || isMobile) && (
-            <div className="ml-4 mt-1 space-y-1">
-              {item.children.map((child) => (
-                <Link
-                  key={child.href}
-                  to={child.href}
-                  className={`flex items-center px-4 py-2 text-sm rounded-lg transition-colors ${
-                    location.pathname === child.href
-                      ? isDarkMode
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-primary-50 text-primary-600'
-                      : isDarkMode
-                      ? 'text-gray-400 hover:bg-gray-700'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {child.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <Link
-        key={item.name}
-        to={item.href}
-        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-          isActive
-            ? isDarkMode
-              ? 'bg-gray-700 text-white'
-              : 'bg-primary-50 text-primary-600'
-            : isDarkMode
-            ? 'text-gray-300 hover:bg-gray-700'
-            : 'text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        <div className="relative">
-          <item.icon className={`h-5 w-5 ${isActive && !isDarkMode ? 'text-primary-600' : ''}`} />
-          {isWithdrawalRequests && pendingCount > 0 && (
-            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-              {pendingCount}
-            </span>
-          )}
-        </div>
-        {(!isSidebarCollapsed || isMobile) && (
-          <div className="ml-3 flex items-center">
-            <span>{item.name}</span>
-            {isWithdrawalRequests && pendingCount > 0 && isSidebarCollapsed && !isMobile && (
-              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </div>
-        )}
-      </Link>
-    );
+  const handleStatsClick = (e) => {
+    e.preventDefault();
+    setStatsModalOpen(true);
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       {/* Sidebar mobile */}
       <motion.div
         initial={{ x: -280 }}
@@ -217,16 +122,20 @@ export default function AdminDashboardLayout() {
           isDarkMode ? 'bg-gray-800' : 'bg-white'
         } lg:hidden`}
       >
-        <div className={`flex h-16 shrink-0 items-center justify-between px-6 border-b ${
+        <div className={`flex h-16 shrink-0 items-center justify-between px-6 ${
           isDarkMode ? 'border-gray-700' : 'border-gray-200'
         }`}>
-          <Link to="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">S</span>
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xl font-bold">S</span>
             </div>
-            <span className={`font-semibold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              SOLIFIN
-            </span>
+            {!isSidebarCollapsed && (
+              <span className={`text-2xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-primary-600'
+              }`}>
+                SOLIFIN
+              </span>
+            )}
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -236,21 +145,41 @@ export default function AdminDashboardLayout() {
           </button>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => renderNavLink(item, true))}
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? isDarkMode
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-primary-50 text-primary-600'
+                    : isDarkMode
+                    ? 'text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {!isSidebarCollapsed && <span className="ml-3">{item.name}</span>}
+              </Link>
+            );
+          })}
         </nav>
         <div className={`mt-auto border-t p-4 ${
           isDarkMode ? 'border-gray-700' : 'border-gray-200'
         }`}>
           <button
             onClick={handleLogout}
-            className={`flex w-full items-center gap-3 px-3 py-2 rounded-lg ${
+            className={`flex w-full items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium ${
               isDarkMode
                 ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
                 : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
             <ArrowLeftOnRectangleIcon className="h-6 w-6" />
-            <span>Déconnexion</span>
+            {!isSidebarCollapsed && <span>Déconnexion</span>}
           </button>
         </div>
       </motion.div>
@@ -264,14 +193,14 @@ export default function AdminDashboardLayout() {
             ? 'bg-gray-800 border-gray-700'
             : 'bg-white border-gray-200'
         }`}>
-          <div className="flex h-16 shrink-0 items-center">
-            <Link to="/admin" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
+          <div className="flex h-16 shrink-0 items-center justify-between">
+            <Link to="/dashboard" className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl font-bold">S</span>
               </div>
               {!isSidebarCollapsed && (
-                <span className={`font-semibold text-lg ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
+                <span className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-white' : 'text-primary-600'
                 }`}>
                   SOLIFIN
                 </span>
@@ -282,11 +211,28 @@ export default function AdminDashboardLayout() {
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
                 <ul role="list" className="-mx-2 space-y-1">
-                  {navigation.map((item) => (
-                    <li key={item.name}>
-                      {renderNavLink(item)}
-                    </li>
-                  ))}
+                  {navigation.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          className={`flex items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                            isActive
+                              ? isDarkMode
+                                ? 'bg-gray-700 text-white'
+                                : 'bg-primary-50 text-primary-600'
+                              : isDarkMode
+                              ? 'text-gray-300 hover:bg-gray-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {!isSidebarCollapsed && <span>{item.name}</span>}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
               <li className="mt-auto">
@@ -360,16 +306,16 @@ export default function AdminDashboardLayout() {
               {/* Bouton thème */}
               <button
                 onClick={toggleTheme}
-                className={`p-2 rounded-lg ${
+                className={`flex items-center justify-center h-8 w-8 rounded-full ${
                   isDarkMode
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                    ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 {isDarkMode ? (
-                  <SunIcon className="h-6 w-6" />
+                  <SunIcon className="h-5 w-5" />
                 ) : (
-                  <MoonIcon className="h-6 w-6" />
+                  <MoonIcon className="h-5 w-5" />
                 )}
               </button>
 
@@ -380,11 +326,11 @@ export default function AdminDashboardLayout() {
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-2 focus:outline-none"
                 >
-                  {userData?.picture ? (
+                  {user?.picture ? (
                     <img
                       className="h-8 w-8 rounded-full object-cover"
-                      src={userData.picture}
-                      alt={`Photo de profil de ${userData.name || 'l\'utilisateur'}`}
+                      src={user.picture}
+                      alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
                     />
                   ) : (
                     <UserCircleIcon 
@@ -398,11 +344,11 @@ export default function AdminDashboardLayout() {
                 {showProfileMenu && (
                   <div className="absolute right-0 mt-2 w-64 rounded-lg shadow-lg py-2 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
                     <div className="px-4 py-3 flex flex-col items-center border-b border-gray-200 dark:border-gray-700">
-                      {userData?.picture ? (
+                      {user?.picture ? (
                         <img
                           className="h-16 w-16 rounded-full object-cover mb-3"
-                          src={userData.picture}
-                          alt={`Photo de profil de ${userData.name || 'l\'utilisateur'}`}
+                          src={user.picture}
+                          alt={`Photo de profil de ${user.name || 'l\'utilisateur'}`}
                         />
                       ) : (
                         <UserCircleIcon 
@@ -412,17 +358,17 @@ export default function AdminDashboardLayout() {
                       )}
                       <div className="text-center">
                         <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                          {userData?.name}
+                          {user.name}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {userData?.email}
+                          {user.email}
                         </p>
                       </div>
                     </div>
                     
                     <div className="py-1">
                       <Link
-                        to="/admin/profile"
+                        to="/dashboard/profile"
                         className="flex items-center justify-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 gap-2"
                         onClick={() => setShowProfileMenu(false)}
                       >
@@ -447,12 +393,17 @@ export default function AdminDashboardLayout() {
           </div>
         </div>
 
-        <main className={`py-10 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+        <main className={`py-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="px-4 sm:px-6 lg:px-8">
             <Outlet />
           </div>
         </main>
       </div>
+
+      <GlobalStatsModal 
+        open={statsModalOpen}
+        onClose={() => setStatsModalOpen(false)}
+      />
     </div>
   );
-}
+} 

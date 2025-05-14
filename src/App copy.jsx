@@ -61,8 +61,7 @@ import Settings from './pages/admin/Settings';
 import Page from './pages/user/Page';
 import ReferralInvitations from './pages/user/ReferralInvitations';
 import Commissions from './pages/admin/Commissions';
-import AdminFinances from './pages/admin/Finances';
-import UserFinances from './pages/user/Finances';
+import Finances from './pages/admin/Finances';
 
 function App() {
   return (
@@ -138,7 +137,7 @@ function App() {
               <Route path="validations" element={<AdvertisementValidation />} />
               <Route path="settings" element={<Settings />} />
               <Route path="commissions" element={<Commissions />} />
-              <Route path="finances" element={<AdminFinances />} />
+              <Route path="finances" element={<Finances />} />
             </Route>
         
             <Route path="/dashboard/*"
@@ -150,7 +149,6 @@ function App() {
               <Route index element={<UserDashboard />} />
               <Route path="profile" element={<Profile />} />
               <Route path="wallet" element={<Wallet />} />
-              <Route path="finances" element={<UserFinances />} />
               <Route path="transactions" element={<div>Mes transactions (à venir)</div>} />
               <Route path="stats" element={<Stats />} />
               <Route path="my-page" element={<MyPage />} />
