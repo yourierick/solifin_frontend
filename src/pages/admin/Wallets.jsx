@@ -955,6 +955,8 @@ export default function Wallets() {
                     <option value="approved">Approuvé</option>
                     <option value="rejected">Refusé</option>
                     <option value="cancelled">Annulé</option>
+                    <option value="completed">Complété</option>
+                    <option value="failed">Echoué</option>
                   </select>
                 </div>
 
@@ -978,7 +980,13 @@ export default function Wallets() {
                     <option value="all">Tous les types</option>
                     <option value="sales">Achat</option>
                     <option value="withdrawal">Retrait</option>
-                    <option value="commission">Commissions</option>
+                    <option value="commission de parrainage">
+                      Commission de parrainage
+                    </option>
+                    <option value="commission de retrait">
+                      Commission de retrait
+                    </option>
+                    <option value="bonus">Bonus</option>
                     <option value="transfer">Transfert</option>
                     <option value="reception">Réception</option>
                   </select>
@@ -1073,7 +1081,7 @@ export default function Wallets() {
                             className={`p-2 rounded-full ${
                               transaction.type === "withdrawal"
                                 ? "bg-red-100 dark:bg-red-900"
-                                : transaction.type === "deposit"
+                                : transaction.type === "reception"
                                 ? "bg-green-100 dark:bg-green-900"
                                 : transaction.type === "transfer"
                                 ? "bg-blue-100 dark:bg-blue-900"
@@ -1082,7 +1090,7 @@ export default function Wallets() {
                           >
                             {transaction.type === "withdrawal" ? (
                               <ArrowDownTrayIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            ) : transaction.type === "deposit" ? (
+                            ) : transaction.type === "reception" ? (
                               <BanknotesIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
                             ) : transaction.type === "transfer" ? (
                               <FaExchangeAlt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -1113,18 +1121,12 @@ export default function Wallets() {
                       </td>
                       <td
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
-                          transaction.type === "withdrawal" ||
-                          transaction.type === "transfer" ||
-                          transaction.type === "sales"
+                          transaction.type === "withdrawal"
                             ? "text-red-600 dark:text-red-400"
                             : "text-green-600 dark:text-green-400"
                         }`}
                       >
-                        {transaction.type === "withdrawal" ||
-                        transaction.type === "transfer" ||
-                        transaction.type === "sales"
-                          ? "-"
-                          : "+"}
+                        {transaction.type === "withdrawal" ? "-" : "+"}
                         {transaction.amount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1133,7 +1135,13 @@ export default function Wallets() {
                             transaction.status
                           )}`}
                         >
-                          {transaction.status}
+                          {transaction.status === "completed"
+                            ? "complété"
+                            : transaction.status === "pending"
+                            ? "en attente"
+                            : transaction.status === "failed"
+                            ? "échoué"
+                            : transaction.status}
                         </span>
                       </td>
                       <td
