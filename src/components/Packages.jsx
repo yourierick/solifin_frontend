@@ -1,10 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { CheckIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../contexts/ThemeContext';
-import publicAxios from '../utils/publicAxios';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
+import {
+  CheckIcon,
+  CalendarIcon,
+  SparklesIcon,
+  CheckCircleIcon,
+  ShoppingCartIcon,
+  WalletIcon,
+} from "@heroicons/react/24/outline";
+import { useTheme } from "../contexts/ThemeContext";
+import publicAxios from "../utils/publicAxios";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Container,
   Grid,
@@ -19,8 +26,8 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
-} from '@mui/material';
+  ListItemText,
+} from "@mui/material";
 
 // Animations
 const containerVariants = {
@@ -53,9 +60,9 @@ const categoryTitleVariants = {
     transition: {
       duration: 0.7,
       ease: "easeOut",
-      delay: 0.1
-    }
-  }
+      delay: 0.1,
+    },
+  },
 };
 
 const categoryLineVariants = {
@@ -66,9 +73,9 @@ const categoryLineVariants = {
     transition: {
       duration: 1,
       ease: "easeInOut",
-      delay: 0.4
-    }
-  }
+      delay: 0.4,
+    },
+  },
 };
 
 // Animations pour les décorations du titre
@@ -80,9 +87,9 @@ const decorationLeftVariants = {
     transition: {
       duration: 0.8,
       ease: "easeOut",
-      delay: 0.3
-    }
-  }
+      delay: 0.3,
+    },
+  },
 };
 
 const decorationRightVariants = {
@@ -93,31 +100,153 @@ const decorationRightVariants = {
     transition: {
       duration: 0.8,
       ease: "easeOut",
-      delay: 0.3
-    }
-  }
+      delay: 0.3,
+    },
+  },
 };
 
 // Définition des couleurs par catégorie
 const categoryColors = {
   // Couleurs pour le mode clair
   light: {
-    default: { bg: 'bg-white', border: 'border-gray-200', highlight: 'bg-green-600', hover: 'hover:bg-green-700', icon: 'text-green-500', accent: 'text-green-600', gradientFrom: 'from-green-500', gradientTo: 'to-green-600' },
-    'Débutant': { bg: 'bg-blue-100', border: 'border-blue-300', highlight: 'bg-blue-600', hover: 'hover:bg-blue-700', icon: 'text-blue-500', accent: 'text-blue-600', gradientFrom: 'from-blue-500', gradientTo: 'to-blue-600' },
-    'Intermédiaire': { bg: 'bg-purple-100', border: 'border-purple-300', highlight: 'bg-purple-600', hover: 'hover:bg-purple-700', icon: 'text-purple-500', accent: 'text-purple-600', gradientFrom: 'from-purple-500', gradientTo: 'to-purple-600' },
-    'Expert': { bg: 'bg-amber-100', border: 'border-amber-300', highlight: 'bg-amber-600', hover: 'hover:bg-amber-700', icon: 'text-amber-500', accent: 'text-amber-600', gradientFrom: 'from-amber-500', gradientTo: 'to-amber-600' },
-    'Premium': { bg: 'bg-indigo-100', border: 'border-indigo-300', highlight: 'bg-indigo-600', hover: 'hover:bg-indigo-700', icon: 'text-indigo-500', accent: 'text-indigo-600', gradientFrom: 'from-indigo-500', gradientTo: 'to-indigo-600' },
-    'VIP': { bg: 'bg-rose-100', border: 'border-rose-300', highlight: 'bg-rose-600', hover: 'hover:bg-rose-700', icon: 'text-rose-500', accent: 'text-rose-600', gradientFrom: 'from-rose-500', gradientTo: 'to-rose-600' }
+    default: {
+      bg: "bg-white",
+      border: "border-gray-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+    },
+    Débutant: {
+      bg: "bg-blue-100",
+      border: "border-blue-300",
+      highlight: "bg-blue-600",
+      hover: "hover:bg-blue-700",
+      icon: "text-blue-500",
+      accent: "text-blue-600",
+      gradientFrom: "from-blue-500",
+      gradientTo: "to-blue-600",
+      lightBg: "#0066cc",
+      darkBg: "#003366",
+    },
+    Intermédiaire: {
+      bg: "bg-purple-100",
+      border: "border-purple-300",
+      highlight: "bg-purple-600",
+      hover: "hover:bg-purple-700",
+      icon: "text-purple-500",
+      accent: "text-purple-600",
+      gradientFrom: "from-purple-500",
+      gradientTo: "to-purple-600",
+      lightBg: "#8A2BE2",
+      darkBg: "#4B0082",
+    },
+    Expert: {
+      bg: "bg-amber-100",
+      border: "border-amber-300",
+      highlight: "bg-amber-600",
+      hover: "hover:bg-amber-700",
+      icon: "text-amber-500",
+      accent: "text-amber-600",
+      gradientFrom: "from-amber-500",
+      gradientTo: "to-amber-600",
+      lightBg: "#F59E0B",
+      darkBg: "#B45309",
+    },
+    Premium: {
+      bg: "bg-indigo-100",
+      border: "border-indigo-300",
+      highlight: "bg-indigo-600",
+      hover: "hover:bg-indigo-700",
+      icon: "text-indigo-500",
+      accent: "text-indigo-600",
+      gradientFrom: "from-indigo-500",
+      gradientTo: "to-indigo-600",
+      lightBg: "#4F46E5",
+      darkBg: "#3730A3",
+    },
+    VIP: {
+      bg: "bg-rose-100",
+      border: "border-rose-300",
+      highlight: "bg-rose-600",
+      hover: "hover:bg-rose-700",
+      icon: "text-rose-500",
+      accent: "text-rose-600",
+      gradientFrom: "from-rose-500",
+      gradientTo: "to-rose-600",
+      lightBg: "#E11D48",
+      darkBg: "#9F1239",
+    },
   },
   // Couleurs pour le mode sombre
   dark: {
-    default: { bg: '#1f2937', border: 'border-gray-700', highlight: 'bg-green-600', hover: 'hover:bg-green-700', icon: 'text-green-400', accent: 'text-green-400', gradientFrom: 'from-green-600', gradientTo: 'to-green-700' },
-    'Débutant': { bg: 'bg-blue-900/40', border: 'border-blue-700', highlight: 'bg-blue-600', hover: 'hover:bg-blue-700', icon: 'text-blue-400', accent: 'text-blue-400', gradientFrom: 'from-blue-600', gradientTo: 'to-blue-700' },
-    'Intermédiaire': { bg: 'bg-purple-900/40', border: 'border-purple-700', highlight: 'bg-purple-600', hover: 'hover:bg-purple-700', icon: 'text-purple-400', accent: 'text-purple-400', gradientFrom: 'from-purple-600', gradientTo: 'to-purple-700' },
-    'Expert': { bg: 'bg-amber-900/40', border: 'border-amber-700', highlight: 'bg-amber-600', hover: 'hover:bg-amber-700', icon: 'text-amber-400', accent: 'text-amber-400', gradientFrom: 'from-amber-600', gradientTo: 'to-amber-700' },
-    'Premium': { bg: 'bg-indigo-900/40', border: 'border-indigo-700', highlight: 'bg-indigo-600', hover: 'hover:bg-indigo-700', icon: 'text-indigo-400', accent: 'text-indigo-400', gradientFrom: 'from-indigo-600', gradientTo: 'to-indigo-700' },
-    'VIP': { bg: 'bg-rose-900/40', border: 'border-rose-700', highlight: 'bg-rose-600', hover: 'hover:bg-rose-700', icon: 'text-rose-400', accent: 'text-rose-400', gradientFrom: 'from-rose-600', gradientTo: 'to-rose-700' }
-  }
+    default: {
+      bg: "#1f2937",
+      border: "border-gray-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+    },
+    Débutant: {
+      bg: "bg-blue-900/40",
+      border: "border-blue-700",
+      highlight: "bg-blue-600",
+      hover: "hover:bg-blue-700",
+      icon: "text-blue-400",
+      accent: "text-blue-400",
+      gradientFrom: "from-blue-600",
+      gradientTo: "to-blue-700",
+    },
+    Intermédiaire: {
+      bg: "bg-purple-900/40",
+      border: "border-purple-700",
+      highlight: "bg-purple-600",
+      hover: "hover:bg-purple-700",
+      icon: "text-purple-400",
+      accent: "text-purple-400",
+      gradientFrom: "from-purple-600",
+      gradientTo: "to-purple-700",
+    },
+    Expert: {
+      bg: "bg-amber-900/40",
+      border: "border-amber-700",
+      highlight: "bg-amber-600",
+      hover: "hover:bg-amber-700",
+      icon: "text-amber-400",
+      accent: "text-amber-400",
+      gradientFrom: "from-amber-600",
+      gradientTo: "to-amber-700",
+    },
+    Premium: {
+      bg: "bg-indigo-900/40",
+      border: "border-indigo-700",
+      highlight: "bg-indigo-600",
+      hover: "hover:bg-indigo-700",
+      icon: "text-indigo-400",
+      accent: "text-indigo-400",
+      gradientFrom: "from-indigo-600",
+      gradientTo: "to-indigo-700",
+    },
+    VIP: {
+      bg: "bg-rose-900/40",
+      border: "border-rose-700",
+      highlight: "bg-rose-600",
+      hover: "hover:bg-rose-700",
+      icon: "text-rose-400",
+      accent: "text-rose-400",
+      gradientFrom: "from-rose-600",
+      gradientTo: "to-rose-700",
+    },
+  },
 };
 
 export default function Packages() {
@@ -127,18 +256,24 @@ export default function Packages() {
   const [packs, setPacks] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fonction pour obtenir le schéma de couleur en fonction de la catégorie du pack
+  const getColorScheme = (category) => {
+    const mode = isDarkMode ? "dark" : "light";
+    return categoryColors[mode][category] || categoryColors[mode].default;
+  };
+
   useEffect(() => {
     const fetchPacks = async () => {
       try {
-        const response = await publicAxios.get('/api/packs');
-        console.log('Response data:', response.data); // Pour déboguer
+        const response = await publicAxios.get("/api/packs");
+        console.log("Response data:", response.data); // Pour déboguer
         if (response.data && response.data.data) {
-          setPacks(response.data.data.filter(pack => pack.status));
+          setPacks(response.data.data.filter((pack) => pack.status));
         } else {
-          console.error('Format de réponse invalide:', response.data);
+          console.error("Format de réponse invalide:", response.data);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des packs:', error);
+        console.error("Erreur lors du chargement des packs:", error);
       } finally {
         setLoading(false);
       }
@@ -150,8 +285,8 @@ export default function Packages() {
   // Grouper les packs par catégorie
   const packsByCategory = useMemo(() => {
     const grouped = {};
-    packs.forEach(pack => {
-      const category = pack.categorie || 'Autre';
+    packs.forEach((pack) => {
+      const category = pack.categorie || "Autre";
       if (!grouped[category]) {
         grouped[category] = [];
       }
@@ -160,172 +295,199 @@ export default function Packages() {
     return grouped;
   }, [packs]);
 
-  // Obtenir les couleurs en fonction du mode (clair/sombre)
-  const getColorScheme = (category) => {
-    const mode = isDarkMode ? 'dark' : 'light';
-    return categoryColors[mode][category] || categoryColors[mode].default;
-  };
+  // Nous utilisons maintenant la fonction getColorScheme définie plus haut
 
   const handleSubscribeClick = (pack) => {
     if (!user) {
-      navigate('/register');
+      navigate("/register");
     } else {
       if (user.is_admin) {
-        navigate('/admin/mespacks');
+        navigate("/admin/mespacks");
       } else {
-        navigate('/dashboard/buypacks');
+        navigate("/dashboard/buypacks");
       }
     }
   };
 
   if (loading) {
     return (
-      <Container sx={{ 
-        mt: 4, 
-        display: 'flex', 
-        justifyContent: 'center', 
-        minHeight: '50vh', 
-        alignItems: 'center',
-        bgcolor: isDarkMode ? '#1f2937' : 'background.default'
-      }}>
+      <Container
+        sx={{
+          mt: 4,
+          display: "flex",
+          justifyContent: "center",
+          minHeight: "50vh",
+          alignItems: "center",
+          bgcolor: isDarkMode ? "#1f2937" : "background.default",
+        }}
+      >
         <CircularProgress />
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ 
-      mt: 4, 
-      mb: 8,
-      bgcolor: isDarkMode ? '#1f2937' : 'background.default',
-      borderRadius: 2,
-      py: 4
-    }}>
+    <Container
+      maxWidth="lg"
+      sx={{
+        mt: 4,
+        mb: 8,
+        bgcolor: isDarkMode ? "#1f2937" : "background.default",
+        borderRadius: 2,
+        py: 4,
+      }}
+    >
       <Box textAlign="center" mb={6}>
-        <Typography variant="h4" component="h2" gutterBottom sx={{ color: isDarkMode ? 'white' : 'text.primary' }}>
+        <Typography
+          variant="h4"
+          component="h2"
+          gutterBottom
+          sx={{ color: isDarkMode ? "white" : "text.primary" }}
+        >
           Nos Packs
         </Typography>
-        <Typography variant="subtitle1" color={isDarkMode ? 'text.secondary' : 'text.secondary'} sx={{ maxWidth: '800px', mx: 'auto' }}>
-          Choisissez le pack qui correspond le mieux à vos besoins et commencez votre aventure dès aujourd'hui.
+        <Typography
+          variant="subtitle1"
+          color={isDarkMode ? "text.secondary" : "text.secondary"}
+          sx={{ maxWidth: "800px", mx: "auto" }}
+        >
+          Choisissez le pack qui correspond le mieux à vos besoins et commencez
+          votre aventure dès aujourd'hui.
         </Typography>
       </Box>
 
       {Object.entries(packsByCategory).map(([category, categoryPacks]) => (
         <Box key={category} mb={8}>
-          <Box 
-            textAlign="center" 
+          <Box
+            textAlign="center"
             mb={6}
             component={motion.div}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
-            sx={{ position: 'relative' }}
+            sx={{ position: "relative" }}
           >
             {/* Décoration gauche */}
-            <Box 
+            <Box
               component={motion.div}
               variants={decorationLeftVariants}
-              sx={{ 
-                position: 'absolute', 
-                left: { xs: '10%', md: '25%' }, 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                display: { xs: 'none', sm: 'block' }
+              sx={{
+                position: "absolute",
+                left: { xs: "10%", md: "25%" },
+                top: "50%",
+                transform: "translateY(-50%)",
+                display: { xs: "none", sm: "block" },
               }}
             >
-              <Box sx={{ 
-                width: '40px', 
-                height: '2px', 
-                background: `linear-gradient(to right, transparent, ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'})`,
-                display: 'inline-block',
-                mr: 1
-              }} />
-              <Box component="span" sx={{ 
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                bgcolor: 'primary.main',
-                verticalAlign: 'middle'
-              }} />
+              <Box
+                sx={{
+                  width: "40px",
+                  height: "2px",
+                  background: `linear-gradient(to right, transparent, ${
+                    isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0,0,0,0.3)"
+                  })`,
+                  display: "inline-block",
+                  mr: 1,
+                }}
+              />
+              <Box
+                component="span"
+                sx={{
+                  display: "inline-block",
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  bgcolor: "primary.main",
+                  verticalAlign: "middle",
+                }}
+              />
             </Box>
-            
+
             {/* Titre */}
-            <Typography 
-              variant="h4" 
+            <Typography
+              variant="h4"
               component={motion.div}
               variants={categoryTitleVariants}
-              sx={{ 
-                textTransform: 'capitalize',
-                color: isDarkMode ? 'white' : 'text.primary',
-                position: 'relative',
-                display: 'inline-block',
+              sx={{
+                textTransform: "capitalize",
+                color: isDarkMode ? "white" : "text.primary",
+                position: "relative",
+                display: "inline-block",
                 mb: 1,
                 px: 4,
-                fontWeight: 'bold',
-                '&::after': {
+                fontWeight: "bold",
+                "&::after": {
                   content: '""',
-                  position: 'absolute',
-                  bottom: '-8px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '40px',
-                  height: '4px',
-                  bgcolor: 'primary.main',
-                  borderRadius: '2px'
-                }
+                  position: "absolute",
+                  bottom: "-8px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "40px",
+                  height: "4px",
+                  bgcolor: "primary.main",
+                  borderRadius: "2px",
+                },
               }}
             >
               {category}
             </Typography>
-            
+
             {/* Décoration droite */}
-            <Box 
+            <Box
               component={motion.div}
               variants={decorationRightVariants}
-              sx={{ 
-                position: 'absolute', 
-                right: { xs: '10%', md: '25%' }, 
-                top: '50%', 
-                transform: 'translateY(-50%)',
-                display: { xs: 'none', sm: 'block' }
+              sx={{
+                position: "absolute",
+                right: { xs: "10%", md: "25%" },
+                top: "50%",
+                transform: "translateY(-50%)",
+                display: { xs: "none", sm: "block" },
               }}
             >
-              <Box component="span" sx={{ 
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                bgcolor: 'primary.main',
-                verticalAlign: 'middle'
-              }} />
-              <Box sx={{ 
-                width: '40px', 
-                height: '2px', 
-                background: `linear-gradient(to left, transparent, ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'})`,
-                display: 'inline-block',
-                ml: 1
-              }} />
+              <Box
+                component="span"
+                sx={{
+                  display: "inline-block",
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  bgcolor: "primary.main",
+                  verticalAlign: "middle",
+                }}
+              />
+              <Box
+                sx={{
+                  width: "40px",
+                  height: "2px",
+                  background: `linear-gradient(to left, transparent, ${
+                    isDarkMode ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"
+                  })`,
+                  display: "inline-block",
+                  ml: 1,
+                }}
+              />
             </Box>
-            
+
             {/* Ligne sous le titre */}
-            <Box 
+            <Box
               component={motion.div}
               variants={categoryLineVariants}
-              sx={{ 
-                height: '2px', 
-                width: { xs: '60%', sm: '40%', md: '30%' },
-                maxWidth: '200px',
-                background: `linear-gradient(to right, transparent, ${isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}, transparent)`,
-                mx: 'auto',
+              sx={{
+                height: "2px",
+                width: { xs: "60%", sm: "40%", md: "30%" },
+                maxWidth: "200px",
+                background: `linear-gradient(to right, transparent, ${
+                  isDarkMode ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)"
+                }, transparent)`,
+                mx: "auto",
                 mt: 4,
-                borderRadius: '1px'
+                borderRadius: "1px",
               }}
             />
           </Box>
 
-          <Grid 
-            container 
+          <Grid
+            container
             spacing={3}
             component={motion.div}
             variants={containerVariants}
@@ -335,62 +497,175 @@ export default function Packages() {
           >
             {categoryPacks.map((pack) => (
               <Grid item xs={12} sm={6} md={4} key={pack.id}>
-                <Card 
+                <Card
                   component={motion.div}
                   variants={itemVariants}
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
                     boxShadow: 3,
-                    transition: 'transform 0.3s, box-shadow 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: 6
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-5px)",
+                      boxShadow: 4,
                     },
-                    bgcolor: isDarkMode ? '#1f2937' : 'background.paper',
-                    color: isDarkMode ? 'text.primary' : 'inherit',
-                    border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.12)' : 'none'
+                    bgcolor: isDarkMode
+                      ? getColorScheme(pack.categorie).darkBg
+                      : getColorScheme(pack.categorie).lightBg,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    position: "relative",
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h5" component="h3" gutterBottom sx={{ color: isDarkMode ? 'white' : 'text.primary' }}>
+                  {/* En-tête */}
+                  <Box
+                    sx={{
+                      p: 2.5,
+                      background: isDarkMode
+                        ? `${getColorScheme(
+                            pack.categorie
+                          ).gradientFrom.replace("from-", "")}`
+                        : `${getColorScheme(
+                            pack.categorie
+                          ).gradientFrom.replace("from-", "")}`,
+                      color: "white",
+                      borderTopLeftRadius: "8px",
+                      borderTopRightRadius: "8px",
+                    }}
+                  >
+                    <Typography
+                      variant="h5"
+                      component="h5"
+                      sx={{
+                        fontWeight: 600,
+                        mb: 0.5,
+                        color: isDarkMode ? "#fff" : "black",
+                      }}
+                    >
                       {pack.name}
                     </Typography>
-                    <Typography variant="subtitle1" color={isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} gutterBottom>
-                      À partir de
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        opacity: 0.9,
+                        color: isDarkMode ? "#fff" : "black",
+                      }}
+                    >
+                      {pack.categorie || "Pack standard"}
                     </Typography>
-                    <Typography variant="h4" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
-                      {pack.price}€/mois
-                    </Typography>
-                    <Divider sx={{ my: 2, borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)' }} />
-                    <Typography variant="body2" color={isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} paragraph>
+                  </Box>
+
+                  <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: 2,
+                        pb: 2,
+                        borderBottom: isDarkMode
+                          ? "1px solid rgba(255, 255, 255, 0.08)"
+                          : "1px solid rgba(0, 0, 0, 0.05)",
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        color={
+                          isDarkMode
+                            ? "rgba(255, 255, 255, 0.7)"
+                            : "text.secondary"
+                        }
+                      >
+                        À partir de
+                      </Typography>
+                      <Typography
+                        variant="h4"
+                        sx={{
+                          fontWeight: 600,
+                          color: isDarkMode ? "white" : "black",
+                        }}
+                      >
+                        {pack.price}$
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        gutterBottom
+                        sx={{ fontWeight: 600 }}
+                      >
+                        Type d'abonnement
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pack.abonnement === "mensuel"
+                          ? "Mensuel"
+                          : pack.abonnement === "trimestriel"
+                          ? "Trimestriel (tous les 3 mois)"
+                          : pack.abonnement === "semestriel"
+                          ? "Semestriel (tous les 6 mois)"
+                          : pack.abonnement === "annuel"
+                          ? "Annuel (tous les 12 mois)"
+                          : pack.abonnement}
+                      </Typography>
+                    </Box>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 2 }}
+                    >
                       {pack.description}
                     </Typography>
-                    
+
                     {pack.avantages && pack.avantages.length > 0 && (
-                      <List disablePadding>
-                        {pack.avantages.map((avantage, index) => (
-                          <ListItem key={index} disablePadding sx={{ mb: 1 }}>
-                            <ListItemIcon sx={{ minWidth: '32px' }}>
-                              <CheckIcon fontSize="small" color="primary" />
-                            </ListItemIcon>
-                            <ListItemText primary={avantage} primaryTypographyProps={{ variant: 'body2' }} />
-                          </ListItem>
-                        ))}
-                      </List>
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          gutterBottom
+                          sx={{ fontWeight: 600 }}
+                        >
+                          Avantages inclus
+                        </Typography>
+                        <List disablePadding>
+                          {pack.avantages.map((avantage, index) => (
+                            <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+                              <ListItemIcon
+                                sx={{
+                                  minWidth: "32px",
+                                  color: "primary.main",
+                                }}
+                              >
+                                <CheckIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={avantage}
+                                primaryTypographyProps={{
+                                  variant: "body2",
+                                  color: "text.secondary",
+                                }}
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </>
                     )}
                   </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0 }}>
-                    <Button 
-                      fullWidth 
-                      variant="contained" 
-                      color="primary" 
+                  <CardActions sx={{ p: 2.5, pt: 0 }}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
                       onClick={() => handleSubscribeClick(pack)}
-                      sx={{ 
-                        py: 1.5,
-                        fontWeight: 'medium'
+                      sx={{
+                        py: 1,
+                        fontWeight: 500,
+                        textTransform: "none",
                       }}
+                      className={`${loading ? "" : "pulse"}`}
                     >
                       Souscrire Maintenant
                     </Button>

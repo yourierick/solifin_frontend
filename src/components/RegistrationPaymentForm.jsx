@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,14 +11,14 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
-  MenuItem
-} from '@mui/material';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '../contexts/ThemeContext';
-import axios from '../utils/axios';
-import { useToast } from '../contexts/ToastContext';
-import Notification from './Notification';
-import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from '../config';
+  MenuItem,
+} from "@mui/material";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "../contexts/ThemeContext";
+import axios from "../utils/axios";
+import { useToast } from "../contexts/ToastContext";
+import Notification from "./Notification";
+import { CURRENCIES, PAYMENT_TYPES, PAYMENT_METHODS } from "../config";
 
 // Style CSS pour les animations et effets visuels
 const customStyles = `
@@ -141,53 +141,89 @@ const customStyles = `
 const paymentMethods = [
   {
     id: PAYMENT_TYPES.CREDIT_CARD,
-    name: 'Carte de crédit',
-    icon: 'credit-card',
-    category: 'card',
+    name: "Carte de crédit",
+    icon: "credit-card",
+    category: "card",
     options: PAYMENT_METHODS[PAYMENT_TYPES.CREDIT_CARD],
     fields: [
-      { name: 'cardNumber', label: 'Numéro de carte', type: 'text', required: true, maxLength: 19, 
-        format: (value) => value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim() },
-      { name: 'cardHolder', label: 'Nom sur la carte', type: 'text', required: true },
-      { 
-        name: 'expiryDate', 
-        label: 'Date d\'expiration', 
-        type: 'text', 
+      {
+        name: "cardNumber",
+        label: "Numéro de carte",
+        type: "text",
+        required: true,
+        maxLength: 19,
+        format: (value) =>
+          value
+            .replace(/\s/g, "")
+            .replace(/(\d{4})/g, "$1 ")
+            .trim(),
+      },
+      {
+        name: "cardHolder",
+        label: "Nom sur la carte",
+        type: "text",
+        required: true,
+      },
+      {
+        name: "expiryDate",
+        label: "Date d'expiration",
+        type: "text",
         required: true,
         maxLength: 5,
-        format: (value) => value.replace(/\D/g, '').replace(/(\d{2})(\d{0,2})/, '$1/$2')
+        format: (value) =>
+          value.replace(/\D/g, "").replace(/(\d{2})(\d{0,2})/, "$1/$2"),
       },
-      { name: 'cvv', label: 'CVV', type: 'text', required: true, maxLength: 3 }
-    ]
+      { name: "cvv", label: "CVV", type: "text", required: true, maxLength: 3 },
+    ],
   },
   {
     id: PAYMENT_TYPES.MOBILE_MONEY,
-    name: 'Mobile Money',
-    icon: 'phone',
-    category: 'mobile',
+    name: "Mobile Money",
+    icon: "phone",
+    category: "mobile",
     options: PAYMENT_METHODS[PAYMENT_TYPES.MOBILE_MONEY],
     fields: [
-      { name: 'phoneNumber', label: 'Numéro de téléphone', type: 'tel', required: true }
-    ]
-  }
+      {
+        name: "phoneNumber",
+        label: "Numéro de téléphone",
+        type: "tel",
+        required: true,
+      },
+    ],
+  },
 ];
 
-export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit, loading = false }) {
+export default function RegistrationPaymentForm({
+  open,
+  onClose,
+  pack,
+  onSubmit,
+  loading = false,
+}) {
   const { isDarkMode } = useTheme();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_TYPES.CREDIT_CARD);
-  const [selectedCardOption, setSelectedCardOption] = useState('');
-  const [selectedMobileOption, setSelectedMobileOption] = useState('');
+  const [selectedCardOption, setSelectedCardOption] = useState("");
+  const [selectedMobileOption, setSelectedMobileOption] = useState("");
   const [formFields, setFormFields] = useState({});
   const [months, setMonths] = useState(1);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
   const [transactionFees, setTransactionFees] = useState(null);
   const [feePercentage, setFeePercentage] = useState(null);
   const [convertedAmount, setConvertedAmount] = useState(0);
   const [formIsValid, setFormIsValid] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
 
+  useEffect(() => {
+    if (pack) {
+      const step = getSubscriptionStep(pack.abonnement);
+      setMonths(step);
+      setTotalAmount(pack.price * step);
+    }
+  }, [pack]);
+
+  // Recalculer le montant total lorsque le nombre de mois change
   useEffect(() => {
     if (pack) {
       setTotalAmount(pack.price * months);
@@ -198,18 +234,18 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
   useEffect(() => {
     if (open && pack) {
       setTotalAmount(pack.price * months);
-      
+
       // Récupérer le pourcentage de frais global une seule fois à l'ouverture du modal
       const fetchGlobalFeePercentage = async () => {
         try {
-          const response = await axios.post('/api/transaction-fees/transfer', {
-            amount: 100 // Montant de référence pour obtenir le pourcentage
+          const response = await axios.post("/api/transaction-fees/transfer", {
+            amount: 100, // Montant de référence pour obtenir le pourcentage
           });
-          
+
           if (response.data.success) {
             const percentage = response.data.percentage || 0;
             setFeePercentage(percentage);
-            
+
             // Après avoir récupéré le pourcentage, initialiser la conversion de devise
             convertCurrency(percentage);
           } else {
@@ -217,19 +253,28 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
             convertCurrency(0);
           }
         } catch (error) {
-          console.error('Erreur lors de la récupération du pourcentage de frais:', error);
+          console.error(
+            "Erreur lors de la récupération du pourcentage de frais:",
+            error
+          );
           setFeePercentage(0);
           convertCurrency(0);
         }
       };
-      
+
       fetchGlobalFeePercentage();
     }
   }, [open, pack]);
-  
+
   // Effet pour déclencher la conversion de devise lorsque le montant total ou la devise change
   useEffect(() => {
-    if (pack && totalAmount > 0 && !localLoading && open && feePercentage !== null) {
+    if (
+      pack &&
+      totalAmount > 0 &&
+      !localLoading &&
+      open &&
+      feePercentage !== null
+    ) {
       convertCurrency();
     }
   }, [totalAmount, selectedCurrency]);
@@ -240,8 +285,8 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
   useEffect(() => {
     // Réinitialiser les champs du formulaire et l'option mobile lors du changement de méthode
     setFormFields({});
-    setSelectedMobileOption('');
-    setSelectedCardOption('');
+    setSelectedMobileOption("");
+    setSelectedCardOption("");
   }, [paymentMethod]);
 
   useEffect(() => {
@@ -252,11 +297,10 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
   const fetchTransactionFees = async (amount, method, currency) => {
     try {
       setLocalLoading(true);
-      const response = await axios.post('/api/transaction-fees/transfer', {
+      const response = await axios.post("/api/transaction-fees/transfer", {
         amount: amount,
       });
-      
-      console.log(response)
+
       if (response.data.success) {
         // Stocker les frais et le pourcentage tels que retournés par l'API
         // L'API applique déjà la logique de fee_fixed pour toutes les devises
@@ -272,7 +316,10 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
         return { fee: 0, percentage: 0 };
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des frais de transaction:', error);
+      console.error(
+        "Erreur lors de la récupération des frais de transaction:",
+        error
+      );
       // En cas d'erreur, réinitialiser les frais
       setTransactionFees(null);
       setFeePercentage(null);
@@ -286,39 +333,39 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
     try {
       setLocalLoading(true);
       let convertedAmt = totalAmount;
-      
+
       // Si la devise est USD, pas besoin de conversion
-      if (selectedCurrency === 'USD') {
+      if (selectedCurrency === "USD") {
         setConvertedAmount(totalAmount);
       } else {
         // Conversion de devise nécessaire
-        const response = await axios.post('/api/currency/convert', {
+        const response = await axios.post("/api/currency/convert", {
           amount: totalAmount,
-          from: 'USD',
-          to: selectedCurrency
+          from: "USD",
+          to: selectedCurrency,
         });
-        
+
         if (response.data.success) {
           convertedAmt = response.data.convertedAmount;
           setConvertedAmount(convertedAmt);
         } else {
-          console.error('Erreur lors de la conversion:', response.data.message);
+          console.error("Erreur lors de la conversion:", response.data.message);
           // En cas d'erreur, on utilise le montant original
           setConvertedAmount(totalAmount);
         }
       }
-      
+
       // Calculer les frais localement avec le pourcentage global
-      const percentage = globalFeePercentage !== null ? globalFeePercentage : feePercentage;
+      const percentage =
+        globalFeePercentage !== null ? globalFeePercentage : feePercentage;
       if (percentage > 0) {
         const fee = convertedAmt * (percentage / 100);
         setTransactionFees(fee);
       } else {
         setTransactionFees(0);
       }
-      
     } catch (error) {
-      console.error('Erreur lors de la conversion:', error);
+      console.error("Erreur lors de la conversion:", error);
       setConvertedAmount(totalAmount);
       setTransactionFees(0);
     } finally {
@@ -334,52 +381,60 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
     // Vérifier les champs selon la méthode de paiement
     if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
       // Pour la carte de crédit, vérifier tous les champs requis et l'option de carte
-      const requiredFields = ['cardNumber', 'cardHolder', 'expiryDate', 'cvv'];
-      isValid = isValid && requiredFields.every(field => formFields[field] && formFields[field].trim() !== '');
-      isValid = isValid && selectedCardOption !== '';
+      const requiredFields = ["cardNumber", "cardHolder", "expiryDate", "cvv"];
+      isValid =
+        isValid &&
+        requiredFields.every(
+          (field) => formFields[field] && formFields[field].trim() !== ""
+        );
+      isValid = isValid && selectedCardOption !== "";
     } else if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) {
       // Pour le mobile money, vérifier l'option sélectionnée et le numéro de téléphone
-      isValid = isValid && selectedMobileOption !== '' && formFields.phoneNumber && formFields.phoneNumber.trim() !== '';
+      isValid =
+        isValid &&
+        selectedMobileOption !== "" &&
+        formFields.phoneNumber &&
+        formFields.phoneNumber.trim() !== "";
     }
-    
+
     // Vérifier que le montant et la durée sont valides
     isValid = isValid && months > 0 && totalAmount > 0;
-    
+
     // Vérifier qu'il n'y a pas d'erreur de calcul des frais
     isValid = isValid && !localLoading;
-    
+
     setFormIsValid(isValid);
     return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
-      setError('Veuillez remplir tous les champs requis');
+      setError("Veuillez remplir tous les champs requis");
       return;
     }
-    
+
     setLocalLoading(true);
-    setError('');
+    setError("");
 
     // Vérifier que l'option mobile est sélectionnée si nécessaire
     if (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY && !selectedMobileOption) {
-      setError('Veuillez sélectionner un opérateur mobile');
+      setError("Veuillez sélectionner un opérateur mobile");
       setLocalLoading(false);
       return;
     }
 
     // Vérifier que l'option de carte est sélectionnée si nécessaire
     if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD && !selectedCardOption) {
-      setError('Veuillez sélectionner un type de carte');
+      setError("Veuillez sélectionner un type de carte");
       setLocalLoading(false);
       return;
     }
 
     // Préparer les données de paiement en fonction de la méthode sélectionnée
     let paymentDetails = {};
-    
+
     // Ne conserver que les champs pertinents pour la méthode de paiement sélectionnée
     if (paymentMethod === PAYMENT_TYPES.CREDIT_CARD) {
       // Pour carte de crédit, inclure seulement les champs de carte
@@ -390,22 +445,23 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
       const { phoneNumber } = formFields;
       paymentDetails = { phoneNumber, operator: selectedMobileOption };
     }
-    
+
     // Utiliser le montant converti
     const finalAmount = convertedAmount;
 
-    console.log(paymentMethod);
-    
     const paymentData = {
       pack_id: pack.id,
-      payment_method: paymentMethod === PAYMENT_TYPES.CREDIT_CARD ? selectedCardOption : selectedMobileOption,
+      payment_method:
+        paymentMethod === PAYMENT_TYPES.CREDIT_CARD
+          ? selectedCardOption
+          : selectedMobileOption,
       payment_type: paymentMethod,
       duration_months: months,
       amount: finalAmount, // Montant sans les frais
       currency: selectedCurrency,
       fees: transactionFees,
       payment_details: paymentDetails,
-      phoneNumber: formFields.phoneNumber || ''
+      phoneNumber: formFields.phoneNumber || "",
     };
 
     // Utiliser la fonction onSubmit fournie par le parent
@@ -413,26 +469,50 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
       await onSubmit(paymentData);
       setLocalLoading(false);
     } catch (error) {
-      setError(error.message || 'Une erreur est survenue lors du traitement du paiement');
+      setError(
+        error.message ||
+          "Une erreur est survenue lors du traitement du paiement"
+      );
       setLocalLoading(false);
     }
   };
 
+  // Fonction pour déterminer le pas en fonction du type d'abonnement
+  const getSubscriptionStep = (subscriptionType) => {
+    switch (subscriptionType?.toLowerCase()) {
+      case "monthly":
+      case "mensuel":
+        return 1; // Pas de 1 mois pour abonnement mensuel
+      case "quarterly":
+      case "trimestriel":
+        return 3; // Pas de 3 mois pour abonnement trimestriel
+      case "biannual":
+      case "semestriel":
+        return 6; // Pas de 6 mois pour abonnement semestriel
+      case "annual":
+      case "yearly":
+      case "annuel":
+        return 12; // Pas de 12 mois pour abonnement annuel
+      default:
+        return 1; // Par défaut, pas de 1 mois
+    }
+  };
+
   const handleFieldChange = (fieldName, value) => {
-    const selectedMethod = paymentMethods.find(m => m.id === paymentMethod);
-    const field = selectedMethod?.fields?.find(f => f.name === fieldName);
-    
+    const selectedMethod = paymentMethods.find((m) => m.id === paymentMethod);
+    const field = selectedMethod?.fields?.find((f) => f.name === fieldName);
+
     // Appliquer le formatage si défini
     const formattedValue = field?.format ? field.format(value) : value;
-    
-    setFormFields(prev => ({
+
+    setFormFields((prev) => ({
       ...prev,
-      [fieldName]: formattedValue
+      [fieldName]: formattedValue,
     }));
   };
 
   const renderPaymentFields = () => {
-    const selectedMethod = paymentMethods.find(m => m.id === paymentMethod);
+    const selectedMethod = paymentMethods.find((m) => m.id === paymentMethod);
     if (!selectedMethod?.fields) return null;
 
     return (
@@ -481,31 +561,42 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
             </RadioGroup>
           </div>
         )}
-        {(paymentMethod !== PAYMENT_TYPES.MOBILE_MONEY || selectedMobileOption) && (paymentMethod !== PAYMENT_TYPES.CREDIT_CARD || selectedCardOption) && (
-          <div className={paymentMethod === PAYMENT_TYPES.CREDIT_CARD ? 'grid grid-cols-2 gap-2' : ''}>
-            {selectedMethod.fields.map((field) => (
-              <TextField
-                key={field.name}
-                label={field.label}
-                type={field.type}
-                value={formFields[field.name] || ''}
-                onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                fullWidth
-                required={field.required}
-                size="small"
-                inputProps={{ 
-                  maxLength: field.maxLength,
-                  className: field.name === 'cvv' ? 'font-mono' : ''
-                }}
-                className={
-                  field.name === 'cardNumber' || field.name === 'cardHolder' 
-                    ? 'col-span-2' 
-                    : ''
-                }
-              />
-            ))}
-          </div>
-        )}
+        {(paymentMethod !== PAYMENT_TYPES.MOBILE_MONEY ||
+          selectedMobileOption) &&
+          (paymentMethod !== PAYMENT_TYPES.CREDIT_CARD ||
+            selectedCardOption) && (
+            <div
+              className={
+                paymentMethod === PAYMENT_TYPES.CREDIT_CARD
+                  ? "grid grid-cols-2 gap-2"
+                  : ""
+              }
+            >
+              {selectedMethod.fields.map((field) => (
+                <TextField
+                  key={field.name}
+                  label={field.label}
+                  type={field.type}
+                  value={formFields[field.name] || ""}
+                  onChange={(e) =>
+                    handleFieldChange(field.name, e.target.value)
+                  }
+                  fullWidth
+                  required={field.required}
+                  size="small"
+                  inputProps={{
+                    maxLength: field.maxLength,
+                    className: field.name === "cvv" ? "font-mono" : "",
+                  }}
+                  className={
+                    field.name === "cardNumber" || field.name === "cardHolder"
+                      ? "col-span-2"
+                      : ""
+                  }
+                />
+              ))}
+            </div>
+          )}
       </div>
     );
   };
@@ -513,16 +604,34 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
   if (!open) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ${isDarkMode ? 'dark' : ''}`}>
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm ${
+        isDarkMode ? "dark" : ""
+      }`}
+    >
       <style>{customStyles}</style>
-      <div className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white'}`}>
+      <div
+        className={`relative w-full max-w-2xl rounded-lg p-0 shadow-xl overflow-hidden ${
+          isDarkMode ? "bg-gray-800 text-white" : "bg-white"
+        }`}
+      >
         {/* En-tête avec dégradé */}
-        <div className={`p-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-green-800' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} text-white`}>
+        <div
+          className={`p-6 ${
+            isDarkMode
+              ? "bg-gradient-to-r from-green-900 to-green-800"
+              : "bg-gradient-to-r from-blue-500 to-indigo-600"
+          } text-white`}
+        >
           <div className="flex items-center justify-between">
             <Typography variant="h5" component="h2" className="font-bold">
               Finaliser votre inscription
             </Typography>
-            <IconButton onClick={onClose} size="small" className="text-white hover:bg-white/20 transition-colors">
+            <IconButton
+              onClick={onClose}
+              size="small"
+              className="text-white hover:bg-white/20 transition-colors"
+            >
               <XMarkIcon className="h-5 w-5" />
             </IconButton>
           </div>
@@ -539,28 +648,37 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
 
         <form onSubmit={handleSubmit}>
           <div className="max-h-[60vh] overflow-y-auto p-6 pt-4 custom-scrollbar">
-            <h1 className="text-lg font-bold mb-3 text-secondary-600 dark:text-secondary-400">Vous souscrivez pour le pack {pack.name}</h1>
+            <h1 className="text-lg font-bold mb-3 text-secondary-600 dark:text-secondary-400">
+              Vous souscrivez pour le pack {pack.name}
+            </h1>
             {/* Section méthode de paiement */}
-            <div className="slide-in" style={{ animationDelay: '0.2s' }}>
-              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
+            <div className="slide-in" style={{ animationDelay: "0.2s" }}>
+              <Typography
+                variant="subtitle1"
+                className="font-bold mb-3 text-primary-600 dark:text-primary-400"
+              >
                 Méthode de paiement
               </Typography>
-              
+
               <div className="grid grid-cols-1 gap-3">
                 {paymentMethods.map((method) => (
-                  <div 
+                  <div
                     key={method.id}
-                    className={`method-card cursor-pointer ${paymentMethod === method.id ? 'selected' : ''}`}
+                    className={`method-card cursor-pointer ${
+                      paymentMethod === method.id ? "selected" : ""
+                    }`}
                     onClick={() => setPaymentMethod(method.id)}
                   >
                     <div className="flex items-center">
-                      <Radio 
-                        checked={paymentMethod === method.id} 
+                      <Radio
+                        checked={paymentMethod === method.id}
                         onChange={() => setPaymentMethod(method.id)}
                         size="small"
                       />
                       <div className="ml-2">
-                        <Typography variant="subtitle2">{method.name}</Typography>
+                        <Typography variant="subtitle2">
+                          {method.name}
+                        </Typography>
                         {method.id === PAYMENT_TYPES.CREDIT_CARD && (
                           <Typography variant="caption" color="textSecondary">
                             Visa, Mastercard, American Express
@@ -577,39 +695,69 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
                 ))}
               </div>
             </div>
-            
+
             {/* Champs de paiement */}
-            <div className="mt-4 fade-in" style={{ animationDelay: '0.3s' }}>
+            <div className="mt-4 fade-in" style={{ animationDelay: "0.3s" }}>
               {renderPaymentFields()}
             </div>
 
             {/* Section durée et montant */}
-            <div className="summary-card mb-6 fade-in" style={{ animationDelay: '0.1s' }}>
-              <Typography variant="subtitle1" className="font-bold mb-3 text-primary-600 dark:text-primary-400">
+            <div
+              className="summary-card mb-6 fade-in"
+              style={{ animationDelay: "0.1s" }}
+            >
+              <Typography
+                variant="subtitle1"
+                className="font-bold mb-3 text-primary-600 dark:text-primary-400"
+              >
                 Détails de l'abonnement
               </Typography>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
+                  <Typography
+                    variant="subtitle2"
+                    gutterBottom
+                    className="text-gray-600 dark:text-gray-300"
+                  >
                     Durée de souscription
                   </Typography>
                   <TextField
                     type="number"
                     value={months}
-                    onChange={(e) => setMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      // Déterminer le pas en fonction du type d'abonnement
+                      const step = getSubscriptionStep(pack.abonnement);
+                      // S'assurer que la valeur est un multiple du pas
+                      const newValue = parseInt(e.target.value) || step;
+                      const adjustedValue = Math.max(
+                        step,
+                        Math.round(newValue / step) * step
+                      );
+                      setMonths(adjustedValue);
+                    }}
                     InputProps={{
-                      endAdornment: <InputAdornment position="end">mois</InputAdornment>,
+                      endAdornment: (
+                        <InputAdornment position="end">mois</InputAdornment>
+                      ),
                     }}
                     fullWidth
-                    inputProps={{ min: 1 }}
+                    inputProps={{
+                      min: getSubscriptionStep(pack.abonnement),
+                      step: getSubscriptionStep(pack.abonnement),
+                    }}
                     size="small"
                   />
                 </div>
-                
-                {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) && (
+
+                {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                  paymentMethod === PAYMENT_TYPES.MOBILE_MONEY) && (
                   <div>
-                    <Typography variant="subtitle2" gutterBottom className="text-gray-600 dark:text-gray-300">
+                    <Typography
+                      variant="subtitle2"
+                      gutterBottom
+                      className="text-gray-600 dark:text-gray-300"
+                    >
                       Devise
                     </Typography>
                     <TextField
@@ -622,63 +770,104 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
                         MenuProps: {
                           PaperProps: {
                             sx: {
-                              bgcolor: isDarkMode ? '#1e283b' : 'white',
-                              color: isDarkMode ? 'white' : 'inherit',
-                              '& .MuiMenuItem-root:hover': {
-                                bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)'
-                              }
-                            }
-                          }
-                        }
+                              bgcolor: isDarkMode ? "#1e283b" : "white",
+                              color: isDarkMode ? "white" : "inherit",
+                              "& .MuiMenuItem-root:hover": {
+                                bgcolor: isDarkMode
+                                  ? "rgba(255, 255, 255, 0.08)"
+                                  : "rgba(0, 0, 0, 0.04)",
+                              },
+                            },
+                          },
+                        },
                       }}
                     >
                       {Object.keys(CURRENCIES).map((currencyCode) => (
-                        <MenuItem key={currencyCode} value={currencyCode}
-                        >
-                          {currencyCode} ({CURRENCIES[currencyCode].symbol}) - {CURRENCIES[currencyCode].name}
+                        <MenuItem key={currencyCode} value={currencyCode}>
+                          {currencyCode} ({CURRENCIES[currencyCode].symbol}) -{" "}
+                          {CURRENCIES[currencyCode].name}
                         </MenuItem>
                       ))}
                     </TextField>
                   </div>
                 )}
               </div>
-              
-              <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+
+              <div
+                className={`mt-4 p-3 rounded-lg ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-50"
+                }`}
+              >
                 <div className="flex justify-between items-center">
-                  <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300">
+                  <Typography
+                    variant="subtitle2"
+                    className="text-gray-600 dark:text-gray-300"
+                  >
                     Montant de base
                   </Typography>
                   <Typography variant="body2">
-                    {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY ? convertedAmount : totalAmount).toFixed(2)} {paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY ? CURRENCIES[selectedCurrency].symbol : CURRENCIES.USD.symbol}
+                    {(paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                    paymentMethod === PAYMENT_TYPES.MOBILE_MONEY
+                      ? convertedAmount
+                      : totalAmount
+                    ).toFixed(2)}{" "}
+                    {paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                    paymentMethod === PAYMENT_TYPES.MOBILE_MONEY
+                      ? CURRENCIES[selectedCurrency].symbol
+                      : CURRENCIES.USD.symbol}
                   </Typography>
                 </div>
                 {/* Afficher les frais uniquement si une méthode de paiement spécifique est sélectionnée et si les frais sont disponibles */}
-                {((paymentMethod === PAYMENT_TYPES.CREDIT_CARD && selectedCardOption) || 
-                  (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY && selectedMobileOption)) && 
-                  transactionFees !== null && feePercentage !== null && (
-                  <div className="flex justify-between items-center mt-2">
-                    <Typography variant="subtitle2" className="text-gray-600 dark:text-gray-300">
-                      Frais ({feePercentage.toFixed(1)}%)
-                    </Typography>
-                    <Typography variant="body2">
-                      {transactionFees.toFixed(2)} {paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY ? CURRENCIES[selectedCurrency].symbol : CURRENCIES.USD.symbol}
-                    </Typography>
-                  </div>
-                )}
+                {((paymentMethod === PAYMENT_TYPES.CREDIT_CARD &&
+                  selectedCardOption) ||
+                  (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY &&
+                    selectedMobileOption)) &&
+                  transactionFees !== null &&
+                  feePercentage !== null && (
+                    <div className="flex justify-between items-center mt-2">
+                      <Typography
+                        variant="subtitle2"
+                        className="text-gray-600 dark:text-gray-300"
+                      >
+                        Frais ({feePercentage.toFixed(1)}%)
+                      </Typography>
+                      <Typography variant="body2">
+                        {transactionFees.toFixed(2)}{" "}
+                        {paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                        paymentMethod === PAYMENT_TYPES.MOBILE_MONEY
+                          ? CURRENCIES[selectedCurrency].symbol
+                          : CURRENCIES.USD.symbol}
+                      </Typography>
+                    </div>
+                  )}
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                   <Typography variant="subtitle1" className="font-bold">
                     Total
                   </Typography>
-                  <Typography variant="subtitle1" color="primary" className="font-bold">
-                    {((paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY ? convertedAmount : totalAmount) + (transactionFees || 0)).toFixed(2)} {paymentMethod === PAYMENT_TYPES.CREDIT_CARD || paymentMethod === PAYMENT_TYPES.MOBILE_MONEY ? CURRENCIES[selectedCurrency].symbol : CURRENCIES.USD.symbol}
+                  <Typography
+                    variant="subtitle1"
+                    color="primary"
+                    className="font-bold"
+                  >
+                    {(
+                      (paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                      paymentMethod === PAYMENT_TYPES.MOBILE_MONEY
+                        ? convertedAmount
+                        : totalAmount) + (transactionFees || 0)
+                    ).toFixed(2)}{" "}
+                    {paymentMethod === PAYMENT_TYPES.CREDIT_CARD ||
+                    paymentMethod === PAYMENT_TYPES.MOBILE_MONEY
+                      ? CURRENCIES[selectedCurrency].symbol
+                      : CURRENCIES.USD.symbol}
                   </Typography>
                 </div>
               </div>
-              
+
               {pack?.sponsorName && (
                 <div className="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg text-yellow-800 dark:text-yellow-200">
                   <Typography variant="body2">
-                    Pour ce pack vous serez sous le parrainage de : <span className="font-semibold">{pack.sponsorName}</span>
+                    Pour ce pack vous serez sous le parrainage de :{" "}
+                    <span className="font-semibold">{pack.sponsorName}</span>
                   </Typography>
                 </div>
               )}
@@ -694,22 +883,30 @@ export default function RegistrationPaymentForm({ open, onClose, pack, onSubmit,
               type="submit"
               variant="contained"
               color="primary"
-              disabled={loading || localLoading || !formIsValid || 
-                (paymentMethod === PAYMENT_TYPES.CREDIT_CARD && (!selectedCardOption || transactionFees === null)) || 
-                (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY && (!selectedMobileOption || transactionFees === null))}
-              className={`${loading || localLoading || !formIsValid ? '' : 'pulse'}`}
-              sx={{ 
+              disabled={
+                loading ||
+                localLoading ||
+                !formIsValid ||
+                (paymentMethod === PAYMENT_TYPES.CREDIT_CARD &&
+                  (!selectedCardOption || transactionFees === null)) ||
+                (paymentMethod === PAYMENT_TYPES.MOBILE_MONEY &&
+                  (!selectedMobileOption || transactionFees === null))
+              }
+              className={`${
+                loading || localLoading || !formIsValid ? "" : "pulse"
+              }`}
+              sx={{
                 minWidth: 150,
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                borderRadius: "8px",
+                textTransform: "none",
+                fontWeight: "bold",
+                boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
               }}
             >
               {loading || localLoading ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
-                'Payer et créer mon compte'
+                "Payer et créer mon compte"
               )}
             </Button>
           </div>
