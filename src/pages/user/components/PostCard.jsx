@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -16,7 +16,9 @@ import {
   BuildingOfficeIcon,
   ArrowTopRightOnSquareIcon,
   PhoneIcon,
-  NewspaperIcon
+  NewspaperIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,12 +39,98 @@ export default function PostCard({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [mediaItems, setMediaItems] = useState([]);
   const commentInputRef = useRef(null);
+  
+  // Préparer les éléments média pour le carrousel
+  useEffect(() => {
+    const items = [];
+    
+    // Vérifier si l'image principale est déjà incluse dans les images
+    let mainImageIncluded = false;
+    
+    // Ajouter les images s'il y en a
+    if (post.images && post.images.length > 0) {
+      post.images.forEach((image, index) => {
+        // Vérifier si cette image est l'image principale
+        if (post.image_url && image.url === post.image_url) {
+          mainImageIncluded = true;
+        }
+        
+        items.push({
+          type: 'image',
+          url: image.url,
+          alt: `Image ${index + 1}`
+        });
+      });
+    }
+    
+    // Ajouter l'image principale seulement si elle n'est pas déjà incluse dans les images
+    if (post.image_url && !mainImageIncluded) {
+      // Ajouter au début du tableau
+      items.unshift({
+        type: 'image',
+        url: post.image_url,
+        alt: 'Image principale'
+      });
+    }
+    
+    // Vérifier si la vidéo principale est déjà incluse dans les vidéos
+    let mainVideoIncluded = false;
+    
+    // Ajouter les vidéos s'il y en a
+    if (post.videos && post.videos.length > 0) {
+      post.videos.forEach((video, index) => {
+        // Vérifier si cette vidéo est la vidéo principale
+        if (post.video_url && video.url === post.video_url) {
+          mainVideoIncluded = true;
+        }
+        
+        items.push({
+          type: 'video',
+          url: video.url,
+          isYoutube: video.url.includes('youtube'),
+          alt: `Vidéo ${index + 1}`
+        });
+      });
+    }
+    
+    // Ajouter la vidéo principale seulement si elle n'est pas déjà incluse dans les vidéos
+    if (post.video_url && !mainVideoIncluded) {
+      items.push({
+        type: 'video',
+        url: post.video_url,
+        isYoutube: post.video_url.includes('youtube'),
+        alt: 'Vidéo principale'
+      });
+    }
+    
+    setMediaItems(items);
+  }, [post]);
 
   // Formatage de la date
   const formatDate = (dateString) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
-    return format(date, 'dd MMMM yyyy à HH:mm', { locale: fr });
+    return format(date, "d MMMM yyyy à HH:mm", { locale: fr });
+  };
+  
+  // Navigation dans le carrousel de médias
+  const nextMedia = () => {
+    if (mediaItems.length > 1) {
+      setCurrentMediaIndex((prevIndex) =>
+        prevIndex === mediaItems.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  };
+
+  const prevMedia = () => {
+    if (mediaItems.length > 1) {
+      setCurrentMediaIndex((prevIndex) =>
+        prevIndex === 0 ? mediaItems.length - 1 : prevIndex - 1
+      );
+    }
   };
 
   // Gérer la soumission d'un commentaire
@@ -240,16 +328,16 @@ export default function PostCard({
         
         {renderTypeSpecificInfo()}
         
-        {/* Images */}
-        {post.images && post.images.length > 0 && (
-          <div className={`mt-3 relative ${post.images.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}>
+        {/* Carrousel de médias (images et vidéos) */}
+        {mediaItems.length > 0 && (
+          <div className="mt-3 relative">
             {/* Icône WhatsApp flottante */}
             {post.user?.phone && (
               <a
                 href={`https://wa.me/${post.user.phone.replace(/[^0-9]/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="absolute top-2 right-2 z-10 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg transition-all duration-200 transform hover:scale-110"
+                className="absolute top-2 right-2 z-20 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg transition-all duration-200 transform hover:scale-110"
                 title="Contacter via WhatsApp"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -257,56 +345,89 @@ export default function PostCard({
                 </svg>
               </a>
             )}
-            {post.images.slice(0, 4).map((image, index) => (
-              <div 
-                key={index} 
-                className="overflow-hidden"
-              >
+            
+            {/* Affichage du média actuel */}
+            <div className="relative overflow-hidden rounded-lg">
+              {mediaItems[currentMediaIndex]?.type === 'image' ? (
                 <img
-                  src={image.url}
-                  alt={`Image ${index + 1}`}
+                  src={mediaItems[currentMediaIndex].url}
+                  alt={mediaItems[currentMediaIndex].alt || `Média ${currentMediaIndex + 1}`}
                   className="w-full h-auto object-cover cursor-pointer hover:opacity-90 transition-opacity duration-300"
                   onClick={onViewDetails}
                 />
-                {post.images.length > 4 && index === 3 && (
-                  <div 
-                    className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
-                    onClick={onViewDetails}
-                  >
-                    <span className="text-white text-xl font-bold">+{post.images.length - 4}</span>
-                  </div>
-                )}
+              ) : mediaItems[currentMediaIndex]?.type === 'video' && (
+                <div className="relative pt-[56.25%]">
+                  {mediaItems[currentMediaIndex].isYoutube ? (
+                    <iframe
+                      src={mediaItems[currentMediaIndex].url.includes('watch?v=') 
+                        ? mediaItems[currentMediaIndex].url.replace('watch?v=', 'embed/') 
+                        : mediaItems[currentMediaIndex].url}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="rounded-lg w-full h-full absolute top-0 left-0"
+                      title="Vidéo"
+                    ></iframe>
+                  ) : (
+                    <video 
+                      controls 
+                      className="rounded-lg w-full h-full absolute top-0 left-0"
+                      src={mediaItems[currentMediaIndex].url}
+                    >
+                      Votre navigateur ne supporte pas la lecture de vidéos.
+                    </video>
+                  )}
+                </div>
+              )}
+              
+              {/* Étiquette indiquant le type de média */}
+              <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs font-medium px-2 py-1 rounded z-10">
+                {mediaItems[currentMediaIndex]?.type === 'image' ? 'Image' : 'Vidéo'} {currentMediaIndex + 1}/{mediaItems.length}
               </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Vidéo */}
-        {post.video_url && (
-          <div className="mt-3 relative">
-            {/* Icône WhatsApp flottante sur la vidéo */}
-            {post.user?.phone && !post.images?.length && (
-              <a
-                href={`https://wa.me/${post.user.phone.replace(/[^0-9]/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute top-2 right-2 z-10 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg transition-all duration-200 transform hover:scale-110"
-                title="Contacter via WhatsApp"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-              </a>
-            )}
-            <div className="relative pt-[56.25%]">
-              <iframe
-                src={post.video_url.replace('watch?v=', 'embed/')}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="rounded-lg w-full h-full absolute top-0 left-0"
-              ></iframe>
             </div>
+            
+            {/* Boutons de navigation du carrousel */}
+            {mediaItems.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevMedia();
+                  }}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1.5 hover:bg-opacity-70 transition-all z-10"
+                  aria-label="Média précédent"
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextMedia();
+                  }}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1.5 hover:bg-opacity-70 transition-all z-10"
+                  aria-label="Média suivant"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              </>
+            )}
+            
+            {/* Indicateurs de position dans le carrousel */}
+            {mediaItems.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 z-10">
+                {mediaItems.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentMediaIndex(index);
+                    }}
+                    className={`w-2 h-2 rounded-full ${index === currentMediaIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                    aria-label={`Aller au média ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
         

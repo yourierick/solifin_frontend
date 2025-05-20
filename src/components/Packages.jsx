@@ -105,7 +105,7 @@ const decorationRightVariants = {
   },
 };
 
-// Définition des couleurs par catégorie
+// Définition des couleurs par catégorie - Utilisation de la palette verte
 const categoryColors = {
   // Couleurs pour le mode clair
   light: {
@@ -120,66 +120,127 @@ const categoryColors = {
       gradientTo: "to-green-600",
       lightBg: "#ffffff",
       darkBg: "#1f2937",
-    },
-    Débutant: {
-      bg: "bg-blue-100",
-      border: "border-blue-300",
-      highlight: "bg-blue-600",
-      hover: "hover:bg-blue-700",
-      icon: "text-blue-500",
-      accent: "text-blue-600",
-      gradientFrom: "from-blue-500",
-      gradientTo: "to-blue-600",
-      lightBg: "#0066cc",
-      darkBg: "#003366",
-    },
-    Intermédiaire: {
-      bg: "bg-purple-100",
-      border: "border-purple-300",
-      highlight: "bg-purple-600",
-      hover: "hover:bg-purple-700",
-      icon: "text-purple-500",
-      accent: "text-purple-600",
-      gradientFrom: "from-purple-500",
-      gradientTo: "to-purple-600",
-      lightBg: "#8A2BE2",
-      darkBg: "#4B0082",
-    },
-    Expert: {
-      bg: "bg-amber-100",
-      border: "border-amber-300",
-      highlight: "bg-amber-600",
-      hover: "hover:bg-amber-700",
-      icon: "text-amber-500",
-      accent: "text-amber-600",
-      gradientFrom: "from-amber-500",
-      gradientTo: "to-amber-600",
-      lightBg: "#F59E0B",
-      darkBg: "#B45309",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
     Premium: {
-      bg: "bg-indigo-100",
-      border: "border-indigo-300",
-      highlight: "bg-indigo-600",
-      hover: "hover:bg-indigo-700",
-      icon: "text-indigo-500",
-      accent: "text-indigo-600",
-      gradientFrom: "from-indigo-500",
-      gradientTo: "to-indigo-600",
-      lightBg: "#4F46E5",
-      darkBg: "#3730A3",
+      bg: "bg-white",
+      border: "border-gray-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+      discount: "75% OFF",
+    },
+    Business: {
+      bg: "bg-white",
+      border: "border-gray-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#4f46e5", // Couleur violette pour le bouton du pack populaire
+      buttonHover: "#4338ca",
+      discount: "71% OFF",
+      popular: true,
+    },
+    "Cloud Startup": {
+      bg: "bg-white",
+      border: "border-gray-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+      discount: "71% OFF",
+    },
+    // Conserver les autres catégories avec la palette verte
+    Débutant: {
+      bg: "bg-green-50",
+      border: "border-green-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+    },
+    Intermédiaire: {
+      bg: "bg-green-50",
+      border: "border-green-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+    },
+    Expert: {
+      bg: "bg-green-50",
+      border: "border-green-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
     VIP: {
-      bg: "bg-rose-100",
-      border: "border-rose-300",
-      highlight: "bg-rose-600",
-      hover: "hover:bg-rose-700",
-      icon: "text-rose-500",
-      accent: "text-rose-600",
-      gradientFrom: "from-rose-500",
-      gradientTo: "to-rose-600",
-      lightBg: "#E11D48",
-      darkBg: "#9F1239",
+      bg: "bg-green-50",
+      border: "border-green-200",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-500",
+      accent: "text-green-600",
+      gradientFrom: "from-green-500",
+      gradientTo: "to-green-600",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#e6f7e6",
+      badgeText: "#22c55e",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
   },
   // Couleurs pour le mode sombre
@@ -195,56 +256,119 @@ const categoryColors = {
       gradientTo: "to-green-700",
       lightBg: "#ffffff",
       darkBg: "#1f2937",
-    },
-    Débutant: {
-      bg: "bg-blue-900/40",
-      border: "border-blue-700",
-      highlight: "bg-blue-600",
-      hover: "hover:bg-blue-700",
-      icon: "text-blue-400",
-      accent: "text-blue-400",
-      gradientFrom: "from-blue-600",
-      gradientTo: "to-blue-700",
-    },
-    Intermédiaire: {
-      bg: "bg-purple-900/40",
-      border: "border-purple-700",
-      highlight: "bg-purple-600",
-      hover: "hover:bg-purple-700",
-      icon: "text-purple-400",
-      accent: "text-purple-400",
-      gradientFrom: "from-purple-600",
-      gradientTo: "to-purple-700",
-    },
-    Expert: {
-      bg: "bg-amber-900/40",
-      border: "border-amber-700",
-      highlight: "bg-amber-600",
-      hover: "hover:bg-amber-700",
-      icon: "text-amber-400",
-      accent: "text-amber-400",
-      gradientFrom: "from-amber-600",
-      gradientTo: "to-amber-700",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
     Premium: {
-      bg: "bg-indigo-900/40",
-      border: "border-indigo-700",
-      highlight: "bg-indigo-600",
-      hover: "hover:bg-indigo-700",
-      icon: "text-indigo-400",
-      accent: "text-indigo-400",
-      gradientFrom: "from-indigo-600",
-      gradientTo: "to-indigo-700",
+      bg: "#1f2937",
+      border: "border-gray-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+      discount: "75% OFF",
+    },
+    Business: {
+      bg: "#1f2937",
+      border: "border-gray-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#4f46e5", // Couleur violette pour le bouton du pack populaire
+      buttonHover: "#4338ca",
+      discount: "71% OFF",
+      popular: true,
+    },
+    "Cloud Startup": {
+      bg: "#1f2937",
+      border: "border-gray-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      lightBg: "#ffffff",
+      darkBg: "#1f2937",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+      discount: "71% OFF",
+    },
+    // Conserver les autres catégories avec la palette verte
+    Débutant: {
+      bg: "bg-green-900/40",
+      border: "border-green-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+    },
+    Intermédiaire: {
+      bg: "bg-green-900/40",
+      border: "border-green-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
+    },
+    Expert: {
+      bg: "bg-green-900/40",
+      border: "border-green-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
     VIP: {
-      bg: "bg-rose-900/40",
-      border: "border-rose-700",
-      highlight: "bg-rose-600",
-      hover: "hover:bg-rose-700",
-      icon: "text-rose-400",
-      accent: "text-rose-400",
-      gradientFrom: "from-rose-600",
-      gradientTo: "to-rose-700",
+      bg: "bg-green-900/40",
+      border: "border-green-700",
+      highlight: "bg-green-600",
+      hover: "hover:bg-green-700",
+      icon: "text-green-400",
+      accent: "text-green-400",
+      gradientFrom: "from-green-600",
+      gradientTo: "to-green-700",
+      badgeBg: "#064e3b",
+      badgeText: "#4ade80",
+      buttonBg: "#22c55e",
+      buttonHover: "#16a34a",
     },
   },
 };
@@ -325,6 +449,20 @@ export default function Packages() {
       </Container>
     );
   }
+
+  // Fonction pour obtenir le texte de réduction pour un pack
+  const getDiscountText = (category) => {
+    const mode = isDarkMode ? "dark" : "light";
+    const colorScheme = categoryColors[mode][category] || categoryColors[mode].default;
+    return colorScheme.discount || "";
+  };
+
+  // Fonction pour déterminer si un pack est populaire
+  const isPopular = (category) => {
+    const mode = isDarkMode ? "dark" : "light";
+    const colorScheme = categoryColors[mode][category] || categoryColors[mode].default;
+    return colorScheme.popular || false;
+  };
 
   return (
     <Container
@@ -495,148 +633,185 @@ export default function Packages() {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {categoryPacks.map((pack) => (
-              <Grid item xs={12} sm={6} md={4} key={pack.id}>
-                <Card
-                  component={motion.div}
-                  variants={itemVariants}
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "translateY(-5px)",
-                      boxShadow: 4,
-                    },
-                    bgcolor: isDarkMode
-                      ? getColorScheme(pack.categorie).darkBg
-                      : getColorScheme(pack.categorie).lightBg,
-                    color: "white",
-                    border: "none",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    position: "relative",
-                  }}
-                >
-                  {/* En-tête */}
-                  <Box
+            {categoryPacks.map((pack) => {
+              // Récupérer la catégorie du pack
+              const category = pack.categorie || "default";
+              // Récupérer le mode (clair ou sombre)
+              const mode = isDarkMode ? "dark" : "light";
+              // Récupérer le schéma de couleurs pour cette catégorie
+              const colorScheme = categoryColors[mode][category] || categoryColors[mode].default;
+              // Vérifier si le pack est populaire
+              const isPackPopular = isPopular(category);
+              // Récupérer le texte de réduction pour ce pack
+              const discountText = getDiscountText(category);
+              
+              return (
+                <Grid item xs={12} sm={6} md={4} key={pack.id}>
+                  <Card
+                    component={motion.div}
+                    variants={itemVariants}
                     sx={{
-                      p: 2.5,
-                      background: isDarkMode
-                        ? `${getColorScheme(
-                            pack.categorie
-                          ).gradientFrom.replace("from-", "")}`
-                        : `${getColorScheme(
-                            pack.categorie
-                          ).gradientFrom.replace("from-", "")}`,
-                      color: "white",
-                      borderTopLeftRadius: "8px",
-                      borderTopRightRadius: "8px",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        transform: "translateY(-8px)",
+                        boxShadow: isPackPopular ? 12 : 6,
+                      },
+                      bgcolor: isDarkMode ? "#1f2937" : "white",
+                      border: isPackPopular
+                        ? isDarkMode
+                          ? "2px solid #4f46e5"
+                          : "2px solid #4f46e5"
+                        : isDarkMode
+                          ? "1px solid rgba(255, 255, 255, 0.1)"
+                          : "1px solid rgba(0, 0, 0, 0.05)",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      position: "relative",
                     }}
                   >
-                    <Typography
-                      variant="h5"
-                      component="h5"
-                      sx={{
-                        fontWeight: 600,
-                        mb: 0.5,
-                        color: isDarkMode ? "#fff" : "black",
-                      }}
-                    >
-                      {pack.name}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        opacity: 0.9,
-                        color: isDarkMode ? "#fff" : "black",
-                      }}
-                    >
-                      {pack.categorie || "Pack standard"}
-                    </Typography>
-                  </Box>
+                    {/* Badge de réduction */}
+                    {discountText && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 12,
+                          right: 12,
+                          bgcolor: colorScheme.badgeBg,
+                          color: colorScheme.badgeText,
+                          fontWeight: 600,
+                          fontSize: "0.75rem",
+                          py: 0.5,
+                          px: 1.5,
+                          borderRadius: 1,
+                          zIndex: 1,
+                        }}
+                      >
+                        {discountText}
+                      </Box>
+                    )}
 
-                  <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                    {/* Badge Populaire */}
+                    {isPackPopular && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 12,
+                          left: 12,
+                          bgcolor: "#4f46e5",
+                          color: "white",
+                          fontWeight: 600,
+                          fontSize: "0.75rem",
+                          py: 0.5,
+                          px: 1.5,
+                          borderRadius: 1,
+                          zIndex: 1,
+                        }}
+                      >
+                        Populaire
+                      </Box>
+                    )}
+
                     <Box
                       sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                        pb: 2,
+                        p: 2.5,
+                        pt: isPackPopular ? 4 : 2.5,
                         borderBottom: isDarkMode
                           ? "1px solid rgba(255, 255, 255, 0.08)"
                           : "1px solid rgba(0, 0, 0, 0.05)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
                       }}
                     >
                       <Typography
-                        variant="subtitle1"
-                        color={
-                          isDarkMode
-                            ? "rgba(255, 255, 255, 0.7)"
-                            : "text.secondary"
-                        }
-                      >
-                        À partir de
-                      </Typography>
-                      <Typography
-                        variant="h4"
+                        variant="h5"
+                        component="h3"
                         sx={{
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: isDarkMode ? "white" : "black",
+                          mb: 1,
                         }}
                       >
-                        {pack.price}$
+                        {pack.name}
                       </Typography>
-                    </Box>
-
-                    <Box sx={{ mb: 2 }}>
                       <Typography
-                        variant="subtitle2"
-                        gutterBottom
-                        sx={{ fontWeight: 600 }}
+                        variant="body2"
+                        sx={{
+                          color: isDarkMode ? "rgba(255, 255, 255, 0.7)" : "text.secondary",
+                          mb: 2,
+                        }}
                       >
-                        Type d'abonnement
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pack.abonnement === "mensuel"
-                          ? "Mensuel"
-                          : pack.abonnement === "trimestriel"
-                          ? "Trimestriel (tous les 3 mois)"
-                          : pack.abonnement === "semestriel"
-                          ? "Semestriel (tous les 6 mois)"
-                          : pack.abonnement === "annuel"
-                          ? "Annuel (tous les 12 mois)"
-                          : pack.abonnement}
+                        {pack.description}
                       </Typography>
                     </Box>
 
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
-                    >
-                      {pack.description}
-                    </Typography>
+                    <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          mb: 2,
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "baseline", mb: 1 }}>
+                          <Typography
+                            variant="h3"
+                            sx={{
+                              fontWeight: 700,
+                              color: isDarkMode ? "white" : "black",
+                              mr: 1,
+                            }}
+                          >
+                            {pack.price}$
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color={
+                              isDarkMode
+                                ? "rgba(255, 255, 255, 0.7)"
+                                : "text.secondary"
+                            }
+                          >
+                            / {pack.abonnement === "mensuel"
+                              ? "mois"
+                              : pack.abonnement === "trimestriel"
+                              ? "trimestre"
+                              : pack.abonnement === "semestriel"
+                              ? "semestre"
+                              : pack.abonnement === "annuel"
+                              ? "an"
+                              : pack.abonnement}
+                          </Typography>
+                        </Box>
 
-                    {pack.avantages && pack.avantages.length > 0 && (
-                      <>
                         <Typography
-                          variant="subtitle2"
-                          gutterBottom
-                          sx={{ fontWeight: 600 }}
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 3 }}
                         >
-                          Avantages inclus
+                          Facturation {pack.abonnement === "mensuel"
+                            ? "mensuelle"
+                            : pack.abonnement === "trimestriel"
+                            ? "trimestrielle"
+                            : pack.abonnement === "semestriel"
+                            ? "semestrielle"
+                            : pack.abonnement === "annuel"
+                            ? "annuelle"
+                            : pack.abonnement}
                         </Typography>
+                      </Box>
+
+                      {pack.avantages && pack.avantages.length > 0 && (
                         <List disablePadding>
                           {pack.avantages.map((avantage, index) => (
-                            <ListItem key={index} disablePadding sx={{ mb: 1 }}>
+                            <ListItem key={index} disablePadding sx={{ mb: 1.5 }}>
                               <ListItemIcon
                                 sx={{
-                                  minWidth: "32px",
-                                  color: "primary.main",
+                                  minWidth: "28px",
+                                  color: colorScheme.buttonBg,
                                 }}
                               >
                                 <CheckIcon fontSize="small" />
@@ -645,34 +820,40 @@ export default function Packages() {
                                 primary={avantage}
                                 primaryTypographyProps={{
                                   variant: "body2",
-                                  color: "text.secondary",
+                                  color: isDarkMode ? "rgba(255, 255, 255, 0.9)" : "text.primary",
+                                  fontWeight: 500,
                                 }}
                               />
                             </ListItem>
                           ))}
                         </List>
-                      </>
-                    )}
-                  </CardContent>
-                  <CardActions sx={{ p: 2.5, pt: 0 }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleSubscribeClick(pack)}
-                      sx={{
-                        py: 1,
-                        fontWeight: 500,
-                        textTransform: "none",
-                      }}
-                      className={`${loading ? "" : "pulse"}`}
-                    >
-                      Souscrire Maintenant
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
+                      )}
+                    </CardContent>
+                    <CardActions sx={{ p: 2.5, pt: 0 }}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => handleSubscribeClick(pack)}
+                        sx={{
+                          py: 1.5,
+                          fontWeight: 600,
+                          textTransform: "none",
+                          fontSize: "1rem",
+                          bgcolor: colorScheme.buttonBg,
+                          "&:hover": {
+                            bgcolor: colorScheme.buttonHover,
+                          },
+                          borderRadius: 1.5,
+                        }}
+                        className={`${loading ? "" : "pulse"}`}
+                      >
+                        Souscrire Maintenant
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         </Box>
       ))}

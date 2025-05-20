@@ -32,11 +32,13 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import useWithdrawalRequests from '../hooks/useWithdrawalRequests';
+import usePendingTestimonials from '../hooks/usePendingTestimonials';
 import {
   ChartBarIcon,
   UsersIcon,
@@ -59,6 +61,8 @@ import {
   CheckBadgeIcon,
   ListBulletIcon,
   CreditCardIcon,
+  ChatBubbleLeftRightIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -71,6 +75,8 @@ const navigation = [
   { name: 'Mes packs', href: '/admin/mespacks', icon: CubeIcon },
   { name: 'Commissions', href: '/admin/commissions', icon: CreditCardIcon },
   { name: 'Finances', href: '/admin/finances', icon: ChartBarIcon },
+  { name: 'Témoignages', href: '/admin/testimonials', icon: ChatBubbleLeftRightIcon },
+  { name: 'FAQ', href: '/admin/faqs', icon: QuestionMarkCircleIcon },
   { name: 'Validations', href: '/admin/validations', icon: CheckBadgeIcon },
   { name: 'Paramètres', href: '/admin/settings', icon: Cog6ToothIcon },
 ];
@@ -89,7 +95,11 @@ export default function AdminDashboardLayout() {
   const { logout, user } = useAuth();
   const [userData, setUserData] = useState(null);
   const { pendingCount } = useWithdrawalRequests();
+  const { pendingCount: pendingTestimonialsCount } = usePendingTestimonials();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const tooltipTargetRef = useRef(null);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -130,8 +140,9 @@ export default function AdminDashboardLayout() {
     const hasChildren = item.children && item.children.length > 0;
     const isSubmenuOpen = openSubmenu === item.name;
     
-    // Vérifier si c'est le lien des demandes de retrait
+    // Vérifier si c'est le lien des demandes de retrait ou des témoignages
     const isWithdrawalRequests = item.href === '/admin/withdrawal-requests';
+    const isTestimonials = item.href === '/admin/testimonials';
 
     if (hasChildren) {
       return (
@@ -180,6 +191,18 @@ export default function AdminDashboardLayout() {
       <Link
         key={item.name}
         to={item.href}
+        ref={showTooltip === item.name ? tooltipTargetRef : null}
+        onMouseEnter={(e) => {
+          if (isSidebarCollapsed && !isMobile) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setTooltipPosition({
+              top: rect.top - 10,
+              left: rect.right + 15
+            });
+            setShowTooltip(item.name);
+          }
+        }}
+        onMouseLeave={() => setShowTooltip(null)}
         className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
           isActive
             ? isDarkMode
@@ -197,6 +220,11 @@ export default function AdminDashboardLayout() {
               {pendingCount}
             </span>
           )}
+          {isTestimonials && pendingTestimonialsCount > 0 && (
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+              {pendingTestimonialsCount}
+            </span>
+          )}
         </div>
         {(!isSidebarCollapsed || isMobile) && (
           <div className="ml-3 flex items-center">
@@ -206,7 +234,38 @@ export default function AdminDashboardLayout() {
                 {pendingCount}
               </span>
             )}
+            {isTestimonials && pendingTestimonialsCount > 0 && isSidebarCollapsed && !isMobile && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                {pendingTestimonialsCount}
+              </span>
+            )}
           </div>
+        )}
+        {isSidebarCollapsed && !isMobile && showTooltip === item.name && createPortal(
+          <div className="fixed z-[9999] px-3 py-2 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap ${
+            isDarkMode ? 'bg-gray-800 text-white border border-primary-600' : 'bg-white text-black border border-primary-600'
+          } animate-slideUpFade tooltip-content" style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+            color: isDarkMode ? 'white' : 'black',
+            opacity: 1
+          }}>
+            {item.name}
+            <div style={{ 
+              position: 'absolute',
+              left: '-4px',
+              top: '50%',
+              transform: 'translateY(-50%) rotate(45deg)',
+              width: '8px',
+              height: '8px',
+              backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+              borderLeft: '1px solid #16a34a',
+              borderBottom: '1px solid #16a34a',
+              opacity: 1
+            }}></div>
+          </div>,
+          document.body
         )}
       </Link>
     );
@@ -263,10 +322,10 @@ export default function AdminDashboardLayout() {
 
       {/* Sidebar desktop */}
       <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
-        isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
+        isSidebarCollapsed ? 'lg:w-24' : 'lg:w-72'
       } transition-all duration-300`}>
         <div 
-          className={`flex grow flex-col gap-y-5 border-r px-6 pb-4 overflow-y-auto transition-all duration-300 ${
+          className={`flex grow flex-col gap-y-5 border-r ${isSidebarCollapsed ? 'px-4' : 'px-6'} pb-4 overflow-y-auto transition-all duration-300 ${
             isDarkMode
               ? 'bg-gray-800 border-gray-700'
               : 'bg-white border-gray-200'
@@ -317,6 +376,18 @@ export default function AdminDashboardLayout() {
               <li className="mt-auto">
                 <button
                   onClick={handleLogout}
+                  ref={showTooltip === 'logout' ? tooltipTargetRef : null}
+                  onMouseEnter={(e) => {
+                    if (isSidebarCollapsed) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipPosition({
+                        top: rect.top - 10,
+                        left: rect.right + 15
+                      });
+                      setShowTooltip('logout');
+                    }
+                  }}
+                  onMouseLeave={() => setShowTooltip(null)}
                   className={`flex w-full items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium ${
                     isDarkMode
                       ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
@@ -325,6 +396,32 @@ export default function AdminDashboardLayout() {
                 >
                   <ArrowLeftOnRectangleIcon className="h-6 w-6" />
                   {!isSidebarCollapsed && <span>Déconnexion</span>}
+                  {isSidebarCollapsed && showTooltip === 'logout' && createPortal(
+                    <div className="fixed z-[9999] px-3 py-2 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap ${
+                      isDarkMode ? 'bg-gray-800 text-white border border-primary-600' : 'bg-white text-black border border-primary-600'
+                    } animate-slideUpFade tooltip-content" style={{
+                      top: `${tooltipPosition.top}px`,
+                      left: `${tooltipPosition.left}px`,
+                      backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                      color: isDarkMode ? 'white' : 'black',
+                      opacity: 1
+                    }}>
+                      Déconnexion
+                      <div style={{ 
+                        position: 'absolute',
+                        left: '-4px',
+                        top: '50%',
+                        transform: 'translateY(-50%) rotate(45deg)',
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                        borderLeft: '1px solid #16a34a',
+                        borderBottom: '1px solid #16a34a',
+                        opacity: 1
+                      }}></div>
+                    </div>,
+                    document.body
+                  )}
                 </button>
               </li>
             </ul>
@@ -333,7 +430,7 @@ export default function AdminDashboardLayout() {
       </div>
 
       {/* Contenu principal */}
-      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} transition-all duration-300`}>
+      <div className={`${isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-72'} transition-all duration-300`}>
         <div className={`sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'

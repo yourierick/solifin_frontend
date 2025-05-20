@@ -38,11 +38,13 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import GlobalStatsModal from '../components/GlobalStatsModal';
+import TestimonialPromptWrapper from '../components/TestimonialPromptWrapper';
 import {
   HomeIcon,
   UserIcon,
@@ -66,6 +68,7 @@ import {
   MapIcon,
   EnvelopeIcon,
   UserPlusIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -78,7 +81,8 @@ const navigation = [
   { name: 'Mes invitations', href: '/dashboard/invitations', icon: UserPlusIcon },
   { name: 'Mes statistiques', href: '/dashboard/stats', icon: ChartBarIcon },
   { name: "Fil d'actualités", href: '/dashboard/news-feed', icon: NewspaperIcon },
-  { name: "Ma page", href: "/dashboard/my-page", icon:  NewspaperIcon}
+  { name: "Ma page", href: "/dashboard/my-page", icon: NewspaperIcon},
+  { name: "FAQ", href: "/dashboard/faq", icon: QuestionMarkCircleIcon }
 ];
 
 export default function UserDashboardLayout() {
@@ -86,7 +90,44 @@ export default function UserDashboardLayout() {
   const [statsModalOpen, setStatsModalOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const [sidebarStyle, setSidebarStyle] = useState({
+    overflowY: 'auto',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none'
+  });
+  const [showTooltip, setShowTooltip] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const tooltipTargetRef = useRef(null);
   const { isDarkMode, toggleTheme, isSidebarCollapsed, toggleSidebar } = useTheme();
+  
+  // Styles CSS pour personnaliser l'ascenseur
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: ${isDarkMode ? 'rgba(55, 65, 81, 0.3)' : 'rgba(229, 231, 235, 0.5)'};
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: ${isDarkMode ? 'rgba(75, 85, 99, 0.8)' : 'rgba(156, 163, 175, 0.8)'};
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: ${isDarkMode ? 'rgba(55, 65, 81, 0.9)' : 'rgba(107, 114, 128, 0.9)'};
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    return () => {
+      document.head.removeChild(styleEl);
+    };
+  }, [isDarkMode]);
   const location = useLocation();
   const { logout, user } = useAuth();
 
@@ -145,7 +186,7 @@ export default function UserDashboardLayout() {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-4 custom-scrollbar">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -163,7 +204,7 @@ export default function UserDashboardLayout() {
                 }`}
               >
                 <item.icon className="h-5 w-5" />
-                {!isSidebarCollapsed && <span className="ml-3">{item.name}</span>}
+                <span className="ml-3">{item.name}</span>
               </Link>
             );
           })}
@@ -180,20 +221,33 @@ export default function UserDashboardLayout() {
             }`}
           >
             <ArrowLeftOnRectangleIcon className="h-6 w-6" />
-            {!isSidebarCollapsed && <span>Déconnexion</span>}
+            <span>Déconnexion</span>
           </button>
         </div>
       </motion.div>
 
       {/* Sidebar desktop */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${
-        isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
-      } transition-all duration-300`}>
-        <div className={`flex grow flex-col gap-y-5 overflow-y-auto border-r px-6 pb-4 ${
-          isDarkMode
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${isSidebarCollapsed ? 'lg:w-24' : 'lg:w-72'} transition-all duration-300`}>
+        <div 
+          className={`flex grow flex-col gap-y-5 border-r ${isSidebarCollapsed ? 'px-4' : 'px-6'} pb-4 overflow-y-auto transition-all duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+          ref={sidebarRef}
+          style={sidebarStyle}
+          onMouseEnter={() => {
+            // Vérifier si le défilement est nécessaire
+            if (sidebarRef.current && sidebarRef.current.scrollHeight > sidebarRef.current.clientHeight) {
+              setSidebarStyle({
+                overflowY: 'auto',
+                scrollbarWidth: 'thin',
+                msOverflowStyle: 'auto'
+              });
+            }
+          }}
+          onMouseLeave={() => setSidebarStyle({
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          })}
+        >
           <div className="flex h-16 shrink-0 items-center justify-between">
             <Link to="/dashboard" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -208,17 +262,17 @@ export default function UserDashboardLayout() {
               )}
             </Link>
           </div>
-          <nav className="flex flex-1 flex-col">
+          <nav className="flex flex-1 flex-col custom-scrollbar">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
                 <ul role="list" className="-mx-2 space-y-1">
                   {navigation.map((item) => {
                     const isActive = location.pathname === item.href;
                     return (
-                      <li key={item.name}>
+                      <li key={item.name} className="relative">
                         <Link
                           to={item.href}
-                          className={`flex items-center gap-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                          className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                             isActive
                               ? isDarkMode
                                 ? 'bg-gray-700 text-white'
@@ -227,9 +281,49 @@ export default function UserDashboardLayout() {
                               ? 'text-gray-300 hover:bg-gray-700'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}
+                          ref={showTooltip === item.name ? tooltipTargetRef : null}
+                          onMouseEnter={(e) => {
+                            if (isSidebarCollapsed) {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltipPosition({
+                                top: rect.top - 10,
+                                left: rect.right + 15
+                              });
+                              setShowTooltip(item.name);
+                            }
+                          }}
+                          onMouseLeave={() => setShowTooltip(null)}
                         >
-                          <item.icon className="h-5 w-5" />
-                          {!isSidebarCollapsed && <span>{item.name}</span>}
+                          <div className="relative">
+                            <item.icon className={`h-5 w-5 ${location.pathname === item.href && !isDarkMode ? 'text-primary-600' : ''}`} />
+                          </div>
+                          {!isSidebarCollapsed && <span className="ml-3">{item.name}</span>}
+                          {isSidebarCollapsed && showTooltip === item.name && createPortal(
+                            <div className="fixed z-[9999] px-3 py-2 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap ${
+                              isDarkMode ? 'bg-gray-800 text-white border border-primary-600' : 'bg-white text-black border border-primary-600'
+                            } animate-slideUpFade tooltip-content" style={{
+                              top: `${tooltipPosition.top}px`,
+                              left: `${tooltipPosition.left}px`,
+                              backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                              color: isDarkMode ? 'white' : 'black',
+                              opacity: 1
+                            }}>
+                              {item.name}
+                              <div style={{ 
+                                position: 'absolute',
+                                left: '-4px',
+                                top: '50%',
+                                transform: 'translateY(-50%) rotate(45deg)',
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                                borderLeft: '1px solid #16a34a',
+                                borderBottom: '1px solid #16a34a',
+                                opacity: 1
+                              }}></div>
+                            </div>,
+                            document.body
+                          )}
                         </Link>
                       </li>
                     );
@@ -244,9 +338,47 @@ export default function UserDashboardLayout() {
                       ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
+                  ref={showTooltip === 'logout' ? tooltipTargetRef : null}
+                  onMouseEnter={(e) => {
+                    if (isSidebarCollapsed) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipPosition({
+                        top: rect.top - 10,
+                        left: rect.right + 15
+                      });
+                      setShowTooltip('logout');
+                    }
+                  }}
+                  onMouseLeave={() => setShowTooltip(null)}
                 >
                   <ArrowLeftOnRectangleIcon className="h-6 w-6" />
                   {!isSidebarCollapsed && <span>Déconnexion</span>}
+                  {isSidebarCollapsed && showTooltip === 'logout' && createPortal(
+                    <div className="fixed z-[9999] px-3 py-2 rounded-lg shadow-xl text-sm font-medium whitespace-nowrap ${
+                      isDarkMode ? 'bg-gray-800 text-white border border-primary-600' : 'bg-white text-black border border-primary-600'
+                    } animate-slideUpFade tooltip-content" style={{
+                      top: `${tooltipPosition.top}px`,
+                      left: `${tooltipPosition.left}px`,
+                      backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                      color: isDarkMode ? 'white' : 'black',
+                      opacity: 1
+                    }}>
+                      Déconnexion
+                      <div style={{ 
+                        position: 'absolute',
+                        left: '-4px',
+                        top: '50%',
+                        transform: 'translateY(-50%) rotate(45deg)',
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: isDarkMode ? 'rgb(31, 41, 55)' : 'white',
+                        borderLeft: '1px solid #16a34a',
+                        borderBottom: '1px solid #16a34a',
+                        opacity: 1
+                      }}></div>
+                    </div>,
+                    document.body
+                  )}
                 </button>
               </li>
             </ul>
@@ -255,7 +387,7 @@ export default function UserDashboardLayout() {
       </div>
 
       {/* Contenu principal */}
-      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} transition-all duration-300`}>
+      <div className={`${isSidebarCollapsed ? 'lg:pl-24' : 'lg:pl-72'} transition-all duration-300`}>
         <div className={`sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 ${
           isDarkMode
             ? 'bg-gray-800 border-gray-700'
@@ -405,6 +537,9 @@ export default function UserDashboardLayout() {
         open={statsModalOpen}
         onClose={() => setStatsModalOpen(false)}
       />
+      
+      {/* Composant d'invitation à témoigner */}
+      <TestimonialPromptWrapper />
     </div>
   );
 } 

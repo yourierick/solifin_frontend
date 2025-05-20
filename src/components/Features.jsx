@@ -12,32 +12,32 @@ import { useTheme } from '../contexts/ThemeContext';
 const features = [
   {
     name: 'Gains Exponentiels',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    description: 'Profitez d’un système de rémunération innovant qui vous permet d’accumuler des commissions sur plusieurs niveaux de parrainage, maximisant ainsi vos revenus à chaque nouvelle adhésion dans votre réseau.',
     icon: CurrencyDollarIcon,
   },
   {
     name: 'Communauté Solidaire',
-    description: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    description: 'Rejoignez une communauté dynamique où l’entraide et le partage sont au cœur de nos valeurs. Ensemble, nous créons un réseau solide où chacun contribue à la réussite collective tout en atteignant ses propres objectifs.',
     icon: UserGroupIcon,
   },
   {
     name: 'Croissance Rapide',
-    description: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+    description: 'Bénéficiez d’un modèle de développement accéléré qui vous permet d’atteindre l’indépendance financière plus rapidement grâce à notre système de parrainage efficace et à nos outils de croissance performants.',
     icon: ChartBarIcon,
   },
   {
     name: 'Sécurité Garantie',
-    description: 'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+    description: 'Votre confiance est notre priorité. SOLIFIN assure la sécurité de vos transactions et la protection de vos données personnelles grâce à des protocoles de sécurité avancés et une gestion transparente des opérations.',
     icon: ShieldCheckIcon,
   },
   {
     name: 'Innovation Continue',
-    description: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.',
+    description: 'Nous investissons constamment dans le développement de nouvelles fonctionnalités et l’amélioration de notre plateforme pour vous offrir les meilleurs outils de marketing de réseau, adaptés aux évolutions du marché.',
     icon: RocketLaunchIcon,
   },
   {
     name: 'Portée Internationale',
-    description: 'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur.',
+    description: 'Étendez votre réseau au-delà des frontières grâce à notre présence mondiale. SOLIFIN vous permet de construire une équipe internationale et de saisir des opportunités d’affaires à l’échelle globale.',
     icon: GlobeAltIcon,
   },
 ];

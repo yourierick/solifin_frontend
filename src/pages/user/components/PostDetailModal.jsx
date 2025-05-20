@@ -55,6 +55,8 @@ export default function PostDetailModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [mediaItems, setMediaItems] = useState([]);
   const commentInputRef = useRef(null);
 
   // Formatage de la date
@@ -87,8 +89,81 @@ export default function PostDetailModal({
       }, 100);
     }
   }, [isOpen]);
+  
+  // Préparer les éléments média pour le carrousel
+  useEffect(() => {
+    if (!post) return;
+    
+    const items = [];
+    
+    // Vérifier si l'image principale est déjà incluse dans les images
+    let mainImageIncluded = false;
+    
+    // Ajouter les images s'il y en a
+    if (post.images && post.images.length > 0) {
+      post.images.forEach((image, index) => {
+        const imageUrl = typeof image === 'string' ? image : image.url;
+        
+        // Vérifier si cette image est l'image principale
+        if (post.image_url && imageUrl === post.image_url) {
+          mainImageIncluded = true;
+        }
+        
+        items.push({
+          type: 'image',
+          url: imageUrl,
+          alt: `Image ${index + 1}`
+        });
+      });
+    }
+    
+    // Ajouter l'image principale seulement si elle n'est pas déjà incluse dans les images
+    if (post.image_url && !mainImageIncluded) {
+      // Ajouter au début du tableau
+      items.unshift({
+        type: 'image',
+        url: post.image_url,
+        alt: 'Image principale'
+      });
+    }
+    
+    // Vérifier si la vidéo principale est déjà incluse dans les vidéos
+    let mainVideoIncluded = false;
+    
+    // Ajouter les vidéos s'il y en a
+    if (post.videos && post.videos.length > 0) {
+      post.videos.forEach((video, index) => {
+        const videoUrl = typeof video === 'string' ? video : video.url;
+        
+        // Vérifier si cette vidéo est la vidéo principale
+        if (post.video_url && videoUrl === post.video_url) {
+          mainVideoIncluded = true;
+        }
+        
+        items.push({
+          type: 'video',
+          url: videoUrl,
+          isYoutube: videoUrl.includes('youtube'),
+          alt: `Vidéo ${index + 1}`
+        });
+      });
+    }
+    
+    // Ajouter la vidéo principale seulement si elle n'est pas déjà incluse dans les vidéos
+    if (post.video_url && !mainVideoIncluded) {
+      items.push({
+        type: 'video',
+        url: post.video_url,
+        isYoutube: post.video_url.includes('youtube'),
+        alt: 'Vidéo principale'
+      });
+    }
+    
+    setMediaItems(items);
+    setCurrentMediaIndex(0); // Réinitialiser l'index du média actuel
+  }, [post]);
 
-  // Navigation dans le carrousel d'images
+  // Navigation dans le carrousel d'images (ancienne méthode, conservée pour compatibilité)
   const nextImage = () => {
     if (post.images && post.images.length > 0) {
       setCurrentImageIndex((prevIndex) => 
@@ -101,6 +176,23 @@ export default function PostDetailModal({
     if (post.images && post.images.length > 0) {
       setCurrentImageIndex((prevIndex) => 
         prevIndex === 0 ? post.images.length - 1 : prevIndex - 1
+      );
+    }
+  };
+  
+  // Navigation dans le carrousel de médias
+  const nextMedia = () => {
+    if (mediaItems.length > 1) {
+      setCurrentMediaIndex((prevIndex) =>
+        prevIndex === mediaItems.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  };
+
+  const prevMedia = () => {
+    if (mediaItems.length > 1) {
+      setCurrentMediaIndex((prevIndex) =>
+        prevIndex === 0 ? mediaItems.length - 1 : prevIndex - 1
       );
     }
   };
@@ -662,23 +754,89 @@ export default function PostDetailModal({
                           </a>
                         </div>
                       </div>
-                    ) : post.image_url ? (
-                      <>
-                        <img
-                          src={post.image_url}
-                          alt={`Image ${currentImageIndex + 1}`}
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </>
-                    ) : post.video_url ? (
-                      <div className="w-full h-full">
-                        <iframe
-                          src={post.video_url.replace('watch?v=', 'embed/')}
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="w-full h-full"
-                        ></iframe>
+                    ) : mediaItems.length > 0 ? (
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Affichage du média actuel */}
+                        <div className="w-full h-full flex items-center justify-center p-4">
+                          {mediaItems[currentMediaIndex]?.type === 'image' ? (
+                            <img
+                              src={mediaItems[currentMediaIndex].url}
+                              alt={mediaItems[currentMediaIndex].alt}
+                              className="max-h-full max-w-full object-contain rounded-lg shadow-md"
+                            />
+                          ) : mediaItems[currentMediaIndex]?.type === 'video' && (
+                            <div className="w-full h-full flex items-center justify-center">
+                              {mediaItems[currentMediaIndex].isYoutube ? (
+                                <iframe
+                                  src={mediaItems[currentMediaIndex].url.includes('watch?v=') 
+                                    ? mediaItems[currentMediaIndex].url.replace('watch?v=', 'embed/') 
+                                    : mediaItems[currentMediaIndex].url}
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  className="w-full h-full min-h-[300px] rounded-lg shadow-md"
+                                  title="Vidéo de la publication"
+                                ></iframe>
+                              ) : (
+                                <video 
+                                  controls 
+                                  className="max-h-full max-w-full rounded-lg shadow-md"
+                                  src={mediaItems[currentMediaIndex].url}
+                                >
+                                  Votre navigateur ne supporte pas la lecture de vidéos.
+                                </video>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Étiquette indiquant le type de média */}
+                        <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs font-medium px-2 py-1 rounded z-10">
+                          {mediaItems[currentMediaIndex]?.type === 'image' ? 'Image' : 'Vidéo'} {currentMediaIndex + 1}/{mediaItems.length}
+                        </div>
+                        
+                        {/* Boutons de navigation du carrousel */}
+                        {mediaItems.length > 1 && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                prevMedia();
+                              }}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-all z-10"
+                              aria-label="Média précédent"
+                            >
+                              <ChevronLeftIcon className="h-6 w-6" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                nextMedia();
+                              }}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-all z-10"
+                              aria-label="Média suivant"
+                            >
+                              <ChevronRightIcon className="h-6 w-6" />
+                            </button>
+                          </>
+                        )}
+                        
+                        {/* Indicateurs de position dans le carrousel */}
+                        {mediaItems.length > 1 && (
+                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                            {mediaItems.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentMediaIndex(index);
+                                }}
+                                className={`w-3 h-3 rounded-full ${index === currentMediaIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                                aria-label={`Aller au média ${index + 1}`}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className={`flex items-center justify-center w-full h-full ${isDarkMode ? 'bg-gray-900' : 'bg-gray-200'}`}>

@@ -27,6 +27,8 @@ import {
   ChatBubbleLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import PostCard from './components/PostCard';
@@ -54,6 +56,8 @@ export default function Page() {
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'recent', 'expired'
   const [openShareMenuId, setOpenShareMenuId] = useState(null); // Pour gérer les menus de partage
   const [expandedComments, setExpandedComments] = useState({}); // Pour suivre les commentaires affichés par publication
+  const [mediaItems, setMediaItems] = useState({});
+  const [currentMediaIndex, setCurrentMediaIndex] = useState({});
   
   // Références pour les sections de la page
   const headerRef = useRef(null);
@@ -450,7 +454,8 @@ export default function Page() {
       
         // Formater la date pour l'affichage
         const formatDate = (dateString) => {
-          if (!dateString) return 'Non disponible';
+          if (!dateString) return '';
+          
           try {
             if (typeof dateString === 'string' && dateString.includes('/')) {
               const dateParts = dateString.split(' ');
@@ -459,20 +464,144 @@ export default function Page() {
               }
               return dateString;
             }
+            
             const date = new Date(dateString);
             if (isNaN(date.getTime())) {
-              console.error('Date invalide:', dateString);
-              return 'Format de date invalide';
+              return '';
             }
-            return date.toLocaleDateString('fr-FR', {
-              year: 'numeric',
-              month: 'numeric',
-              day: 'numeric'
-            });
+            
+            // Formater la date selon la locale française
+            const options = { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            };
+            
+            return date.toLocaleDateString('fr-FR', options);
           } catch (error) {
-            console.error('Erreur de formatage de date:', error, dateString);
-            return 'Erreur de date';
+            console.error('Erreur lors du formatage de la date:', error);
+            return '';
           }
+        };
+      
+        // Préparer les médias pour le carrousel
+        const prepareMediaItems = (publication) => {
+          const pubKey = `${publication.type || 'publication'}-${publication.id}`;
+          
+          // Si les médias sont déjà préparés, ne pas les recalculer
+          if (mediaItems[pubKey]) return;
+          
+          const items = [];
+          
+          // Vérifier si l'image principale est déjà incluse dans les images
+          let mainImageIncluded = false;
+            
+          // Ajouter les images s'il y en a
+          if (publication.images && publication.images.length > 0) {
+            publication.images.forEach((image, index) => {
+              const imageUrl = typeof image === 'string' ? image : image.url;
+                
+              // Vérifier si cette image est l'image principale
+              if (publication.image_url && imageUrl === publication.image_url) {
+                mainImageIncluded = true;
+              }
+                
+              items.push({
+                type: 'image',
+                url: imageUrl,
+                alt: `Image ${index + 1}`
+              });
+            });
+          }
+            
+          // Ajouter l'image principale seulement si elle n'est pas déjà incluse dans les images
+          if (publication.image_url && !mainImageIncluded) {
+            // Ajouter au début du tableau
+            items.unshift({
+              type: 'image',
+              url: publication.image_url,
+              alt: 'Image principale'
+            });
+          }
+          
+          // Vérifier si la vidéo principale est déjà incluse dans les vidéos
+          let mainVideoIncluded = false;
+          
+          // Ajouter les vidéos s'il y en a
+          if (publication.videos && publication.videos.length > 0) {
+            publication.videos.forEach((video, index) => {
+              const videoUrl = typeof video === 'string' ? video : video.url;
+              
+              // Vérifier si cette vidéo est la vidéo principale
+              if (publication.video_url && videoUrl === publication.video_url) {
+                mainVideoIncluded = true;
+              }
+              
+              items.push({
+                type: 'video',
+                url: videoUrl,
+                isYoutube: videoUrl.includes('youtube'),
+                alt: `Vidéo ${index + 1}`
+              });
+            });
+          }
+          
+          // Ajouter la vidéo principale seulement si elle n'est pas déjà incluse dans les vidéos
+          if (publication.video_url && !mainVideoIncluded) {
+            items.push({
+              type: 'video',
+              url: publication.video_url,
+              isYoutube: publication.video_url.includes('youtube'),
+              alt: 'Vidéo principale'
+            });
+          }
+          
+          // Mettre à jour l'état des médias
+          setMediaItems(prev => ({
+            ...prev,
+            [pubKey]: items
+          }));
+          
+          // Initialiser l'index du média actuel
+          setCurrentMediaIndex(prev => ({
+            ...prev,
+            [pubKey]: 0
+          }));
+        };
+        
+        // Navigation dans le carrousel
+        const nextMedia = (publication) => {
+          const pubKey = `${publication.type || 'publication'}-${publication.id}`;
+          const items = mediaItems[pubKey] || [];
+          
+          if (items.length > 1) {
+            setCurrentMediaIndex(prev => ({
+              ...prev,
+              [pubKey]: prev[pubKey] === items.length - 1 ? 0 : prev[pubKey] + 1
+            }));
+          }
+        };
+        
+        const prevMedia = (publication) => {
+          const pubKey = `${publication.type || 'publication'}-${publication.id}`;
+          const items = mediaItems[pubKey] || [];
+          
+          if (items.length > 1) {
+            setCurrentMediaIndex(prev => ({
+              ...prev,
+              [pubKey]: prev[pubKey] === 0 ? items.length - 1 : prev[pubKey] - 1
+            }));
+          }
+        };
+        
+        const goToMedia = (publication, index) => {
+          const pubKey = `${publication.type || 'publication'}-${publication.id}`;
+          setCurrentMediaIndex(prev => ({
+            ...prev,
+            [pubKey]: index
+          }));
         };
       
         // Gérer l'ajout d'un commentaire
@@ -627,6 +756,9 @@ export default function Page() {
           const isCommentsExpanded = expandedComments[`${postType}-${publication.id}`] || false;
           const hasComments = publication.comments && publication.comments.length > 0;
           
+          // Préparer les médias pour le carrousel
+          prepareMediaItems(publication);
+          
           return (
             <div 
               key={`${postType}-${publication.id}`}
@@ -737,18 +869,91 @@ export default function Page() {
                 )}
               </div>
               
-              {/* Images de la publication - Style Facebook avec image pleine largeur */}
-              {publication.images && publication.images.length > 0 && (
-                <div className={`mb-3 ${publication.images.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}>
-                  {publication.images.map((img, index) => (
-                    <div key={index} className="overflow-hidden">
-                      <img 
-                        src={typeof img === 'string' ? img : img.url} 
-                        alt={`Image ${index + 1} de ${publication.titre || 'la publication'}`}
+              {/* Carrousel de médias (images et vidéos) */}
+              {mediaItems[`${postType}-${publication.id}`]?.length > 0 && (
+                <div className="mb-3 relative">
+                  {/* Affichage du média actuel */}
+                  <div className="relative overflow-hidden rounded-lg">
+                    {mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0]?.type === 'image' ? (
+                      <img
+                        src={mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].url}
+                        alt={mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].alt || `Média ${(currentMediaIndex[`${postType}-${publication.id}`] || 0) + 1}`}
                         className="w-full h-auto object-cover"
+                        onClick={() => openPostDetail(publication.id, postType)}
                       />
+                    ) : mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0]?.type === 'video' && (
+                      <div className="relative pt-[56.25%]">
+                        {mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].isYoutube ? (
+                          <iframe
+                            src={mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].url.includes('watch?v=') 
+                              ? mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].url.replace('watch?v=', 'embed/') 
+                              : mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].url}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="rounded-lg w-full h-full absolute top-0 left-0"
+                            title="Vidéo"
+                          ></iframe>
+                        ) : (
+                          <video 
+                            controls 
+                            className="rounded-lg w-full h-full absolute top-0 left-0"
+                            src={mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0].url}
+                          >
+                            Votre navigateur ne supporte pas la lecture de vidéos.
+                          </video>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Étiquette indiquant le type de média */}
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs font-medium px-2 py-1 rounded z-10">
+                      {mediaItems[`${postType}-${publication.id}`][currentMediaIndex[`${postType}-${publication.id}`] || 0]?.type === 'image' ? 'Image' : 'Vidéo'} {(currentMediaIndex[`${postType}-${publication.id}`] || 0) + 1}/{mediaItems[`${postType}-${publication.id}`].length}
                     </div>
-                  ))}
+                  </div>
+                  
+                  {/* Boutons de navigation du carrousel */}
+                  {mediaItems[`${postType}-${publication.id}`]?.length > 1 && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          prevMedia(publication);
+                        }}
+                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1.5 hover:bg-opacity-70 transition-all z-10"
+                        aria-label="Média précédent"
+                      >
+                        <ChevronLeftIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          nextMedia(publication);
+                        }}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-1.5 hover:bg-opacity-70 transition-all z-10"
+                        aria-label="Média suivant"
+                      >
+                        <ChevronRightIcon className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Indicateurs de position dans le carrousel */}
+                  {mediaItems[`${postType}-${publication.id}`]?.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 z-10">
+                      {mediaItems[`${postType}-${publication.id}`].map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goToMedia(publication, index);
+                          }}
+                          className={`w-2 h-2 rounded-full ${index === (currentMediaIndex[`${postType}-${publication.id}`] || 0) ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                          aria-label={`Aller au média ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               
