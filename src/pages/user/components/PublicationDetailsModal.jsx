@@ -1,21 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import InteractionBar from '../../../components/InteractionBar';
-import CommentSection from '../../../components/CommentSection';
-import ShareModal from '../../../components/ShareModal';
+import React, { useState, useEffect } from "react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import InteractionBar from "../../../components/InteractionBar";
+import CommentSection from "../../../components/CommentSection";
+import ShareModal from "../../../components/ShareModal";
+
+// Composant de téléchargement de fichier
+const FileDownloadLink = ({ url, filename, children }) => {
+  const handleDownload = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Créer un élément a temporaire
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename || "fichier");
+    link.setAttribute("target", "_blank");
+
+    // Ajouter au DOM, cliquer, puis supprimer
+    document.body.appendChild(link);
+    link.click();
+
+    // Nettoyer
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 100);
+  };
+
+  return (
+    <a
+      href={url}
+      className="text-blue-500 hover:underline cursor-pointer"
+      onClick={handleDownload}
+    >
+      {children}
+    </a>
+  );
+};
 
 /**
  * Modal pour afficher les détails d'une publication
  */
-export default function PublicationDetailsModal({ isOpen = true, onClose, publication, type, onEdit, onDelete }) {
+export default function PublicationDetailsModal({
+  isOpen = true,
+  onClose,
+  publication,
+  type,
+  onEdit,
+  onDelete,
+}) {
   const [showComments, setShowComments] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  
+
   // Style pour la scrollbar personnalisée et l'effet de flou
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
@@ -49,148 +89,318 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
       document.head.removeChild(style);
     };
   }, []);
-  
+
   if (!publication) return null;
 
   // Obtenir les détails formatés selon le type de publication
   const getFormattedDetails = () => {
-    const formattedDate = publication.created_at 
-      ? format(new Date(publication.created_at), 'dd MMMM yyyy', { locale: fr })
-      : 'Date inconnue';
-      
+    const formattedDate = publication.created_at
+      ? format(new Date(publication.created_at), "dd MMMM yyyy", { locale: fr })
+      : "Date inconnue";
+
     switch (type) {
-      case 'advertisement':
+      case "advertisement":
         return {
-          title: 'Publicité',
+          title: "Publicité",
           subtitle: publication.titre,
           description: publication.description,
           date: formattedDate,
           details: {
-            title: 'Informations sur la publicité',
+            title: "Informations sur la publicité",
             fields: [
-              { label: 'Catégorie', value: publication.categorie === 'produit' ? 'Produit' : 'Service' },
-              { label: 'Contacts', value: publication.contacts || 'Non spécifié' },
-              { label: 'Email', value: publication.email || 'Non spécifié' },
-              { label: 'Adresse', value: publication.adresse || 'Non spécifié' },
-              { label: 'Besoin de livreurs', value: publication.besoin_livreurs ? 'Oui' : 'Non' },
-              { label: 'Conditions de livraison', value: publication.conditions_livraison || 'Non spécifiées' },
-              { label: 'Point de vente', value: publication.point_vente || 'Non spécifié' },
-              publication.prix_unitaire_vente ? { label: 'Prix unitaire de vente', value: `${publication.prix_unitaire_vente} ${publication.devise}` } : { label: 'Prix unitaire de vente', value: 'Non défini' },
-              publication.commission_livraison ? { label: 'Commission de livraison', value: `${publication.commission_livraison} ` } : { label: 'Commission de livraison', value: 'Non défini' },
-              publication.prix_unitaire_livraison ? { label: 'Prix unitaire de livraison', value: `${publication.prix_unitaire_livraison} ${publication.devise}` } : { label: 'Prix unitaire de livraison', value: 'Non défini' },
-              publication.lien ? { label: 'Lien externe', value: <a href={publication.lien} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Voir le lien</a> } : { label: 'Lien externe', value: 'Aucun lien' },
-              { label: 'Durée d\'affichage', value: publication.duree_affichage + ' jours' || 'Non spécifiée' },
-              { label: 'Statut', value: getStatusText(publication.statut) },
-              { label: 'État', value: getEtatText(publication.etat || 'disponible') }
-            ]
-          }
+              {
+                label: "Pays",
+                value:
+                  publication.pays === "publicité" ? "Publicité" : "Annonce",
+              },
+              {
+                label: "Ville",
+                value: publication.ville,
+              },
+              {
+                label: "Type",
+                value:
+                  publication.type === "publicité" ? "Publicité" : "Annonce",
+              },
+              {
+                label: "Catégorie",
+                value:
+                  publication.categorie === "produit" ? "Produit" : "Service",
+              },
+              {
+                label: "Sous-catégorie",
+                value:
+                  publication.sous_categorie === "autre à préciser"
+                    ? publication.autre_sous_categorie
+                    : publication.sous_categorie,
+              },
+              {
+                label: "Titre",
+                value: publication.titre || "Non spécifié",
+              },
+              {
+                label: "Quantité disponible",
+                value: publication.quantite_disponible,
+              },
+              {
+                label: "Contacts",
+                value: publication.contacts || "Non spécifié",
+              },
+              { label: "Email", value: publication.email || "Non spécifié" },
+              {
+                label: "Adresse",
+                value: publication.adresse || "Non spécifié",
+              },
+              {
+                label: "Besoin de livreurs",
+                value: publication.besoin_livreurs === "OUI" ? "Oui" : "Non",
+              },
+              {
+                label: "Point de vente",
+                value: publication.point_vente || "Non spécifié",
+              },
+              publication.prix_unitaire_vente
+                ? {
+                    label: "Prix unitaire de vente",
+                    value: `${publication.prix_unitaire_vente} ${publication.devise}`,
+                  }
+                : { label: "Prix unitaire de vente", value: "Non défini" },
+              publication.commission_livraison
+                ? {
+                    label: "Commission de livraison",
+                    value: `${publication.commission_livraison} `,
+                  }
+                : { label: "Commission de livraison", value: "Non défini" },
+              publication.prix_unitaire_livraison
+                ? {
+                    label: "Prix unitaire de livraison",
+                    value: `${publication.prix_unitaire_livraison} ${publication.devise}`,
+                  }
+                : { label: "Prix unitaire de livraison", value: "Non défini" },
+              publication.lien
+                ? {
+                    label: "Lien externe",
+                    value: (
+                      <a
+                        href={publication.lien}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        Voir le lien
+                      </a>
+                    ),
+                  }
+                : { label: "Lien externe", value: "Aucun lien" },
+              {
+                label: "Durée d'affichage",
+                value:
+                  publication.duree_affichage + " jours" || "Non spécifiée",
+              },
+              { label: "Statut", value: getStatusText(publication.statut) },
+              {
+                label: "État",
+                value: getEtatText(publication.etat || "disponible"),
+              },
+            ],
+          },
         };
-      case 'jobOffer':
+      case "jobOffer":
         return {
-          title: 'Offre d\'emploi',
+          title: "Offre d'emploi",
           subtitle: publication.titre,
           description: publication.description,
           date: formattedDate,
           details: {
-            title: 'Informations sur l\'offre d\'emploi',
+            title: "Informations sur l'offre d'emploi",
             fields: [
-              { label: 'Référence', value: publication.reference || 'Non spécifiée' },
-              { label: 'Titre', value: publication.titre || 'Non spécifié' },
-              { label: 'Entreprise', value: publication.entreprise || 'Non spécifiée' },
-              { label: 'Compétences requises', value: 
-                publication.competences_requises ? 
-                <div className="mt-4">
-                  <ul className="list-disc pl-6 space-y-2">
-                    {publication.competences_requises.split(',').map((competence, index) => (
-                      <li key={index} className="text-gray-700 dark:text-gray-300">{competence.trim()}</li>
-                    ))}
-                  </ul>
-                </div> : 'Non spécifiées'
+              {
+                label: "Pays",
+                value: publication.pays || "Non spécifiée",
               },
-              { label: 'Devise', value: publication.devise || 'Non spécifiée' },
-              { label: 'Avantages', value: publication.avantages || 'Non spécifiés' },
-              { label: 'Date limite', value: publication.date_limite ? format(new Date(publication.date_limite), 'dd MMMM yyyy', { locale: fr }) : 'Non spécifiée' },
-              { label: 'Email de contact', value: publication.email_contact || 'Non spécifié' },
-              { label: 'Contacts', value: publication.contacts || 'Non spécifiés' },
-              { label: 'Fichier de l\'offre', value: publication.offer_file ? 
-                <a href={publication.offer_file} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Télécharger le fichier</a> : 
-                'Aucun fichier'
+              {
+                label: "Ville",
+                value: publication.ville || "Non spécifiée",
               },
-              { label: 'Lien externe', value: publication.lien ? 
-                <a href={publication.lien} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Voir le lien</a> : 
-                'Aucun lien'
+              {
+                label: "Secteur",
+                value: publication.secteur || "Non spécifiée",
               },
-              { label: 'Type de contrat', value: publication.type_contrat },
-              { label: 'Lieu', value: publication.lieu },
-              { label: 'Salaire', value: publication.salaire ? `${publication.salaire} ${publication.devise}` : 'Non spécifié' },
-              { label: 'Expérience requise', value: publication.experience_requise },
-              { label: 'Niveau d\'études', value: publication.niveau_etudes },
-              { label: 'Statut', value: getStatusText(publication.statut) },
-              { label: 'État', value: getEtatText(publication.etat || 'disponible') }
-            ]
-          }
+              {
+                label: "Entreprise",
+                value: publication.entreprise || "Non spécifiée",
+              },
+              { label: "Titre", value: publication.titre || "Non spécifié" },
+              {
+                label: "Référence",
+                value: publication.reference || "Non spécifiée",
+              },
+              {
+                label: "Date limite",
+                value: publication.date_limite
+                  ? format(new Date(publication.date_limite), "dd MMMM yyyy", {
+                      locale: fr,
+                    })
+                  : "Non spécifiée",
+              },
+              {
+                label: "Email de contact",
+                value: publication.email_contact || "Non spécifié",
+              },
+              {
+                label: "Contacts",
+                value: publication.contacts || "Non spécifiés",
+              },
+              {
+                label: "Fichier associé",
+                value: publication.offer_file_url ? (
+                  <FileDownloadLink
+                    url={publication.offer_file_url}
+                    filename={`offre_emploi_${publication.id}.pdf`}
+                  >
+                    Télécharger le fichier
+                  </FileDownloadLink>
+                ) : (
+                  "Aucun fichier"
+                ),
+              },
+              {
+                label: "Lien externe",
+                value: publication.lien ? (
+                  <a
+                    href={publication.lien}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    Voir le lien
+                  </a>
+                ) : (
+                  "Aucun lien"
+                ),
+              },
+              { label: "Type de contrat", value: publication.type_contrat },
+              {
+                label: "Durée d'affichage",
+                value: `${publication.duree_affichage}` + " jours",
+              },
+              { label: "Statut", value: getStatusText(publication.statut) },
+              {
+                label: "État",
+                value: getEtatText(publication.etat || "disponible"),
+              },
+            ],
+          },
         };
-      case 'businessOpportunity':
+      case "businessOpportunity":
         return {
-          title: 'Opportunité d\'affaires',
+          title: "Opportunité d'affaires",
           subtitle: publication.titre,
           description: publication.description,
           date: formattedDate,
           details: {
-            title: 'Informations sur l\'opportunité',
+            title: "Informations sur l'opportunité",
             fields: [
-              { label: 'Secteur', value: publication.secteur },
-              { label: 'Localisation', value: publication.localisation },
-              { label: 'Investissement requis', value: publication.investissement_requis ? `${publication.investissement_requis} ${publication.devise}` : 'Non spécifié' },
-              { label: 'Bénéfices attendus', value: publication.benefices_attendus || 'Non spécifiés' },
-              { label: 'Devise', value: publication.devise || 'Non spécifiée' },
-              { label: 'Durée de retour sur investissement', value: publication.duree_retour_investissement || 'Non spécifiée' },
-              { label: 'Contacts', value: publication.contacts || 'Non spécifiés' },
-              { label: 'Email', value: publication.email || 'Non spécifié' },
-              { label: 'Conditions de participation', value: publication.conditions_participation || 'Non spécifiées' },
-              { label: 'Date limite', value: publication.date_limite ? format(new Date(publication.date_limite), 'dd MMMM yyyy', { locale: fr }) : 'Non spécifiée' },
-              { label: 'Statut', value: getStatusText(publication.statut) },
-              { label: 'État', value: getEtatText(publication.etat || 'disponible') }
-            ]
-          }
+              { label: "Pays", value: publication.pays },
+              { label: "Ville", value: publication.ville },
+              { label: "Entreprise", value: publication.entreprise },
+              { label: "Type", value: publication.type },
+              { label: "Secteur", value: publication.secteur },
+              { label: "Titre", value: publication.titre },
+              {
+                label: "Référence",
+                value: publication.reference,
+              },
+              {
+                label: "Durée d'affichage",
+                value: `${publication.duree_affichage}` + " jours",
+              },
+              {
+                label: "Contacts",
+                value: publication.contacts || "Non spécifiés",
+              },
+              { label: "Email", value: publication.email || "Non spécifié" },
+              {
+                label: "Date limite",
+                value: publication.date_limite
+                  ? format(new Date(publication.date_limite), "dd MMMM yyyy", {
+                      locale: fr,
+                    })
+                  : "Non spécifiée",
+              },
+              {
+                label: "Fichier associé",
+                value: publication.opportunity_file_url ? (
+                  <FileDownloadLink
+                    url={publication.opportunity_file_url}
+                    filename={`offre_emploi_${publication.id}.pdf`}
+                  >
+                    Télécharger le fichier
+                  </FileDownloadLink>
+                ) : (
+                  "Aucun fichier"
+                ),
+              },
+              {
+                label: "Lien externe",
+                value: publication.lien ? (
+                  <a
+                    href={publication.lien}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    Voir le lien
+                  </a>
+                ) : (
+                  "Aucun lien"
+                ),
+              },
+              { label: "Statut", value: getStatusText(publication.statut) },
+              {
+                label: "État",
+                value: getEtatText(publication.etat || "disponible"),
+              },
+            ],
+          },
         };
       default:
         return {
-          title: 'Publication',
-          subtitle: '',
-          description: '',
+          title: "Publication",
+          subtitle: "",
+          description: "",
           date: formattedDate,
           details: {
-            title: 'Détails',
-            fields: []
-          }
+            title: "Détails",
+            fields: [],
+          },
         };
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'en_attente':
-        return 'En attente';
-      case 'approuvé':
-        return 'Approuvé';
-      case 'rejeté':
-        return 'Rejeté';
-      case 'expiré':
-        return 'Expiré';
+      case "en_attente":
+        return "En attente";
+      case "approuvé":
+        return "Approuvé";
+      case "rejeté":
+        return "Rejeté";
+      case "expiré":
+        return "Expiré";
       default:
-        return 'Inconnu';
+        return "Inconnu";
     }
   };
-  
+
   const getEtatText = (etat) => {
     switch (etat) {
-      case 'disponible':
-        return 'Disponible';
-      case 'terminé':
-        return 'Terminé';
+      case "disponible":
+        return "Disponible";
+      case "terminé":
+        return "Terminé";
       default:
-        return 'Disponible';
+        return "Disponible";
     }
   };
 
@@ -201,20 +411,25 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
   return (
     <>
       {/* Overlay avec effet de flou */}
-      <div 
+      <div
         className="fixed inset-0 z-40 bg-black bg-opacity-60"
         style={{
-          backdropFilter: 'blur(5px)',
-          WebkitBackdropFilter: 'blur(5px)',
-          MozBackdropFilter: 'blur(5px)',
-          msBackdropFilter: 'blur(5px)'
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          MozBackdropFilter: "blur(5px)",
+          msBackdropFilter: "blur(5px)",
         }}
       />
-      
+
       {/* Contenu du modal */}
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <span
+            className="hidden sm:inline-block sm:align-middle sm:h-screen"
+            aria-hidden="true"
+          >
+            &#8203;
+          </span>
 
           <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-12 sm:align-middle sm:max-w-2xl sm:w-full">
             <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -235,48 +450,69 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
 
                   <div className="overflow-y-auto custom-scrollbar max-h-[calc(100vh-250px)]">
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{details.subtitle}</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Publié le {details.date}</p>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {details.subtitle}
+                      </h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Publié le {details.date}
+                      </p>
                     </div>
 
                     <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</h4>
-                      <p className="mt-1 text-sm text-gray-900 dark:text-gray-200">{details.description || 'Aucune description disponible'}</p>
+                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Description
+                      </h4>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-gray-200">
+                        {details.description || "Aucune description disponible"}
+                      </p>
                     </div>
-                    
+
                     {publication.image_url && (
                       <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Image</h4>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Image
+                        </h4>
                         <div className="mt-1">
-                          <img 
-                            src={publication.image_url} 
-                            alt={details.subtitle} 
-                            className="max-w-full h-auto rounded-lg max-h-60 object-contain" 
+                          <img
+                            src={publication.image_url}
+                            alt={details.subtitle}
+                            className="max-w-full h-auto rounded-lg max-h-60 object-contain"
                           />
                         </div>
                       </div>
                     )}
-                    
+
                     {publication.video_url && (
                       <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Vidéo</h4>
+                        <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Vidéo
+                        </h4>
                         <div className="mt-1">
-                          <video 
-                            src={publication.video_url} 
-                            controls 
-                            className="max-w-full h-auto rounded-lg max-h-60" 
+                          <video
+                            src={publication.video_url}
+                            controls
+                            className="max-w-full h-auto rounded-lg max-h-60"
                           />
                         </div>
                       </div>
                     )}
 
                     <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{details.details.title} - Détails</h4>
+                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {details.details.title} - Détails
+                      </h4>
                       <dl className="mt-2 divide-y divide-gray-200 dark:divide-gray-700 border-t border-b border-gray-200 dark:border-gray-700">
                         {details.details.fields.map((field, index) => (
-                          <div key={index} className="py-3 flex justify-between text-sm gap-4">
-                            <dt className="text-gray-500 dark:text-gray-400">{field.label}</dt>
-                            <dd className="text-gray-900 dark:text-white font-medium">{field.value}</dd>
+                          <div
+                            key={index}
+                            className="py-3 flex justify-between text-sm gap-4"
+                          >
+                            <dt className="text-gray-500 dark:text-gray-400">
+                              {field.label}
+                            </dt>
+                            <dd className="text-gray-900 dark:text-white font-medium">
+                              {field.value}
+                            </dd>
                           </div>
                         ))}
                       </dl>
@@ -288,7 +524,7 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
 
             {/* Barre d'interactions */}
             <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-              <InteractionBar 
+              <InteractionBar
                 publicationType={type}
                 publicationId={publication.id}
                 onCommentClick={() => setShowComments(!showComments)}
@@ -296,17 +532,17 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
                 className="justify-center"
               />
             </div>
-            
+
             {/* Section des commentaires */}
             {showComments && (
               <div className="border-t border-gray-200 dark:border-gray-700">
-                <CommentSection 
+                <CommentSection
                   publicationType={type}
                   publicationId={publication.id}
                 />
               </div>
             )}
-            
+
             <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               {onEdit && (
                 <button
@@ -336,9 +572,9 @@ export default function PublicationDetailsModal({ isOpen = true, onClose, public
             </div>
           </div>
         </div>
-        
+
         {showShareModal && (
-          <ShareModal 
+          <ShareModal
             isOpen={showShareModal}
             onClose={() => setShowShareModal(false)}
             publicationType={type}

@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import Notification from '../components/Notification';
 import CountryCodeSelector from '../components/CountryCodeSelector';
+import CountrySelector from '../components/CountrySelector';
 import { countries as countriesList } from '../data/countries';
 import {
   TextField,
@@ -253,10 +254,27 @@ export default function Register() {
 
   // Gérer le changement d'indicatif WhatsApp
   const handleWhatsappCodeChange = (code) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       whatsappCode: code,
-    });
+      whatsapp: code + prev.whatsappNumber
+    }));
+  };
+  
+  // Gérer le changement de pays avec le sélecteur de pays
+  const handleCountryChange = (countryName) => {
+    setFormData(prev => ({
+      ...prev,
+      country: countryName
+    }));
+    
+    // Réinitialiser l'erreur de validation pour le pays
+    if (formErrors.country) {
+      setFormErrors(prev => ({
+        ...prev,
+        country: null
+      }));
+    }
   };
 
   return (
@@ -339,76 +357,19 @@ export default function Register() {
                     )}
                   </FormControl>
 
-                  <FormControl fullWidth error={!!formErrors.country}>
-                    <InputLabel>Pays</InputLabel>
-                    <Select
-                      name="country"
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Pays <span className="text-red-500">*</span>
+                    </label>
+                    <CountrySelector
                       value={formData.country}
-                      onChange={handleChange}
-                      required
-                      disabled={loadingCountries}
-                      MenuProps={{
-                        PaperProps: {
-                          sx: {
-                            bgcolor: '#1f2937',
-                            color: 'white',
-                            '& .MuiMenuItem-root': {
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: 'rgba(255, 255, 255, 0.08)',
-                              },
-                            },
-                          },
-                        },
-                      }}
-                      renderValue={(selected) => {
-                        if (!selected) return 'Sélectionner un pays';
-                        const selectedCountry = countries.find(c => c.code === selected);
-                        if (!selectedCountry) return selected;
-                        return (
-                          <div className="flex items-center">
-                            <img 
-                              src={`https://flagcdn.com/${selected.toLowerCase()}.svg`} 
-                              alt={selectedCountry.name}
-                              className="w-5 h-auto mr-2"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'inline';
-                              }}
-                            />
-                            <span style={{ display: 'none', marginRight: '8px' }}>
-                              {getFlagEmoji(selected)}
-                            </span>
-                            {selectedCountry.name}
-                          </div>
-                        );
-                      }}
-                    >
-                      <MenuItem value="">Sélectionner un pays</MenuItem>
-                      {countries.map(country => (
-                        <MenuItem key={country.code} value={country.code}>
-                          <div className="flex items-center">
-                            <img 
-                              src={`https://flagcdn.com/${country.code.toLowerCase()}.svg`} 
-                              alt={country.name}
-                              className="w-5 h-auto mr-2"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'inline';
-                              }}
-                            />
-                            <span style={{ display: 'none', marginRight: '8px' }}>
-                              {getFlagEmoji(country.code)}
-                            </span>
-                            <span className="dark:text-white">{country.name}</span>
-                          </div>
-                        </MenuItem>
-                      ))}
-                    </Select>
+                      onChange={handleCountryChange}
+                      placeholder="Sélectionner un pays"
+                    />
                     {formErrors.country && (
-                      <FormHelperText>{formErrors.country}</FormHelperText>
+                      <p className="mt-1 text-sm text-red-600">{formErrors.country}</p>
                     )}
-                  </FormControl>
+                  </div>
 
                   <TextField
                     fullWidth

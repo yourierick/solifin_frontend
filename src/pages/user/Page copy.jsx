@@ -64,10 +64,7 @@ export default function Page() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedPostType, setSelectedPostType] = useState(null);
   const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
-  // Champs de recherche séparés pour chaque onglet
-  const [publiciteSearchQuery, setPubliciteSearchQuery] = useState("");
-  const [offreEmploiSearchQuery, setOffreEmploiSearchQuery] = useState("");
-  const [opportuniteSearchQuery, setOpportuniteSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("all"); // 'all', 'active', 'recent', 'expired'
   const [openShareMenuId, setOpenShareMenuId] = useState(null); // Pour gérer les menus de partage
   const [expandedComments, setExpandedComments] = useState({}); // Pour suivre les commentaires affichés par publication
@@ -76,33 +73,19 @@ export default function Page() {
 
   // États pour les filtres des publications
   const [showNewsFilters, setShowNewsFilters] = useState(false);
-  const [newsStatusFilter, setNewsStatusFilter] = useState("all"); // "all", "disponible", "terminé"
   const [newsCountryFilter, setNewsCountryFilter] = useState("");
   const [newsCityFilter, setNewsCityFilter] = useState("");
-  const [newsTypeFilter, setNewsTypeFilter] = useState("");
-  const [newsPostTypeFilter, setNewsPostTypeFilter] = useState("");
-  const [newsContractTypeFilter, setNewsContractTypeFilter] = useState("");
+  const [newsTypeFilter, setNewsTypeFilter] = useState(""); // "publicite" ou "annonce"
   const [newsCategoryFilter, setNewsCategoryFilter] = useState(""); // "produit" ou "service"
   const [newsSubCategoryFilter, setNewsSubCategoryFilter] = useState("");
   const [newsDeliveryFilter, setNewsDeliveryFilter] = useState(""); // "OUI" ou "NON"
+  const [newsStatusFilter, setNewsStatusFilter] = useState("all"); // "all", "disponible", "termine"
 
-  // États pour les listes de valeurs uniques pour les filtres des publicités
-  const [uniquePubCountries, setUniquePubCountries] = useState([]);
-  const [uniquePubCities, setUniquePubCities] = useState([]);
-  const [uniquePubCategories, setUniquePubCategories] = useState([]);
-  const [uniquePubSubCategories, setUniquePubSubCategories] = useState([]);
-
-  // États pour les listes de valeurs uniques pour les filtres des offres d'emploi
-  const [uniqueJobCountries, setUniqueJobCountries] = useState([]);
-  const [uniqueJobCities, setUniqueJobCities] = useState([]);
-  const [uniqueJobSectors, setUniqueJobSectors] = useState([]);
-  const [uniqueJobContractTypes, setUniqueJobContractTypes] = useState([]);
-
-  // États pour les listes de valeurs uniques pour les filtres des opportunités d'affaires
-  const [uniqueOppoCountries, setUniqueOppoCountries] = useState([]);
-  const [uniqueOppoCities, setUniqueOppoCities] = useState([]);
-  const [uniqueOppoSectors, setUniqueOppoSectors] = useState([]);
-  const [uniqueOppoTypes, setUniqueOppoTypes] = useState([]);
+  // États pour les listes de valeurs uniques pour les filtres
+  const [uniqueNewsCountries, setUniqueNewsCountries] = useState([]);
+  const [uniqueNewsCities, setUniqueNewsCities] = useState([]);
+  const [uniqueNewsCategories, setUniqueNewsCategories] = useState([]);
+  const [uniqueNewsSubCategories, setUniqueNewsSubCategories] = useState([]);
 
   // Références pour les sections de la page
   const headerRef = useRef(null);
@@ -110,114 +93,35 @@ export default function Page() {
 
   // Fonction pour extraire les valeurs uniques pour les filtres
   const extractUniqueValues = useCallback((data) => {
-    if (!data) return;
+    if (!data || !data.publicites || data.publicites.length === 0) return;
 
-    // Extraire les valeurs uniques des publicités
-    if (data.publicites && data.publicites.length > 0) {
-      // Extraire les pays uniques des publicités
-      const pubCountries = [
-        ...new Set(data.publicites.map((pub) => pub.pays).filter(Boolean)),
-      ];
-      setUniquePubCountries(pubCountries);
+    // Extraire les pays uniques
+    const countries = [
+      ...new Set(data.publicites.map((pub) => pub.pays).filter(Boolean)),
+    ];
+    setUniqueNewsCountries(countries);
 
-      // Extraire les villes uniques des publicités
-      const pubCities = [
-        ...new Set(data.publicites.map((pub) => pub.ville).filter(Boolean)),
-      ];
-      setUniquePubCities(pubCities);
+    // Extraire les villes uniques
+    const cities = [
+      ...new Set(data.publicites.map((pub) => pub.ville).filter(Boolean)),
+    ];
+    setUniqueNewsCities(cities);
 
-      // Extraire les catégories uniques des publicités
-      const pubCategories = [
-        ...new Set(data.publicites.map((pub) => pub.categorie).filter(Boolean)),
-      ];
-      setUniquePubCategories(pubCategories);
+    // Extraire les catégories uniques
+    const categories = [
+      ...new Set(data.publicites.map((pub) => pub.categorie).filter(Boolean)),
+    ];
+    setUniqueNewsCategories(categories);
 
-      // Extraire les sous-catégories uniques des publicités
-      const pubSubCategories = [
-        ...new Set(
-          data.publicites
-            .map((pub) => pub.sous_categorie || pub.autre_sous_categorie)
-            .filter(Boolean)
-        ),
-      ];
-      setUniquePubSubCategories(pubSubCategories);
-    }
-
-    // Extraire les valeurs uniques des offres d'emploi
-    if (data.offres_emploi && data.offres_emploi.length > 0) {
-      // Extraire les pays uniques des offres d'emploi
-      const jobCountries = [
-        ...new Set(data.offres_emploi.map((job) => job.pays).filter(Boolean)),
-      ];
-      setUniqueJobCountries(jobCountries);
-
-      // Extraire les villes uniques des offres d'emploi
-      const jobCities = [
-        ...new Set(data.offres_emploi.map((job) => job.ville).filter(Boolean)),
-      ];
-      setUniqueJobCities(jobCities);
-
-      // Extraire les secteurs des offres d'emploi
-      // Utiliser à la fois sector et secteur pour la compatibilité
-      const jobSectors = [
-        ...new Set([
-          ...data.offres_emploi.map((job) => job.sector).filter(Boolean),
-          ...data.offres_emploi.map((job) => job.secteur).filter(Boolean),
-        ]),
-      ];
-      setUniqueJobSectors(jobSectors);
-
-      // Extraire les types de contrat uniques des offres d'emploi
-      const jobContractTypes = [
-        ...new Set(
-          data.offres_emploi.map((job) => job.type_contrat).filter(Boolean)
-        ),
-      ];
-      setUniqueJobContractTypes(jobContractTypes);
-    }
-
-    // Extraire les valeurs uniques des opportunités d'affaires
-    if (data.opportunites_affaires && data.opportunites_affaires.length > 0) {
-      // Extraire les pays uniques des opportunités
-      const oppoCountries = [
-        ...new Set(
-          data.opportunites_affaires.map((oppo) => oppo.pays).filter(Boolean)
-        ),
-      ];
-      setUniqueOppoCountries(oppoCountries);
-
-      // Extraire les villes uniques des opportunités
-      const oppoCities = [
-        ...new Set(
-          data.opportunites_affaires.map((oppo) => oppo.ville).filter(Boolean)
-        ),
-      ];
-      setUniqueOppoCities(oppoCities);
-
-      // Extraire les secteurs des opportunités
-      // Utiliser à la fois sector et secteur pour la compatibilité
-      const oppoSectors = [
-        ...new Set([
-          ...data.opportunites_affaires
-            .map((oppo) => oppo.sector)
-            .filter(Boolean),
-          ...data.opportunites_affaires
-            .map((oppo) => oppo.secteur)
-            .filter(Boolean),
-        ]),
-      ];
-      setUniqueOppoSectors(oppoSectors);
-
-      // Extraire les types d'opportunités uniques
-      const oppoTypes = [
-        ...new Set(
-          data.opportunites_affaires
-            .map((oppo) => oppo.post_type)
-            .filter(Boolean)
-        ),
-      ];
-      setUniqueOppoTypes(oppoTypes);
-    }
+    // Extraire les sous-catégories uniques
+    const subCategories = [
+      ...new Set(
+        data.publicites
+          .map((pub) => pub.sous_categorie || pub.autre_sous_categorie)
+          .filter(Boolean)
+      ),
+    ];
+    setUniqueNewsSubCategories(subCategories);
   }, []);
 
   // Fonction pour réinitialiser les filtres des publications
@@ -229,29 +133,7 @@ export default function Page() {
     setNewsSubCategoryFilter("");
     setNewsDeliveryFilter("");
     setNewsStatusFilter("all");
-    setPubliciteSearchQuery("");
-  };
-
-  // Fonction pour réinitialiser les filtres des offres d'emploi
-  const resetJobFilters = () => {
-    setNewsCountryFilter("");
-    setNewsCityFilter("");
-    setNewsTypeFilter("");
-    setNewsPostTypeFilter("");
-    setNewsContractTypeFilter("");
-    setNewsStatusFilter("all");
-    setOffreEmploiSearchQuery("");
-  };
-
-  // Fonction pour réinitialiser les filtres des opportunités d'affaires
-  const resetOpportunityFilters = () => {
-    setNewsCountryFilter("");
-    setNewsCityFilter("");
-    setNewsTypeFilter("");
-    setNewsPostTypeFilter("");
-    setNewsStatusFilter("all");
-    setOpportuniteSearchQuery("");
-    setFilter("all");
+    setSearchQuery("");
   };
 
   // Charger les données de la page
@@ -504,47 +386,66 @@ export default function Page() {
 
     return updatedPosts;
   };
-
   // Ouvrir le modal de détail d'un post
   const openPostDetail = async (postId, type) => {
+    if (!postId) return;
+
     try {
-      // Afficher un indicateur de chargement
-      setLoading(true);
+      // Utiliser directement les données déjà disponibles sans faire de requête supplémentaire
+      let publication;
 
-      // Configuration pour la requête
-      const config = {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        timeout: 10000, // Augmenter le timeout pour éviter les erreurs de réseau
-      };
-
-      const response = await axios.get(
-        `/api/${type}/${postId}/details`,
-        config
-      );
-      setSelectedPost(response.data.post);
-      setIsPostDetailModalOpen(true);
-    } catch (err) {
-      console.error(
-        "Erreur lors du chargement des détails de la publication:",
-        err
-      );
-
-      // Message d'erreur plus détaillé
-      let errorMessage = "Impossible de charger les détails de la publication.";
-
-      if (err.response) {
-        errorMessage = `Erreur serveur (${err.response.status}). Veuillez réessayer plus tard.`;
-      } else if (err.request) {
-        errorMessage =
-          "Impossible de se connecter au serveur. Vérifiez votre connexion internet.";
+      if (type === "publicites") {
+        publication = pageData.publicites.find((pub) => pub.id === postId);
+      } else if (type === "offres-emploi") {
+        publication = pageData.offresEmploi.find(
+          (offre) => offre.id === postId
+        );
+      } else if (type === "opportunites-affaires") {
+        publication = pageData.opportunitesAffaires.find(
+          (opp) => opp.id === postId
+        );
       }
 
-      alert(errorMessage);
-    } finally {
-      setLoading(false);
+      if (publication) {
+        // S'assurer que la publication a la structure attendue par PostDetailModal
+        setSelectedPost({
+          ...publication,
+          type: type,
+          page: {
+            user: pageData.user,
+            id: pageData.id,
+            nom: pageData.nom,
+          },
+        });
+        setIsPostDetailModalOpen(true);
+      } else {
+        // Si la publication n'est pas dans les données déjà chargées, faire une requête
+        const endpoint =
+          type === "publicites"
+            ? `/api/publicites/${postId}`
+            : type === "offres-emploi"
+            ? `/api/offres-emploi/${postId}`
+            : `/api/opportunites-affaires/${postId}`;
+
+        const response = await axios.get(endpoint);
+        if (response.data.success) {
+          setSelectedPost({
+            ...response.data.publication,
+            type: type,
+            page: {
+              user: pageData.user,
+              id: pageData.id,
+              nom: pageData.nom,
+            },
+          });
+          setIsPostDetailModalOpen(true);
+        } else {
+          toast.error("Impossible de charger les détails de la publication");
+        }
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'ouverture du détail:", err);
+      toast.error("Erreur lors de l'ouverture du détail de la publication");
     }
   };
 
@@ -618,52 +519,19 @@ export default function Page() {
         return [];
     }
 
-    // Filtrer par recherche en fonction du type de publication
+    // Filtrer par recherche
     let filtered = publications;
-
-    // Sélectionner le bon champ de recherche en fonction du type de publication
-    let currentSearchQuery = "";
-    switch (postType) {
-      case "publicites":
-        currentSearchQuery = publiciteSearchQuery;
-        break;
-      case "offres-emploi":
-        currentSearchQuery = offreEmploiSearchQuery;
-        break;
-      case "opportunites-affaires":
-        currentSearchQuery = opportuniteSearchQuery;
-        break;
-      default:
-        currentSearchQuery = "";
-    }
-
-    if (currentSearchQuery.trim() !== "") {
-      const query = currentSearchQuery.toLowerCase();
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter((pub) => {
-        // Champs communs à toutes les publications
         const titre = pub.titre?.toLowerCase() || "";
         const description = pub.description?.toLowerCase() || "";
-
-        // Filtrage spécifique selon le type de publication
-        if (postType === "offres-emploi") {
-          // Pour les offres d'emploi, rechercher dans titre, entreprise et référence
-          const entreprise =
-            pub.entreprise?.toLowerCase() ||
-            pub.company_name?.toLowerCase() ||
-            "";
-          const reference = pub.reference?.toLowerCase() || "";
-          return (
-            titre.includes(query) ||
-            entreprise.includes(query) ||
-            reference.includes(query)
-          );
-        } else if (postType === "opportunites-affaires") {
-          // Pour les opportunités d'affaires
-          return titre.includes(query) || description.includes(query);
-        } else {
-          // Pour les publicités et autres types
-          return titre.includes(query) || description.includes(query);
-        }
+        const contenu = pub.contenu?.toLowerCase() || "";
+        return (
+          titre.includes(query) ||
+          description.includes(query) ||
+          contenu.includes(query)
+        );
       });
     }
 
@@ -714,131 +582,31 @@ export default function Page() {
     }
 
     // Filtrer par statut (pour les offres d'emploi)
-    if (postType === "offres-emploi") {
+    if (postType === "offres-emploi" && filter !== "all") {
       const now = new Date();
 
-      // Filtrer par statut
-      if (newsStatusFilter !== "all") {
-        filtered = filtered.filter((pub) => pub.etat === newsStatusFilter);
-      }
-
-      // Filtrer par pays
-      if (newsCountryFilter) {
-        filtered = filtered.filter((pub) => pub.pays === newsCountryFilter);
-      }
-
-      // Filtrer par ville
-      if (newsCityFilter) {
-        filtered = filtered.filter((pub) => pub.ville === newsCityFilter);
-      }
-
-      // Filtrer par secteur (utiliser à la fois sector et secteur pour la compatibilité)
-      if (newsTypeFilter) {
-        filtered = filtered.filter(
-          (pub) =>
-            pub.secteur === newsTypeFilter || pub.sector === newsTypeFilter
-        );
-      }
-
-      // Filtrer par type de publication
-      if (newsPostTypeFilter) {
-        filtered = filtered.filter(
-          (pub) => pub.post_type === newsPostTypeFilter
-        );
-      }
-
-      // Filtrer par type de contrat
-      if (newsContractTypeFilter) {
-        filtered = filtered.filter(
-          (pub) => pub.type_contrat === newsContractTypeFilter
-        );
-      }
-
-      // Filtres spécifiques basés sur le filtre principal
-      if (filter !== "all") {
-        switch (filter) {
-          case "active":
-            filtered = filtered.filter((pub) => pub.etat === "disponible");
-            break;
-          case "recent":
-            // Moins de 3 jours
-            filtered = filtered.filter((pub) => {
-              const pubDate = new Date(pub.created_at);
-              const diffTime = Math.abs(now - pubDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              return diffDays <= 3;
-            });
-            break;
-          case "expired":
-            filtered = filtered.filter((pub) => {
-              if (pub.date_limite) {
-                const limitDate = new Date(pub.date_limite);
-                return limitDate < now;
-              }
-              return false;
-            });
-            break;
-        }
-      }
-    }
-
-    // Filtrer par statut et autres critères pour les opportunités d'affaires
-    if (postType === "opportunites-affaires") {
-      const now = new Date();
-
-      // Filtrer par pays
-      if (newsCountryFilter) {
-        filtered = filtered.filter((pub) => pub.pays === newsCountryFilter);
-      }
-
-      // Filtrer par ville
-      if (newsCityFilter) {
-        filtered = filtered.filter((pub) => pub.ville === newsCityFilter);
-      }
-
-      // Filtrer par secteur (utiliser à la fois sector et secteur pour la compatibilité)
-      if (newsTypeFilter) {
-        filtered = filtered.filter(
-          (pub) =>
-            pub.secteur === newsTypeFilter || pub.sector === newsTypeFilter
-        );
-      }
-
-      // Filtrer par type d'opportunité
-      if (newsPostTypeFilter) {
-        filtered = filtered.filter(
-          (pub) => pub.post_type === newsPostTypeFilter
-        );
-      }
-
-      // Filtres spécifiques basés sur le filtre principal
-      if (filter !== "all") {
-        switch (filter) {
-          case "active":
-            filtered = filtered.filter((pub) => pub.etat === "disponible");
-            break;
-          case "recent":
-            // Moins de 7 jours
-            filtered = filtered.filter((pub) => {
-              const pubDate = new Date(pub.created_at);
-              const diffTime = Math.abs(now - pubDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              return diffDays <= 7;
-            });
-            break;
-          case "expired":
-            filtered = filtered.filter((pub) => {
-              if (pub.etat === "terminé") return true;
-              if (pub.date_limite) {
-                const limitDate = new Date(pub.date_limite);
-                return limitDate < now;
-              }
-              return false;
-            });
-            break;
-          default:
-            break;
-        }
+      switch (filter) {
+        case "active":
+          filtered = filtered.filter((pub) => pub.etat === "disponible");
+          break;
+        case "recent":
+          // Moins de 3 jours
+          filtered = filtered.filter((pub) => {
+            const pubDate = new Date(pub.created_at);
+            const diffTime = Math.abs(now - pubDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays <= 3;
+          });
+          break;
+        case "expired":
+          filtered = filtered.filter((pub) => {
+            if (pub.date_limite) {
+              const limitDate = new Date(pub.date_limite);
+              return limitDate < now;
+            }
+            return false;
+          });
+          break;
       }
     }
 
@@ -1326,8 +1094,20 @@ export default function Page() {
                 <span>{publication.entreprise || "Non spécifié"}</span>
               </div>
               <div className="flex items-center">
+                <MapPinIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                <span>{publication.lieu || "Non spécifié"}</span>
+              </div>
+              <div className="flex items-center">
+                <CurrencyDollarIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                <span>
+                  {publication.salaire
+                    ? `${publication.salaire} ${publication.devise}`
+                    : "Non spécifié"}
+                </span>
+              </div>
+              <div className="flex items-center">
                 <TagIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                <span>{publication.sector || "Non spécifié"}</span>
+                <span>{publication.secteur || "Non spécifié"}</span>
               </div>
             </div>
           )}
@@ -1335,8 +1115,16 @@ export default function Page() {
           {isOpportuniteAffaire && (
             <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
               <div className="flex items-center">
+                <CurrencyDollarIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                <span>
+                  {publication.investissement_requis
+                    ? `${publication.investissement_requis} ${publication.devise}`
+                    : "Non spécifié"}
+                </span>
+              </div>
+              <div className="flex items-center">
                 <TagIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                <span>{publication.sector || "Non spécifié"}</span>
+                <span>{publication.secteur || "Non spécifié"}</span>
               </div>
             </div>
           )}
@@ -2097,6 +1885,49 @@ export default function Page() {
               </Tab>
             </Tab.List>
 
+            {/* Barre de recherche et filtres */}
+            <div
+              className={`p-4 border-b ${
+                isDarkMode ? "border-gray-700" : "border-gray-200"
+              }`}
+            >
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-grow relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    className={`block w-full pl-10 pr-3 py-2 border ${
+                      isDarkMode
+                        ? "border-gray-600 bg-gray-700 text-white"
+                        : "border-gray-300 bg-white text-gray-900"
+                    } rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="relative inline-block text-left">
+                    <select
+                      className={`block w-full pl-3 pr-10 py-2 border ${
+                        isDarkMode
+                          ? "border-gray-600 bg-gray-700 text-white"
+                          : "border-gray-300 bg-white text-gray-900"
+                      } rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                    >
+                      <option value="all">Tous</option>
+                      <option value="active">Actifs</option>
+                      <option value="recent">Récents</option>
+                      <option value="expired">Expirés</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
             <Tab.Panels>
               {/* Onglet Publications */}
               <Tab.Panel
@@ -2112,32 +1943,6 @@ export default function Page() {
                       : "bg-white border-gray-200"
                   }`}
                 >
-                  {/* Champ de recherche pour les publications */}
-                  <div className="relative flex-grow max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Rechercher dans les publications..."
-                      className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                        isDarkMode
-                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-                      } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                      value={publiciteSearchQuery}
-                      onChange={(e) => setPubliciteSearchQuery(e.target.value)}
-                    />
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                    </div>
-                    {publiciteSearchQuery && (
-                      <button
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() => setPubliciteSearchQuery("")}
-                      >
-                        <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                      </button>
-                    )}
-                  </div>
-
                   {/* Bouton pour afficher/masquer les filtres avancés */}
                   <button
                     className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
@@ -2187,7 +1992,7 @@ export default function Page() {
                     </button>
                     <button
                       className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                        newsStatusFilter === "terminé"
+                        newsStatusFilter === "termine"
                           ? isDarkMode
                             ? "bg-red-600 text-white"
                             : "bg-red-500 text-white"
@@ -2195,7 +2000,7 @@ export default function Page() {
                           ? "bg-gray-700 text-gray-300"
                           : "bg-gray-200 text-gray-700"
                       }`}
-                      onClick={() => setNewsStatusFilter("terminé")}
+                      onClick={() => setNewsStatusFilter("termine")}
                     >
                       <span className="text-sm">Terminées</span>
                     </button>
@@ -2257,7 +2062,7 @@ export default function Page() {
                             }
                           >
                             <option value="">Tous les pays</option>
-                            {uniquePubCountries.map((country) => (
+                            {uniqueNewsCountries.map((country) => (
                               <option key={country} value={country}>
                                 {country}
                               </option>
@@ -2298,7 +2103,7 @@ export default function Page() {
                             onChange={(e) => setNewsCityFilter(e.target.value)}
                           >
                             <option value="">Toutes les villes</option>
-                            {uniquePubCities.map((city) => (
+                            {uniqueNewsCities.map((city) => (
                               <option key={city} value={city}>
                                 {city}
                               </option>
@@ -2381,7 +2186,7 @@ export default function Page() {
                             <option value="">Toutes les catégories</option>
                             <option value="produit">Produit</option>
                             <option value="service">Service</option>
-                            {uniquePubCategories
+                            {uniqueNewsCategories
                               .filter(
                                 (cat) => cat !== "produit" && cat !== "service"
                               )
@@ -2428,7 +2233,7 @@ export default function Page() {
                             }
                           >
                             <option value="">Toutes les sous-catégories</option>
-                            {uniquePubSubCategories.map((subCategory) => (
+                            {uniqueNewsSubCategories.map((subCategory) => (
                               <option key={subCategory} value={subCategory}>
                                 {subCategory}
                               </option>
@@ -2526,1503 +2331,68 @@ export default function Page() {
                   isDarkMode ? "bg-gray-800 text-white" : "bg-white"
                 }`}
               >
-                {/* Barre de recherche et filtres */}
-                <div
-                  className={`mb-6 rounded-lg overflow-hidden ${
-                    isDarkMode ? "bg-gray-800" : "bg-white"
-                  } shadow`}
-                >
-                  <div
-                    className={`p-4 border-b ${
-                      isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                  >
-                    <h2
-                      className={`text-xl font-bold ${
-                        isDarkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Offres d'emploi et appels à manifestation d'intérêt
-                    </h2>
-                    <p
-                      className={`mt-1 text-sm ${
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Découvrez les dernières opportunités professionnelles
-                    </p>
-                    <div
-                      className={`mt-4 p-3 rounded-lg ${
-                        isDarkMode
-                          ? "bg-yellow-900/30 text-yellow-200"
-                          : "bg-yellow-50 text-yellow-800"
-                      }`}
-                    >
-                      <p className="text-sm font-medium">AVIS AUX CANDIDATS</p>
-                      <p className="text-sm mt-1">
-                        <span className="font-semibold">
-                          NE PAS ENVOYER DE L'ARGENT
-                        </span>{" "}
-                        sous quelque forme que ce soit (cash, virement,
-                        transfert Western Union, mobile money,...). Merci de
-                        signaler immédiatement toute demande suspecte.
+                <div className="space-y-4">
+                  {getFilteredPublications("offres-emploi").length > 0 ? (
+                    getFilteredPublications("offres-emploi").map((offre) =>
+                      renderPublication(offre, "offres-emploi")
+                    )
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <BriefcaseIcon className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3
+                        className={`text-lg font-medium ${
+                          isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        Aucune offre d'emploi
+                      </h3>
+                      <p
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        Cet utilisateur n'a pas encore publié d'offres d'emploi
+                        ou aucune offre ne correspond à votre recherche.
                       </p>
                     </div>
-                  </div>
-
-                  {/* Filtres et recherche */}
-                  <div className="flex flex-wrap justify-between items-center gap-3 p-4">
-                    {/* Barre de recherche */}
-                    <div className="relative w-full md:w-1/3">
-                      <input
-                        type="text"
-                        placeholder="Rechercher par titre, entreprise, référence..."
-                        className={`block w-full pl-10 pr-3 py-2 border ${
-                          isDarkMode
-                            ? "bg-gray-700 border-gray-600 text-white"
-                            : "bg-white border-gray-300 text-gray-900"
-                        } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                        value={offreEmploiSearchQuery}
-                        onChange={(e) =>
-                          setOffreEmploiSearchQuery(e.target.value)
-                        }
-                      />
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      {offreEmploiSearchQuery && (
-                        <button
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                          onClick={() => setOffreEmploiSearchQuery("")}
-                        >
-                          <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Bouton pour afficher/masquer les filtres avancés */}
-                    <button
-                      className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                        isDarkMode
-                          ? "bg-gray-700 text-white hover:bg-gray-600"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                      onClick={() => setShowNewsFilters(!showNewsFilters)}
-                    >
-                      <FunnelIcon className="h-5 w-5 mr-1" />
-                      <span className="text-sm">
-                        {showNewsFilters
-                          ? "Masquer les filtres"
-                          : "Filtres avancés"}
-                      </span>
-                    </button>
-
-                    {/* Filtres de statut */}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "all"
-                            ? isDarkMode
-                              ? "bg-primary-600 text-white"
-                              : "bg-primary-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("all")}
-                      >
-                        <span className="text-sm">Toutes</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "active"
-                            ? isDarkMode
-                              ? "bg-green-600 text-white"
-                              : "bg-green-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("active")}
-                      >
-                        <span className="text-sm">En cours</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "recent"
-                            ? isDarkMode
-                              ? "bg-orange-600 text-white"
-                              : "bg-orange-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("recent")}
-                      >
-                        <span className="text-sm">Récentes</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "expired"
-                            ? isDarkMode
-                              ? "bg-red-600 text-white"
-                              : "bg-red-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("expired")}
-                      >
-                        <span className="text-sm">Expirées</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Panneau de filtres avancés */}
-                  {showNewsFilters && (
-                    <div
-                      className={`p-4 mb-4 rounded-lg ${
-                        isDarkMode
-                          ? "bg-gray-800 border border-gray-700"
-                          : "bg-gray-50 border border-gray-200"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-3">
-                        <h3
-                          className={`font-medium ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          Filtres avancés
-                        </h3>
-                        <button
-                          className={`text-sm px-2 py-1 rounded ${
-                            isDarkMode
-                              ? "text-primary-400 hover:text-primary-300 hover:bg-gray-700"
-                              : "text-primary-600 hover:text-primary-700 hover:bg-gray-100"
-                          }`}
-                          onClick={() => {
-                            setNewsStatusFilter("");
-                            setNewsCountryFilter("");
-                            setNewsCityFilter("");
-                            setNewsTypeFilter("");
-                            setNewsContractTypeFilter("");
-                            setSearchQuery("");
-                          }}
-                        >
-                          <span className="flex items-center">
-                            <ArrowPathIcon className="h-4 w-4 mr-1" />
-                            Réinitialiser les filtres
-                          </span>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Filtre par pays */}
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Pays
-                          </label>
-                          <div className="relative">
-                            <select
-                              className={`block w-full px-3 py-2 pr-8 rounded border ${
-                                isDarkMode
-                                  ? "bg-gray-700 border-gray-600 text-white"
-                                  : "bg-white border-gray-300 text-gray-900"
-                              } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                              value={newsCountryFilter}
-                              onChange={(e) =>
-                                setNewsCountryFilter(e.target.value)
-                              }
-                            >
-                              <option value="">Tous les pays</option>
-                              {uniqueJobCountries.map((country) => (
-                                <option key={country} value={country}>
-                                  {country}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </div>
-                            {newsCountryFilter && (
-                              <button
-                                className="absolute inset-y-0 right-0 pr-8 flex items-center"
-                                onClick={() => setNewsCountryFilter("")}
-                                title="Effacer la sélection"
-                              >
-                                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Filtre par ville */}
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Ville
-                          </label>
-                          <div className="relative">
-                            <select
-                              className={`block w-full px-3 py-2 pr-8 rounded border ${
-                                isDarkMode
-                                  ? "bg-gray-700 border-gray-600 text-white"
-                                  : "bg-white border-gray-300 text-gray-900"
-                              } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                              value={newsCityFilter}
-                              onChange={(e) =>
-                                setNewsCityFilter(e.target.value)
-                              }
-                            >
-                              <option value="">Toutes les villes</option>
-                              {uniqueJobCities.map((city) => (
-                                <option key={city} value={city}>
-                                  {city}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </div>
-                            {newsCityFilter && (
-                              <button
-                                className="absolute inset-y-0 right-0 pr-8 flex items-center"
-                                onClick={() => setNewsCityFilter("")}
-                                title="Effacer la sélection"
-                              >
-                                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Filtre par secteur */}
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Secteur
-                          </label>
-                          <div className="relative">
-                            <select
-                              className={`block w-full px-3 py-2 pr-8 rounded border ${
-                                isDarkMode
-                                  ? "bg-gray-700 border-gray-600 text-white"
-                                  : "bg-white border-gray-300 text-gray-900"
-                              } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                              value={newsTypeFilter}
-                              onChange={(e) =>
-                                setNewsTypeFilter(e.target.value)
-                              }
-                            >
-                              <option value="">Tous les secteurs</option>
-                              {uniqueJobSectors.map((sector) => (
-                                <option key={sector} value={sector}>
-                                  {sector}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </div>
-                            {newsTypeFilter && (
-                              <button
-                                className="absolute inset-y-0 right-0 pr-8 flex items-center"
-                                onClick={() => setNewsTypeFilter("")}
-                                title="Effacer la sélection"
-                              >
-                                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Filtre par type de publication */}
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Type de publication
-                          </label>
-                          <div className="relative">
-                            <select
-                              className={`block w-full px-3 py-2 pr-8 rounded border ${
-                                isDarkMode
-                                  ? "bg-gray-700 border-gray-600 text-white"
-                                  : "bg-white border-gray-300 text-gray-900"
-                              } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                              value={newsPostTypeFilter}
-                              onChange={(e) =>
-                                setNewsPostTypeFilter(e.target.value)
-                              }
-                            >
-                              <option value="">Tous les types</option>
-                              <option value="offre_emploi">
-                                Offre d'emploi
-                              </option>
-                              <option value="appel_manifestation_interet">
-                                Appel à manifestation d'intérêt
-                              </option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </div>
-                            {newsPostTypeFilter && (
-                              <button
-                                className="absolute inset-y-0 right-0 pr-8 flex items-center"
-                                onClick={() => setNewsPostTypeFilter("")}
-                                title="Effacer la sélection"
-                              >
-                                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Filtre par type de contrat */}
-                        <div>
-                          <label
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Type de contrat
-                          </label>
-                          <div className="relative">
-                            <select
-                              className={`block w-full px-3 py-2 pr-8 rounded border ${
-                                isDarkMode
-                                  ? "bg-gray-700 border-gray-600 text-white"
-                                  : "bg-white border-gray-300 text-gray-900"
-                              } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                              value={newsContractTypeFilter}
-                              onChange={(e) =>
-                                setNewsContractTypeFilter(e.target.value)
-                              }
-                            >
-                              <option value="">Tous les contrats</option>
-                              {uniqueJobContractTypes.map((type) => (
-                                <option key={type} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </div>
-                            {newsContractTypeFilter && (
-                              <button
-                                className="absolute inset-y-0 right-0 pr-8 flex items-center"
-                                onClick={() => setNewsContractTypeFilter("")}
-                                title="Effacer la sélection"
-                              >
-                                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Indicateurs de filtres actifs */}
-                      {(newsCountryFilter ||
-                        newsTypeFilter ||
-                        newsCityFilter ||
-                        newsPostTypeFilter ||
-                        newsContractTypeFilter) && (
-                        <div
-                          className={`mt-4 pt-3 border-t ${
-                            isDarkMode ? "border-gray-700" : "border-gray-200"
-                          }`}
-                        >
-                          <div className="flex flex-wrap gap-2">
-                            <span
-                              className={`text-sm ${
-                                isDarkMode ? "text-gray-300" : "text-gray-700"
-                              }`}
-                            >
-                              Filtres actifs:
-                            </span>
-                            {newsCountryFilter && (
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                  isDarkMode
-                                    ? "bg-gray-700 text-white"
-                                    : "bg-gray-200 text-gray-800"
-                                }`}
-                              >
-                                Pays: {newsCountryFilter}
-                                <XMarkIcon
-                                  className="h-3 w-3 ml-1 cursor-pointer"
-                                  onClick={() => setNewsCountryFilter("")}
-                                />
-                              </span>
-                            )}
-                            {newsCityFilter && (
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                  isDarkMode
-                                    ? "bg-gray-700 text-white"
-                                    : "bg-gray-200 text-gray-800"
-                                }`}
-                              >
-                                Ville: {newsCityFilter}
-                                <XMarkIcon
-                                  className="h-3 w-3 ml-1 cursor-pointer"
-                                  onClick={() => setNewsCityFilter("")}
-                                />
-                              </span>
-                            )}
-                            {newsTypeFilter && (
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                  isDarkMode
-                                    ? "bg-gray-700 text-white"
-                                    : "bg-gray-200 text-gray-800"
-                                }`}
-                              >
-                                Secteur: {newsTypeFilter}
-                                <XMarkIcon
-                                  className="h-3 w-3 ml-1 cursor-pointer"
-                                  onClick={() => setNewsTypeFilter("")}
-                                />
-                              </span>
-                            )}
-                            {newsPostTypeFilter && (
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                  isDarkMode
-                                    ? "bg-gray-700 text-white"
-                                    : "bg-gray-200 text-gray-800"
-                                }`}
-                              >
-                                Type:{" "}
-                                {newsPostTypeFilter === "offre_emploi"
-                                  ? "Offre d'emploi"
-                                  : "Appel à manifestation d'intérêt"}
-                                <XMarkIcon
-                                  className="h-3 w-3 ml-1 cursor-pointer"
-                                  onClick={() => setNewsPostTypeFilter("")}
-                                />
-                              </span>
-                            )}
-                            {newsContractTypeFilter && (
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                  isDarkMode
-                                    ? "bg-gray-700 text-white"
-                                    : "bg-gray-200 text-gray-800"
-                                }`}
-                              >
-                                Contrat: {newsContractTypeFilter}
-                                <XMarkIcon
-                                  className="h-3 w-3 ml-1 cursor-pointer"
-                                  onClick={() => setNewsContractTypeFilter("")}
-                                />
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   )}
-
-                  {/* Options de tri et informations */}
-                  <div
-                    className={`flex flex-wrap justify-between items-center gap-3 p-4 border-t ${
-                      isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                  >
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center">
-                      <InformationCircleIcon className="h-5 w-5 mr-1" />
-                      <span>Cliquez sur une offre pour voir les détails</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tableau des offres d'emploi */}
-                <div
-                  className={`overflow-hidden rounded-lg shadow ${
-                    isDarkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-                >
-                  {/* En-tête du tableau */}
-                  <div
-                    className={`grid grid-cols-12 gap-4 p-4 font-medium ${
-                      isDarkMode
-                        ? "bg-gray-700 text-white border-gray-600"
-                        : "bg-gray-50 text-gray-700 border-gray-200"
-                    } border-b`}
-                  >
-                    <div className="col-span-6 sm:col-span-5">Titre</div>
-                    <div className="col-span-3 sm:col-span-3 hidden sm:block">
-                      Organisme
-                    </div>
-                    <div className="col-span-3 sm:col-span-2 hidden sm:block">
-                      Pays
-                    </div>
-                    <div className="col-span-6 sm:col-span-2 text-right">
-                      Date de clôture
-                    </div>
-                  </div>
-
-                  {/* Corps du tableau */}
-                  <div>
-                    {getFilteredPublications("offres-emploi").length > 0 ? (
-                      getFilteredPublications("offres-emploi").map((offre) => (
-                        <div
-                          key={offre.id}
-                          className={`grid grid-cols-12 gap-4 p-4 cursor-pointer hover:${
-                            isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                          } border-b ${
-                            isDarkMode ? "border-gray-700" : "border-gray-200"
-                          }`}
-                          onClick={() =>
-                            openPostDetail(offre.id, "offres-emploi")
-                          }
-                        >
-                          <div className="col-span-6 sm:col-span-5">
-                            <div className="flex items-start">
-                              <div
-                                className={`flex-shrink-0 w-2 h-2 mt-2 rounded-full ${
-                                  offre.etat === "disponible"
-                                    ? "bg-green-500"
-                                    : offre.etat === "terminé"
-                                    ? "bg-red-500"
-                                    : "bg-orange-500"
-                                }`}
-                              ></div>
-                              <div className="ml-2">
-                                <div
-                                  className={`font-medium ${
-                                    isDarkMode ? "text-white" : "text-gray-900"
-                                  }`}
-                                >
-                                  {offre.titre || offre.title}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {offre.reference || "Réf. non précisée"}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-span-3 sm:col-span-3 hidden sm:block">
-                            <div
-                              className={`text-sm ${
-                                isDarkMode ? "text-gray-300" : "text-gray-700"
-                              }`}
-                            >
-                              {offre.entreprise ||
-                                offre.company_name ||
-                                "Non précisé"}
-                            </div>
-                          </div>
-                          <div className="col-span-3 sm:col-span-2 hidden sm:block">
-                            <div
-                              className={`text-sm ${
-                                isDarkMode ? "text-gray-300" : "text-gray-700"
-                              }`}
-                            >
-                              {offre.pays || "Non précisé"}
-                            </div>
-                          </div>
-                          <div className="col-span-6 sm:col-span-2 text-right">
-                            <div
-                              className={`text-sm ${
-                                isDarkMode ? "text-gray-300" : "text-gray-700"
-                              }`}
-                            >
-                              {offre.date_limite
-                                ? new Date(
-                                    offre.date_limite
-                                  ).toLocaleDateString("fr-FR", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                  })
-                                : "Date non spécifiée"}
-                            </div>
-
-                            {/* Actions sociales (j'aime, commentaires, partages) */}
-                            <div
-                              className={`flex items-center justify-end mt-2 text-sm ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
-                            >
-                              <button
-                                className="flex items-center mr-3"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleLike(offre.id, "offres-emploi");
-                                }}
-                              >
-                                {offre.liked_by_current_user ? (
-                                  <HeartIconSolid className="h-4 w-4 text-red-500 mr-1" />
-                                ) : (
-                                  <HeartIcon className="h-4 w-4 mr-1" />
-                                )}
-                                <span>{offre.likes_count || 0}</span>
-                              </button>
-
-                              <button
-                                className="flex items-center mr-3"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPostDetail(offre.id, "offres-emploi");
-                                }}
-                              >
-                                <ChatBubbleLeftEllipsisIcon className="h-4 w-4 mr-1" />
-                                <span>{offre.comments_count || 0}</span>
-                              </button>
-
-                              <button
-                                className="flex items-center"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleShare(offre.id, "offres-emploi");
-                                }}
-                              >
-                                <ShareIcon className="h-4 w-4 mr-1" />
-                                <span>{offre.shares_count || 0}</span>
-                              </button>
-                            </div>
-
-                            {/* Boutons d'action */}
-                            <div className="flex justify-end mt-2 space-x-2">
-                              {/* Bouton Détails */}
-                              <button
-                                className={`p-1 rounded-full ${
-                                  isDarkMode
-                                    ? "bg-blue-600 hover:bg-blue-700"
-                                    : "bg-blue-500 hover:bg-blue-600"
-                                } text-white`}
-                                title="Voir les détails"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPostDetail(offre.id, "offres-emploi");
-                                }}
-                              >
-                                <InformationCircleIcon className="w-4 h-4" />
-                              </button>
-
-                              {/* Bouton Télécharger */}
-                              {offre.offer_file_url && (
-                                <a
-                                  href={offre.offer_file_url}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`p-1 rounded-full ${
-                                    isDarkMode
-                                      ? "bg-purple-600 hover:bg-purple-700"
-                                      : "bg-purple-500 hover:bg-purple-600"
-                                  } text-white`}
-                                  title="Télécharger le fichier"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <DocumentArrowDownIcon className="w-4 h-4" />
-                                </a>
-                              )}
-
-                              {/* Bouton WhatsApp */}
-                              {offre.contacts && (
-                                <a
-                                  href={`https://wa.me/${offre.contacts.replace(
-                                    /[^0-9]/g,
-                                    ""
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1 rounded-full bg-green-600 text-white hover:bg-green-700"
-                                  title="Contacter via WhatsApp"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="w-4 h-4"
-                                  >
-                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                  </svg>
-                                </a>
-                              )}
-
-                              {/* Bouton Lien externe */}
-                              {offre.lien && (
-                                <a
-                                  href={offre.lien}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`p-1 rounded-full ${
-                                    isDarkMode
-                                      ? "bg-primary-600 hover:bg-primary-700"
-                                      : "bg-primary-500 hover:bg-primary-600"
-                                  } text-white`}
-                                  title="En savoir plus"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <BriefcaseIcon className="h-12 w-12 text-gray-400 mb-4" />
-                        <h3
-                          className={`text-lg font-medium ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                          }`}
-                        >
-                          Aucune offre d'emploi
-                        </h3>
-                        <p
-                          className={`text-sm ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
-                        >
-                          Cet utilisateur n'a pas encore publié d'offres
-                          d'emploi ou aucune offre ne correspond à votre
-                          recherche.
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </Tab.Panel>
 
               {/* Onglet Opportunités d'affaires */}
               <Tab.Panel
-                className={classNames(
-                  "rounded-xl p-3",
-                  "ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2"
-                )}
+                className={`p-4 ${
+                  isDarkMode ? "bg-gray-800 text-white" : "bg-white"
+                }`}
               >
-                {/* Barre de recherche et filtres */}
-                <div
-                  className={`mb-6 rounded-lg overflow-hidden ${
-                    isDarkMode ? "bg-gray-800" : "bg-white"
-                  } shadow`}
-                >
-                  <div
-                    className={`p-4 border-b ${
-                      isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                  >
-                    <h2
-                      className={`text-xl font-bold ${
-                        isDarkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Opportunités d'affaires, partenariats et appels à projets
-                    </h2>
-                    <p
-                      className={`mt-1 text-sm ${
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Découvrez les dernières opportunités d'affaires et de
-                      partenariats
-                    </p>
-                    <div
-                      className={`mt-4 p-3 rounded-lg ${
-                        isDarkMode
-                          ? "bg-yellow-900/30 text-yellow-200"
-                          : "bg-yellow-50 text-yellow-800"
-                      }`}
-                    >
-                      <p className="text-sm font-medium">AVIS IMPORTANT</p>
-                      <p className="text-sm mt-1">
-                        <span className="font-semibold">
-                          VÉRIFIEZ LA LÉGITIMITÉ DES OFFRES
-                        </span>{" "}
-                        avant tout engagement. Assurez-vous de bien comprendre
-                        les termes et conditions de chaque opportunité.
+                <div className="space-y-4">
+                  {getFilteredPublications("opportunites-affaires").length >
+                  0 ? (
+                    getFilteredPublications("opportunites-affaires").map(
+                      (opportunite) =>
+                        renderPublication(opportunite, "opportunites-affaires")
+                    )
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <LightBulbIcon className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3
+                        className={`text-lg font-medium ${
+                          isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        Aucune opportunité d'affaires
+                      </h3>
+                      <p
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        Cet utilisateur n'a pas encore publié d'opportunités
+                        d'affaires ou aucune opportunité ne correspond à votre
+                        recherche.
                       </p>
                     </div>
-                  </div>
-
-                  {/* Filtres et recherche */}
-                  <div className="flex flex-wrap justify-between items-center gap-3 p-4">
-                    {/* Barre de recherche */}
-                    <div className="relative w-full md:w-1/3">
-                      <input
-                        type="text"
-                        placeholder="Rechercher une opportunité..."
-                        className={`block w-full pl-10 pr-3 py-2 border ${
-                          isDarkMode
-                            ? "bg-gray-700 border-gray-600 text-white"
-                            : "bg-white border-gray-300 text-gray-900"
-                        } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                        value={opportuniteSearchQuery}
-                        onChange={(e) =>
-                          setOpportuniteSearchQuery(e.target.value)
-                        }
-                      />
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      {opportuniteSearchQuery && (
-                        <button
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                          onClick={() => setOpportuniteSearchQuery("")}
-                        >
-                          <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Bouton pour afficher/masquer les filtres avancés */}
-                    <button
-                      className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                        isDarkMode
-                          ? "bg-gray-700 text-white hover:bg-gray-600"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                      onClick={() => setShowNewsFilters(!showNewsFilters)}
-                    >
-                      <FunnelIcon className="h-5 w-5 mr-1" />
-                      <span className="text-sm">
-                        {showNewsFilters
-                          ? "Masquer les filtres"
-                          : "Filtres avancés"}
-                      </span>
-                    </button>
-
-                    {/* Bouton pour réinitialiser tous les filtres */}
-                    <button
-                      className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                        isDarkMode
-                          ? "bg-gray-700 text-white hover:bg-gray-600"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                      onClick={() => {
-                        setOpportuniteSearchQuery("");
-                        setFilter("all");
-                        setNewsCountryFilter("");
-                        setNewsCityFilter("");
-                        setNewsTypeFilter("");
-                        setNewsPostTypeFilter("");
-                      }}
-                    >
-                      <ArrowPathIcon className="h-5 w-5 mr-1" />
-                      <span className="text-sm">Réinitialiser</span>
-                    </button>
-
-                    {/* Filtres de statut */}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "all"
-                            ? isDarkMode
-                              ? "bg-primary-600 text-white"
-                              : "bg-primary-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("all")}
-                      >
-                        <span className="text-sm">Toutes</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "active"
-                            ? isDarkMode
-                              ? "bg-green-600 text-white"
-                              : "bg-green-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("active")}
-                      >
-                        <span className="text-sm">En cours</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "recent"
-                            ? isDarkMode
-                              ? "bg-orange-600 text-white"
-                              : "bg-orange-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("recent")}
-                      >
-                        <span className="text-sm">Récentes</span>
-                      </button>
-                      <button
-                        className={`px-3 py-2 rounded-md flex items-center justify-center transition-colors ${
-                          filter === "expired"
-                            ? isDarkMode
-                              ? "bg-red-600 text-white"
-                              : "bg-red-500 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-gray-300"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                        onClick={() => setFilter("expired")}
-                      >
-                        <span className="text-sm">Expirées</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Filtres avancés */}
-                  {showNewsFilters && (
-                    <div
-                      className={`p-4 border-t ${
-                        isDarkMode ? "border-gray-700" : "border-gray-200"
-                      }`}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Filtre par pays */}
-                        <div>
-                          <label
-                            htmlFor="country-filter"
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Pays
-                          </label>
-                          <select
-                            id="country-filter"
-                            className={`block w-full py-2 px-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-white"
-                                : "bg-white border-gray-300 text-gray-900"
-                            } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                            value={newsCountryFilter}
-                            onChange={(e) =>
-                              setNewsCountryFilter(e.target.value)
-                            }
-                          >
-                            <option value="">Tous les pays</option>
-                            {uniqueOppoCountries.map((country) => (
-                              <option key={country} value={country}>
-                                {country}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Filtre par ville */}
-                        <div>
-                          <label
-                            htmlFor="city-filter"
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Ville
-                          </label>
-                          <select
-                            id="city-filter"
-                            className={`block w-full py-2 px-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-white"
-                                : "bg-white border-gray-300 text-gray-900"
-                            } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                            value={newsCityFilter}
-                            onChange={(e) => setNewsCityFilter(e.target.value)}
-                          >
-                            <option value="">Toutes les villes</option>
-                            {uniqueOppoCities.map((city) => (
-                              <option key={city} value={city}>
-                                {city}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Filtre par secteur */}
-                        <div>
-                          <label
-                            htmlFor="sector-filter"
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Secteur
-                          </label>
-                          <select
-                            id="sector-filter"
-                            className={`block w-full py-2 px-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-white"
-                                : "bg-white border-gray-300 text-gray-900"
-                            } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                            value={newsTypeFilter}
-                            onChange={(e) => setNewsTypeFilter(e.target.value)}
-                          >
-                            <option value="">Tous les secteurs</option>
-                            {uniqueOppoSectors.map((sector) => (
-                              <option key={sector} value={sector}>
-                                {sector}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Filtre par type d'opportunité */}
-                        <div>
-                          <label
-                            htmlFor="opportunity-type-filter"
-                            className={`block text-sm font-medium mb-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            Type d'opportunité
-                          </label>
-                          <select
-                            id="opportunity-type-filter"
-                            className={`block w-full py-2 px-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-white"
-                                : "bg-white border-gray-300 text-gray-900"
-                            } rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                            value={newsPostTypeFilter}
-                            onChange={(e) =>
-                              setNewsPostTypeFilter(e.target.value)
-                            }
-                          >
-                            <option value="">Tous les types</option>
-                            {uniqueOppoTypes.length > 0 ? (
-                              uniqueOppoTypes.map((type) => (
-                                <option key={type} value={type}>
-                                  {type === "appel_projet"
-                                    ? "Appel à projet"
-                                    : type === "partenariat"
-                                    ? "Partenariat"
-                                    : type === "opportunité"
-                                    ? "Opportunité d'affaire"
-                                    : type}
-                                </option>
-                              ))
-                            ) : (
-                              <>
-                                <option value="opportunité">
-                                  Opportunité d'affaire
-                                </option>
-                                <option value="appel_projet">
-                                  Appel à projet
-                                </option>
-                                <option value="partenariat">Partenariat</option>
-                              </>
-                            )}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
                   )}
-                </div>
-
-                {/* Tableau des opportunités d'affaires */}
-                <div
-                  className={`overflow-hidden rounded-lg shadow ${
-                    isDarkMode ? "bg-gray-800" : "bg-white"
-                  }`}
-                >
-                  {loading ? (
-                    <div className="min-h-screen flex items-start pt-24 justify-center bg-white dark:bg-[rgba(17,24,39,0.95)]">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead
-                          className={isDarkMode ? "bg-gray-700" : "bg-gray-50"}
-                        >
-                          <tr>
-                            <th
-                              scope="col"
-                              className={`px-6 py-3 text-left text-xs font-medium ${
-                                isDarkMode ? "text-gray-300" : "text-gray-500"
-                              } uppercase tracking-wider`}
-                            >
-                              Titre
-                            </th>
-                            <th
-                              scope="col"
-                              className={`px-6 py-3 text-left text-xs font-medium ${
-                                isDarkMode ? "text-gray-300" : "text-gray-500"
-                              } uppercase tracking-wider hidden md:table-cell`}
-                            >
-                              Type
-                            </th>
-                            <th
-                              scope="col"
-                              className={`px-6 py-3 text-left text-xs font-medium ${
-                                isDarkMode ? "text-gray-300" : "text-gray-500"
-                              } uppercase tracking-wider hidden md:table-cell`}
-                            >
-                              Entreprise
-                            </th>
-                            <th
-                              scope="col"
-                              className={`px-6 py-3 text-left text-xs font-medium ${
-                                isDarkMode ? "text-gray-300" : "text-gray-500"
-                              } uppercase tracking-wider hidden sm:table-cell`}
-                            >
-                              Date de clôture
-                            </th>
-                            <th
-                              scope="col"
-                              className={`px-6 py-3 text-center text-xs font-medium ${
-                                isDarkMode ? "text-gray-300" : "text-gray-500"
-                              } uppercase tracking-wider`}
-                            >
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody
-                          className={`divide-y ${
-                            isDarkMode ? "divide-gray-700" : "divide-gray-200"
-                          }`}
-                        >
-                          {getFilteredPublications("opportunites-affaires")
-                            .length > 0 ? (
-                            getFilteredPublications(
-                              "opportunites-affaires"
-                            ).map((post) => (
-                              <tr
-                                key={post.id}
-                                className={`hover:${
-                                  isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                                } cursor-pointer`}
-                                onClick={() =>
-                                  openPostDetail(
-                                    post.id,
-                                    "opportunites-affaires"
-                                  )
-                                }
-                              >
-                                <td className="px-6 py-4 ">
-                                  <div className="flex items-center">
-                                    <div
-                                      className={`flex-shrink-0 w-2 h-2 mt-2 rounded-full ${
-                                        post.etat === "disponible"
-                                          ? "bg-green-500"
-                                          : post.etat === "terminé"
-                                          ? "bg-red-500"
-                                          : "bg-orange-500"
-                                      }`}
-                                    ></div>
-                                    <div className="ml-4">
-                                      <div
-                                        className={`font-medium ${
-                                          isDarkMode
-                                            ? "text-white"
-                                            : "text-gray-900"
-                                        }`}
-                                      >
-                                        {post.titre || "Non précisé"}
-                                      </div>
-                                      <div className="text-sm text-gray-500">
-                                        {post.reference || "Réf. non précisée"}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                                  <span
-                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      post.post_type === "opportunité"
-                                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                                        : post.post_type === "appel_projet"
-                                        ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                                        : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                    }`}
-                                  >
-                                    {post.post_type === "opportunité"
-                                      ? "Opportunité d'affaire"
-                                      : post.post_type === "appel_projet"
-                                      ? "Appel à projet"
-                                      : "Partenariat"}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                                  <div
-                                    className={`text-sm ${
-                                      isDarkMode
-                                        ? "text-gray-300"
-                                        : "text-gray-700"
-                                    }`}
-                                  >
-                                    {post.entreprise ||
-                                      post.company_name ||
-                                      "Non précisé"}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm hidden sm:table-cell">
-                                  <div
-                                    className={`text-sm ${
-                                      post.is_expired ||
-                                      (post.date_limite &&
-                                        new Date(post.date_limite) < new Date())
-                                        ? "text-red-500"
-                                        : isDarkMode
-                                        ? "text-gray-400"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    {post.date_limite
-                                      ? new Date(
-                                          post.date_limite
-                                        ).toLocaleDateString()
-                                      : "Sans date limite"}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                  {/* Actions sociales (j'aime, commentaires, partages) avec compteurs */}
-                                  <div className="flex justify-center space-x-3 mb-2">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleLike(
-                                          post.id,
-                                          "opportunites-affaires"
-                                        );
-                                      }}
-                                      className={`flex items-center ${
-                                        post.liked_by_current_user
-                                          ? "text-red-500"
-                                          : isDarkMode
-                                          ? "text-gray-400 hover:text-gray-300"
-                                          : "text-gray-500 hover:text-gray-700"
-                                      }`}
-                                      title="J'aime"
-                                    >
-                                      {post.liked_by_current_user ? (
-                                        <HeartIconSolid className="h-4 w-4 mr-1" />
-                                      ) : (
-                                        <HeartIcon className="h-4 w-4 mr-1" />
-                                      )}
-                                      <span className="text-xs">
-                                        {post.likes_count || 0}
-                                      </span>
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openPostDetail(
-                                          post.id,
-                                          "opportunites-affaires"
-                                        );
-                                      }}
-                                      className={`flex items-center ${
-                                        isDarkMode
-                                          ? "text-gray-400 hover:text-gray-300"
-                                          : "text-gray-500 hover:text-gray-700"
-                                      }`}
-                                      title="Commentaires"
-                                    >
-                                      <ChatBubbleLeftIcon className="h-4 w-4 mr-1" />
-                                      <span className="text-xs">
-                                        {post.comments_count || 0}
-                                      </span>
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleShare(
-                                          post.id,
-                                          "opportunites-affaires",
-                                          "facebook"
-                                        );
-                                      }}
-                                      className={`flex items-center ${
-                                        isDarkMode
-                                          ? "text-gray-400 hover:text-gray-300"
-                                          : "text-gray-500 hover:text-gray-700"
-                                      }`}
-                                      title="Partager"
-                                    >
-                                      <ShareIcon className="h-4 w-4 mr-1" />
-                                      <span className="text-xs">
-                                        {post.shares_count || 0}
-                                      </span>
-                                    </button>
-                                  </div>
-
-                                  {/* Boutons d'action (Détails, Télécharger, WhatsApp, lien externe) */}
-                                  <div className="flex justify-center space-x-2">
-                                    {/* Bouton Détails */}
-                                    <button
-                                      className={`p-1 rounded-full ${
-                                        isDarkMode
-                                          ? "bg-blue-600 hover:bg-blue-700"
-                                          : "bg-blue-500 hover:bg-blue-600"
-                                      } text-white`}
-                                      title="Voir les détails"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openPostDetail(
-                                          post.id,
-                                          "opportunites-affaires"
-                                        );
-                                      }}
-                                    >
-                                      <InformationCircleIcon className="w-4 h-4" />
-                                    </button>
-
-                                    {/* Bouton Télécharger */}
-                                    {post.opportunity_file_url && (
-                                      <a
-                                        href={post.opportunity_file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`p-1 rounded-full ${
-                                          isDarkMode
-                                            ? "bg-purple-600 hover:bg-purple-700"
-                                            : "bg-purple-500 hover:bg-purple-600"
-                                        } text-white`}
-                                        title="Télécharger le fichier"
-                                        onClick={(e) => e.stopPropagation()}
-                                        download
-                                      >
-                                        <DocumentArrowDownIcon className="w-4 h-4" />
-                                      </a>
-                                    )}
-
-                                    {/* Bouton WhatsApp */}
-                                    {post.contacts && (
-                                      <a
-                                        href={`https://wa.me/${post.contacts.replace(
-                                          /[^0-9]/g,
-                                          ""
-                                        )}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-1 rounded-full bg-green-600 text-white hover:bg-green-700"
-                                        title="Contacter via WhatsApp"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          viewBox="0 0 24 24"
-                                          fill="currentColor"
-                                          className="w-4 h-4"
-                                        >
-                                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                                        </svg>
-                                      </a>
-                                    )}
-
-                                    {/* Bouton Lien externe */}
-                                    {post.lien && (
-                                      <a
-                                        href={post.lien}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`p-1 rounded-full ${
-                                          isDarkMode
-                                            ? "bg-primary-600 hover:bg-primary-700"
-                                            : "bg-primary-500 hover:bg-primary-600"
-                                        } text-white`}
-                                        title="En savoir plus"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                                      </a>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td
-                                colSpan="5"
-                                className="px-6 py-12 text-center"
-                              >
-                                <div className="flex flex-col items-center justify-center">
-                                  <LightBulbIcon className="h-12 w-12 text-gray-400 mb-4" />
-                                  <h3
-                                    className={`text-lg font-medium ${
-                                      isDarkMode
-                                        ? "text-white"
-                                        : "text-gray-900"
-                                    }`}
-                                  >
-                                    Aucune opportunité d'affaires
-                                  </h3>
-                                  <p
-                                    className={`text-sm ${
-                                      isDarkMode
-                                        ? "text-gray-400"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    Cet utilisateur n'a pas encore publié
-                                    d'opportunités d'affaires ou aucune
-                                    opportunité ne correspond à votre recherche.
-                                  </p>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {/* Options de tri et informations */}
-                  <div
-                    className={`flex flex-wrap justify-between items-center gap-3 p-4 border-t ${
-                      isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                  >
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center">
-                      <InformationCircleIcon className="h-5 w-5 mr-1" />
-                      <span>
-                        Cliquez sur une opportunité pour voir les détails
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <span
-                        className={`text-sm mr-2 ${
-                          isDarkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        Trier par:
-                      </span>
-                      <div className="relative">
-                        <select
-                          className={`block appearance-none w-full px-4 py-2 pr-8 rounded border ${
-                            isDarkMode
-                              ? "bg-gray-700 border-gray-600 text-white"
-                              : "bg-white border-gray-300 text-gray-900"
-                          } focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                        >
-                          <option>Plus récentes</option>
-                          <option>Plus anciennes</option>
-                          <option>Popularité</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                          <ChevronDownIcon className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </Tab.Panel>
 

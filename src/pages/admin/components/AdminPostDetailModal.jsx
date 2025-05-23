@@ -51,36 +51,36 @@ export default function AdminPostDetailModal({
   // Préparer les éléments média pour le carrousel
   useEffect(() => {
     const items = [];
-    
+
     // Ajouter l'image si elle existe
     if (post.image_url) {
       items.push({
-        type: 'image',
+        type: "image",
         url: post.image_url,
-        alt: 'Image de la publication'
+        alt: "Image de la publication",
       });
     }
-    
+
     // Ajouter la vidéo si elle existe
     if (post.video_url) {
       items.push({
-        type: 'video',
+        type: "video",
         url: post.video_url,
-        isYoutube: post.video_url.includes('youtube')
+        isYoutube: post.video_url.includes("youtube"),
       });
     }
-    
+
     // Ajouter les images supplémentaires s'il y en a
     if (post.images && post.images.length > 0) {
       post.images.forEach((img, index) => {
         items.push({
-          type: 'image',
+          type: "image",
           url: img,
-          alt: `Image supplémentaire ${index + 1}`
+          alt: `Image supplémentaire ${index + 1}`,
         });
       });
     }
-    
+
     setMediaItems(items);
   }, [post]);
 
@@ -109,7 +109,7 @@ export default function AdminPostDetailModal({
       );
     }
   };
-  
+
   // Navigation dans le carrousel de médias (image + vidéo)
   const nextMedia = () => {
     if (mediaItems.length > 1) {
@@ -188,13 +188,6 @@ export default function AdminPostDetailModal({
               isDarkMode ? "border-gray-700" : "border-gray-200"
             } pb-3 mb-4`}
           >
-            <h2
-              className={`text-xl font-bold ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {post.titre || post.title}
-            </h2>
             <div className="flex items-center mt-1">
               <BuildingOfficeIcon className="h-4 w-4 mr-1 text-primary-500" />
               <span className="text-sm font-medium">
@@ -202,13 +195,6 @@ export default function AdminPostDetailModal({
                   post.entreprise ||
                   "Entreprise non précisée"}
               </span>
-              {(post.location || post.lieu) && (
-                <>
-                  <span className="mx-2 text-gray-400">•</span>
-                  <MapPinIcon className="h-4 w-4 mr-1 text-primary-500" />
-                  <span className="text-sm">{post.location || post.lieu}</span>
-                </>
-              )}
             </div>
           </div>
 
@@ -220,6 +206,50 @@ export default function AdminPostDetailModal({
           >
             <table className="w-full text-sm">
               <tbody>
+                {/* Pays */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Pays
+                  </th>
+                  <td className="px-4 py-2">{post.pays || "Non précisé"}</td>
+                </tr>
+                {/* Ville */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Ville
+                  </th>
+                  <td className="px-4 py-2">{post.ville || "Non précisé"}</td>
+                </tr>
+                {/* Secteur */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Secteur
+                  </th>
+                  <td className="px-4 py-2">{post.secteur || "Non précisé"}</td>
+                </tr>
+                {/* Type */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Type
+                  </th>
+                  <td className="px-4 py-2">{post.type || "Non précisé"}</td>
+                </tr>
                 {/* Référence */}
                 <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
                   <th
@@ -247,20 +277,6 @@ export default function AdminPostDetailModal({
                     <a href={post.lien} target="_blank">
                       suivre le lien
                     </a>
-                  </td>
-                </tr>
-
-                {/* Département */}
-                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
-                  <th
-                    className={`px-4 py-2 text-left font-medium ${
-                      isDarkMode ? "text-gray-300" : "text-gray-600"
-                    } w-1/3`}
-                  >
-                    Département
-                  </th>
-                  <td className="px-4 py-2">
-                    {post.company_name || post.entreprise || "Non précisé"}
                   </td>
                 </tr>
 
@@ -298,98 +314,6 @@ export default function AdminPostDetailModal({
               </tbody>
             </table>
           </div>
-
-          {/* Vue d'ensemble du poste */}
-          {post.description && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                VUE D'ENSEMBLE DU POSTE
-              </h3>
-              <p className="text-sm whitespace-pre-line">{post.description}</p>
-            </div>
-          )}
-
-          {/* Compétences requises */}
-          {post.competences_requises && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                COMPÉTENCES CLÉS
-              </h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {post.competences_requises
-                  .split(",")
-                  .map((competence, index) => (
-                    <li key={index}>{competence.trim()}</li>
-                  ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Expérience et études */}
-          {(post.experience_requise || post.niveau_etudes) && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                QUALIFICATIONS
-              </h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {post.experience_requise && (
-                  <li>
-                    <span className="font-medium">Expérience:</span>{" "}
-                    {post.experience_requise}
-                  </li>
-                )}
-                {post.niveau_etudes && (
-                  <li>
-                    <span className="font-medium">Formation:</span>{" "}
-                    {post.niveau_etudes}
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-
-          {/* Avantages */}
-          {post.avantages && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                AVANTAGES
-              </h3>
-              <p className="text-sm whitespace-pre-line">{post.avantages}</p>
-            </div>
-          )}
-
-          {/* Rémunération */}
-          {(post.salaire || post.devise) && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                RÉMUNÉRATION
-              </h3>
-              <p className="text-sm">
-                {post.salaire ? post.salaire : "Non précisé"}
-                {post.devise ? ` ${post.devise}` : ""}
-              </p>
-            </div>
-          )}
 
           {/* Informations de contact */}
           <div className="mt-6 pt-4 border-t">
@@ -441,28 +365,19 @@ export default function AdminPostDetailModal({
         <div
           className={`mt-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
         >
-          {/* En-tête de l'opportunité avec titre principal */}
+          {/* En-tête de l'offre avec titre principal */}
           <div
             className={`border-b ${
               isDarkMode ? "border-gray-700" : "border-gray-200"
             } pb-3 mb-4`}
           >
-            <h2
-              className={`text-xl font-bold ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {post.titre || post.title}
-            </h2>
             <div className="flex items-center mt-1">
-              {(post.location || post.localisation) && (
-                <>
-                  <MapPinIcon className="h-4 w-4 mr-1 text-primary-500" />
-                  <span className="text-sm">
-                    {post.location || post.localisation}
-                  </span>
-                </>
-              )}
+              <BuildingOfficeIcon className="h-4 w-4 mr-1 text-primary-500" />
+              <span className="text-sm font-medium">
+                {post.company_name ||
+                  post.entreprise ||
+                  "Entreprise non précisée"}
+              </span>
             </div>
           </div>
 
@@ -474,6 +389,48 @@ export default function AdminPostDetailModal({
           >
             <table className="w-full text-sm">
               <tbody>
+                {/* Pays */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Pays
+                  </th>
+                  <td className="px-4 py-2">{post.pays || "Non précisé"}</td>
+                </tr>
+
+                {/* Ville */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Ville
+                  </th>
+                  <td className="px-4 py-2">{post.ville || "Non précisé"}</td>
+                </tr>
+
+                {/* Type */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Type
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.type === "appel_projet"
+                      ? "Appel à projet"
+                      : post.type === "partenariat"
+                      ? "Opportunité de partenariat"
+                      : "Opportunité d'affaire" || "Non précisé"}
+                  </td>
+                </tr>
+
                 {/* Secteur */}
                 <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
                   <th
@@ -484,6 +441,20 @@ export default function AdminPostDetailModal({
                     Secteur
                   </th>
                   <td className="px-4 py-2">{post.secteur || "Non précisé"}</td>
+                </tr>
+
+                {/* Référence */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Référence
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.reference || "Non précisé"}
+                  </td>
                 </tr>
 
                 {/* Site */}
@@ -499,20 +470,6 @@ export default function AdminPostDetailModal({
                     <a href={post.lien} target="_blank">
                       suivre le lien
                     </a>
-                  </td>
-                </tr>
-
-                {/* Localisation */}
-                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
-                  <th
-                    className={`px-4 py-2 text-left font-medium ${
-                      isDarkMode ? "text-gray-300" : "text-gray-600"
-                    } w-1/3`}
-                  >
-                    Localisation
-                  </th>
-                  <td className="px-4 py-2">
-                    {post.localisation || "Non précisé"}
                   </td>
                 </tr>
 
@@ -547,71 +504,9 @@ export default function AdminPostDetailModal({
                     </td>
                   </tr>
                 )}
-
-                {/* Investissement requis */}
-                {post.investissement_requis && (
-                  <tr>
-                    <th
-                      className={`px-4 py-2 text-left font-medium ${
-                        isDarkMode ? "text-gray-300" : "text-gray-600"
-                      } w-1/3`}
-                    >
-                      Investissement requis
-                    </th>
-                    <td className="px-4 py-2">
-                      {post.investissement_requis} {post.devise}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
-
-          {/* Description */}
-          {post.description && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                DESCRIPTION
-              </h3>
-              <p className="text-sm whitespace-pre-line">{post.description}</p>
-            </div>
-          )}
-
-          {/* Benefices attendus */}
-          {post.benefices_attendus && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                BÉNÉFICES ATTENDUS
-              </h3>
-              <p className="text-sm whitespace-pre-line">
-                {post.benefices_attendus}
-              </p>
-            </div>
-          )}
-
-          {/* Conditions de participation */}
-          {post.conditions_participation && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                CONDITIONS DE PARTICIPATION
-              </h3>
-              <p className="text-sm whitespace-pre-line">
-                {post.conditions_participation}
-              </p>
-            </div>
-          )}
 
           {/* Informations de contact */}
           <div className="mt-6 pt-4 border-t">
@@ -685,6 +580,73 @@ export default function AdminPostDetailModal({
           >
             <table className="w-full text-sm">
               <tbody>
+                {/* Pays */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Pays
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.pays ? `${post.pays}` : "Non précisé"}
+                  </td>
+                </tr>
+                {/* Ville */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Ville
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.ville ? `${post.ville}` : "Non précisé"}
+                  </td>
+                </tr>
+                {/* Type */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Type
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.type ? `${post.type}` : "Non précisé"}
+                  </td>
+                </tr>
+                {/* Catégorie */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Catégorie
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.categorie ? `${post.categorie}` : "Non précisé"}
+                  </td>
+                </tr>
+                {/* Sous-catégorie */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Sous-catégorie
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.sous_categorie === "autre à préciser"
+                      ? `${post.autre_sous_categorie}`
+                      : post.sous_categorie}
+                  </td>
+                </tr>
                 {/* Prix */}
                 <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
                   <th
@@ -766,20 +728,6 @@ export default function AdminPostDetailModal({
               </tbody>
             </table>
           </div>
-
-          {/* Description */}
-          {post.description && (
-            <div className="mb-4">
-              <h3
-                className={`text-sm uppercase tracking-wider font-bold mb-2 ${
-                  isDarkMode ? "text-gray-200" : "text-gray-700"
-                }`}
-              >
-                DESCRIPTION
-              </h3>
-              <p className="text-sm whitespace-pre-line">{post.description}</p>
-            </div>
-          )}
 
           {/* Conditions de livraison */}
           {post.besoin_livreurs === "OUI" && post.conditions_livraison && (
@@ -1033,38 +981,47 @@ export default function AdminPostDetailModal({
                       <div className="relative w-full h-full flex items-center justify-center">
                         {/* Affichage du média actuel */}
                         <div className="w-full h-full flex items-center justify-center p-4">
-                          {mediaItems[currentMediaIndex]?.type === 'image' ? (
+                          {mediaItems[currentMediaIndex]?.type === "image" ? (
                             <img
                               src={mediaItems[currentMediaIndex].url}
                               alt={mediaItems[currentMediaIndex].alt}
                               className="max-h-full max-w-full object-contain rounded-lg shadow-md"
                             />
-                          ) : mediaItems[currentMediaIndex]?.type === 'video' && (
-                            <div className="w-full h-full flex items-center justify-center">
-                              {mediaItems[currentMediaIndex].isYoutube ? (
-                                <iframe
-                                  src={mediaItems[currentMediaIndex].url.includes('watch?v=') 
-                                    ? mediaItems[currentMediaIndex].url.replace('watch?v=', 'embed/') 
-                                    : mediaItems[currentMediaIndex].url}
-                                  frameBorder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  className="w-full h-full min-h-[300px] rounded-lg shadow-md"
-                                  title="Vidéo de la publication"
-                                ></iframe>
-                              ) : (
-                                <video 
-                                  controls 
-                                  className="max-h-full max-w-full rounded-lg shadow-md"
-                                  src={mediaItems[currentMediaIndex].url}
-                                >
-                                  Votre navigateur ne supporte pas la lecture de vidéos.
-                                </video>
-                              )}
-                            </div>
+                          ) : (
+                            mediaItems[currentMediaIndex]?.type === "video" && (
+                              <div className="w-full h-full flex items-center justify-center">
+                                {mediaItems[currentMediaIndex].isYoutube ? (
+                                  <iframe
+                                    src={
+                                      mediaItems[
+                                        currentMediaIndex
+                                      ].url.includes("watch?v=")
+                                        ? mediaItems[
+                                            currentMediaIndex
+                                          ].url.replace("watch?v=", "embed/")
+                                        : mediaItems[currentMediaIndex].url
+                                    }
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="w-full h-full min-h-[300px] rounded-lg shadow-md"
+                                    title="Vidéo de la publication"
+                                  ></iframe>
+                                ) : (
+                                  <video
+                                    controls
+                                    className="max-h-full max-w-full rounded-lg shadow-md"
+                                    src={mediaItems[currentMediaIndex].url}
+                                  >
+                                    Votre navigateur ne supporte pas la lecture
+                                    de vidéos.
+                                  </video>
+                                )}
+                              </div>
+                            )
                           )}
                         </div>
-                        
+
                         {/* Boutons de navigation du carrousel */}
                         {mediaItems.length > 1 && (
                           <>
@@ -1076,8 +1033,19 @@ export default function AdminPostDetailModal({
                               className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-all z-10"
                               aria-label="Média précédent"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 19l-7-7 7-7"
+                                />
                               </svg>
                             </button>
                             <button
@@ -1088,13 +1056,24 @@ export default function AdminPostDetailModal({
                               className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-all z-10"
                               aria-label="Média suivant"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
                               </svg>
                             </button>
                           </>
                         )}
-                        
+
                         {/* Indicateurs de position dans le carrousel */}
                         {mediaItems.length > 1 && (
                           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
@@ -1105,16 +1084,23 @@ export default function AdminPostDetailModal({
                                   e.stopPropagation();
                                   setCurrentMediaIndex(index);
                                 }}
-                                className={`w-3 h-3 rounded-full ${index === currentMediaIndex ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                                className={`w-3 h-3 rounded-full ${
+                                  index === currentMediaIndex
+                                    ? "bg-white"
+                                    : "bg-white bg-opacity-50"
+                                }`}
                                 aria-label={`Aller au média ${index + 1}`}
                               />
                             ))}
                           </div>
                         )}
-                        
+
                         {/* Étiquette indiquant le type de média */}
                         <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white text-xs font-medium px-2 py-1 rounded z-10">
-                          {mediaItems[currentMediaIndex]?.type === 'image' ? 'Image' : 'Vidéo'} {currentMediaIndex + 1}/{mediaItems.length}
+                          {mediaItems[currentMediaIndex]?.type === "image"
+                            ? "Image"
+                            : "Vidéo"}{" "}
+                          {currentMediaIndex + 1}/{mediaItems.length}
                         </div>
                       </div>
                     ) : (
