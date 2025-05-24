@@ -352,7 +352,7 @@ export default function Ads() {
                     // Si utilisateur authentifié, rediriger vers la page utilisateur avec ancre sur la publication
                     if (user && user.id) {
                       navigate(
-                        `/user/${ads[current]?.page_id}#pub-${ads[current]?.id}`
+                        `/dashboard/pages/${ads[current]?.page_id}#pub-${ads[current]?.id}`
                       );
                     } else {
                       // Rediriger vers la page d'invitation à la connexion ou souscription
