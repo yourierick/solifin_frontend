@@ -619,9 +619,9 @@ export default function RegistrationPaymentForm({
         <div
           className={`p-6 ${
             isDarkMode
-              ? "bg-gradient-to-r from-green-900 to-green-800"
-              : "bg-gradient-to-r from-blue-500 to-indigo-600"
-          } text-white`}
+              ? "bg-gradient-to-r from-green-900 to-green-800 text-white"
+              : "bg-gradient-to-r from-green-800 to-green-900 text-white"
+          }`}
         >
           <div className="flex items-center justify-between">
             <Typography variant="h5" component="h2" className="font-bold">

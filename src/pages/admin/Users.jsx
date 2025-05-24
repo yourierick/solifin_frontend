@@ -49,7 +49,6 @@ const backdropStyle = {
 };
 
 const Users = () => {
-  //console.log('Rendering Users component'); // Debug log
   const { isDarkMode } = useTheme();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true); // Changed to true initially
@@ -105,7 +104,6 @@ const Users = () => {
       }
 
       const response = await axios.get("/api/admin/users", { params });
-      //console.log('API Response:', response.data); // Debug log
 
       if (response.data.success) {
         setUsers(response.data.data.data);
@@ -131,23 +129,19 @@ const Users = () => {
   };
 
   useEffect(() => {
-    //console.log('Users component mounted'); // Debug log
     fetchUsers();
   }, []);
 
   useEffect(() => {
-    //console.log('Filters or pagination changed:', { filters, page: pagination.currentPage }); // Debug log
     fetchUsers();
   }, [filters, pagination.currentPage]);
 
   const handleFilterChange = (field, value) => {
-    //console.log('Filter changed:', field, value); // Debug log
     setFilters((prev) => ({ ...prev, [field]: value }));
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   const handleViewDetails = async (user) => {
-    //console.log('Viewing details for user:', user); // Debug log
     try {
       setSelectedUser(user);
       setOpenDialog(true);
@@ -169,7 +163,6 @@ const Users = () => {
   };
 
   const handleCloseDialog = () => {
-    //console.log('Closing dialog'); // Debug log
     setOpenDialog(false);
     setSelectedUser(null);
   };
@@ -305,15 +298,12 @@ const Users = () => {
   };
 
   if (loading && !users.length) {
-    //console.log('Showing loading state'); // Debug log
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
-
-  //console.log('Rendering main content'); // Debug log
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -411,7 +401,7 @@ const Users = () => {
                   }}
                 />
               </div>
-              
+
               <div className="flex flex-wrap gap-3 items-center justify-between w-full">
                 <div className="flex flex-wrap gap-3">
                   <FormControl size="small" className="w-full sm:w-40">
@@ -419,7 +409,9 @@ const Users = () => {
                     <Select
                       value={filters.status}
                       label="Statut"
-                      onChange={(e) => handleFilterChange("status", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("status", e.target.value)
+                      }
                       MenuProps={{
                         PaperProps: {
                           sx: {
@@ -450,7 +442,9 @@ const Users = () => {
                     <Select
                       value={filters.has_pack}
                       label="Possède un pack"
-                      onChange={(e) => handleFilterChange("has_pack", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("has_pack", e.target.value)
+                      }
                       MenuProps={{
                         PaperProps: {
                           sx: {
@@ -484,7 +478,9 @@ const Users = () => {
                     <DatePicker
                       label="Inscrit depuis"
                       value={filters.start_date}
-                      onChange={(date) => handleFilterChange("start_date", date)}
+                      onChange={(date) =>
+                        handleFilterChange("start_date", date)
+                      }
                       slotProps={{
                         textField: {
                           size: "small",
@@ -553,7 +549,9 @@ const Users = () => {
                                 <IconButton
                                   edge="end"
                                   size="small"
-                                  onClick={() => handleFilterChange("end_date", null)}
+                                  onClick={() =>
+                                    handleFilterChange("end_date", null)
+                                  }
                                 >
                                   <ClearIcon fontSize="small" />
                                 </IconButton>
@@ -594,7 +592,7 @@ const Users = () => {
                     />
                   </LocalizationProvider>
                 </div>
-                
+
                 <Button
                   variant="contained"
                   color="primary"
@@ -621,10 +619,9 @@ const Users = () => {
 
         {loading ? (
           <div className="mt-8 bg-white dark:bg-gray-800 shadow-xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 p-12 flex justify-center items-center">
-            <CircularProgress size={60} thickness={4} />
-            <span className="ml-4 text-gray-600 dark:text-gray-300 text-lg">
-              Chargement des utilisateurs...
-            </span>
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            </div>
           </div>
         ) : users.length === 0 ? (
           <div className="mt-8 bg-white dark:bg-gray-800 shadow-xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -721,7 +718,7 @@ const Users = () => {
                                 {user.name}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {user.packs_count || 0} pack(s)
+                                {user.packs.length || 0} pack(s)
                               </div>
                             </div>
                           </div>

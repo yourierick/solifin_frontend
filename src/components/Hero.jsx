@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { Link } from 'react-scroll';
+import { Link as ScrollLink } from 'react-scroll';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function Hero() {
@@ -75,28 +76,32 @@ export default function Hero() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`btn-primary text-lg ${
-                isDarkMode 
-                  ? 'bg-primary-500 hover:bg-primary-400 text-white' 
-                  : ''
-              }`}
-            >
-              Commencer Maintenant
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`btn-primary text-lg ${
-                isDarkMode 
-                  ? 'bg-gray-800 text-primary-400 border-2 border-primary-500 hover:bg-gray-700' 
-                  : 'bg-white text-primary-600 border-2 border-primary-600 hover:bg-primary-50'
-              }`}
-            >
-              En Savoir Plus
-            </motion.button>
+            <RouterLink to="/register">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`btn-primary text-lg ${
+                  isDarkMode 
+                    ? 'bg-primary-500 hover:bg-primary-400 text-white' 
+                    : ''
+                }`}
+              >
+                Commencer Maintenant
+              </motion.button>
+            </RouterLink>
+            <ScrollLink to="about" smooth={true} duration={800} offset={-70}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`btn-primary text-lg ${
+                  isDarkMode 
+                    ? 'bg-gray-800 text-primary-400 border-2 border-primary-500 hover:bg-gray-700' 
+                    : 'bg-white text-primary-600 border-2 border-primary-600 hover:bg-primary-50'
+                }`}
+              >
+                En Savoir Plus
+              </motion.button>
+            </ScrollLink>
           </motion.div>
         </div>
       </div>
@@ -113,11 +118,11 @@ export default function Hero() {
           repeatType: "reverse",
         }}
       >
-        <Link to="features" spy={true} smooth={true} offset={-70} duration={500}>
+        <ScrollLink to="features" spy={true} smooth={true} offset={-70} duration={500}>
           <ChevronDownIcon className={`h-8 w-8 cursor-pointer ${
             isDarkMode ? 'text-primary-400' : 'text-primary-600'
           }`} />
-        </Link>
+        </ScrollLink>
       </motion.div>
     </section>
   );

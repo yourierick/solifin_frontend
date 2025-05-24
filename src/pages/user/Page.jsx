@@ -260,7 +260,6 @@ export default function Page() {
       try {
         setLoading(true);
         const response = await axios.get(`/api/pages/${id}`);
-        console.log(response);
         if (response.data.success) {
           setPageData(response.data.page);
           setIsSubscribed(response.data.isSubscribed);
@@ -1654,7 +1653,6 @@ export default function Page() {
               <div key={comment.id} className="mb-3 last:mb-0">
                 <div className="flex items-start">
                   <div className="h-8 w-8 rounded-full overflow-hidden mr-2 flex-shrink-0">
-                    {console.log(comment.user?.picture_profile)}
                     <img
                       src={
                         comment.user?.picture_profile ||
@@ -1786,8 +1784,6 @@ export default function Page() {
       } else if (type === "opportunite-affaire") {
         url = `${window.location.origin}/pages/${id}/opportunite-affaire/${postId}`;
       }
-
-      console.log(url);
 
       // Texte de partage
       const text = "Découvrez cette publication intéressante sur SOLIFIN!";
@@ -4033,43 +4029,53 @@ export default function Page() {
                 }`}
               >
                 <div className="max-w-3xl mx-auto">
-                  <h2
-                    className={`text-xl font-semibold mb-4 ${
-                      isDarkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    À propos de {pageData.user?.name || "l'utilisateur"}
-                  </h2>
-
-                  {pageData.user?.bio ? (
-                    <div
-                      className={`mb-6 p-4 rounded-lg ${
-                        isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                      }`}
-                    >
-                      <p
-                        className={`text-sm ${
-                          isDarkMode ? "text-gray-300" : "text-gray-600"
-                        }`}
+                  <div className={`mb-8 ${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-xl overflow-hidden shadow-sm border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
+                    <div className={`px-6 py-4 border-b ${isDarkMode ? "border-gray-700 bg-gray-750" : "border-gray-200 bg-gray-50"} flex items-center`}>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2 text-primary-500"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
                       >
-                        {pageData.user.bio}
-                      </p>
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <h2 className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                        À propos de {pageData.user?.name || "l'utilisateur"}
+                      </h2>
                     </div>
-                  ) : (
-                    <div
-                      className={`mb-6 p-4 rounded-lg ${
-                        isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                      }`}
-                    >
-                      <p
-                        className={`text-sm italic ${
-                          isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        Aucune biographie disponible.
-                      </p>
+                    
+                    <div className="p-6">
+                      {pageData.user?.apropos ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <p className={`whitespace-pre-line ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+                            {pageData.user.apropos}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-6">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`h-5 w-5 mr-2 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <p className={`text-sm italic ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                            Aucune biographie disponible.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>

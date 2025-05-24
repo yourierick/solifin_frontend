@@ -131,7 +131,9 @@ export default function PromptLoginOrSubscribe() {
           >
             ICI
           </motion.span>
-          pour profiter pleinement de cette publication, sinon
+          pour profiter pleinement de cette publication, des offres d'emploi,
+          des opportunités d'affaires, des appels à projet, ... et bien d'autres
+          services à votre disposition, sinon
           <motion.span
             whileHover={{
               scale: 1.1,

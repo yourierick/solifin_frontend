@@ -430,7 +430,9 @@ export default function Dashboard() {
                         ) : (
                           <ArrowDownIcon className="h-4 w-4 text-green-500 mr-1" />
                         )}
-                        <span className="text-xs text-green-500">ce mois</span>
+                        <span className="text-xs text-green-500">
+                          {index == 1 ? "aujourd'hui" : "ce mois"}
+                        </span>
                       </div>
                     </div>
                     <div className={`p-4 rounded-full ${iconBgColor}`}>

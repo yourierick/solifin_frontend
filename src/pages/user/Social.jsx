@@ -98,7 +98,7 @@ export default function Social() {
   const fetchLikedStatuses = async () => {
     try {
       const response = await axios.get("/api/social-events/liked");
-      setLikedStatuses(response.data.map(status => status.id));
+      setLikedStatuses(response.data.map((status) => status.id));
     } catch (error) {
       console.error("Erreur lors de la récupération des statuts aimés:", error);
     }
@@ -109,24 +109,28 @@ export default function Social() {
     try {
       setIsLiking(true);
       const isLiked = likedStatuses.includes(statusId);
-      
+
       if (isLiked) {
         // Ne plus aimer
-        const response = await axios.delete(`/api/social-events/${statusId}/like`);
-        setLikedStatuses(prev => prev.filter(id => id !== statusId));
-        
+        const response = await axios.delete(
+          `/api/social-events/${statusId}/like`
+        );
+        setLikedStatuses((prev) => prev.filter((id) => id !== statusId));
+
         // Mettre à jour le compteur de j'aime dans les statuts
         updateLikesCount(statusId, response.data.likes_count);
-        
+
         toast.success("Vous n'aimez plus ce statut");
       } else {
         // Aimer
-        const response = await axios.post(`/api/social-events/${statusId}/like`);
-        setLikedStatuses(prev => [...prev, statusId]);
-        
+        const response = await axios.post(
+          `/api/social-events/${statusId}/like`
+        );
+        setLikedStatuses((prev) => [...prev, statusId]);
+
         // Mettre à jour le compteur de j'aime dans les statuts
         updateLikesCount(statusId, response.data.likes_count);
-        
+
         toast.success("Vous aimez ce statut");
       }
     } catch (error) {
@@ -136,23 +140,29 @@ export default function Social() {
       setIsLiking(false);
     }
   };
-  
+
   // Mettre à jour le compteur de j'aime dans les statuts
   const updateLikesCount = (statusId, likesCount) => {
     // Mettre à jour dans myStatuses
-    setMyStatuses(prev => prev.map(status => 
-      status.id === statusId ? { ...status, likes_count: likesCount } : status
-    ));
-    
+    setMyStatuses((prev) =>
+      prev.map((status) =>
+        status.id === statusId ? { ...status, likes_count: likesCount } : status
+      )
+    );
+
     // Mettre à jour dans followedStatuses
-    setFollowedStatuses(prev => prev.map(status => 
-      status.id === statusId ? { ...status, likes_count: likesCount } : status
-    ));
-    
+    setFollowedStatuses((prev) =>
+      prev.map((status) =>
+        status.id === statusId ? { ...status, likes_count: likesCount } : status
+      )
+    );
+
     // Mettre à jour dans currentPageStatuses
-    setCurrentPageStatuses(prev => prev.map(status => 
-      status.id === statusId ? { ...status, likes_count: likesCount } : status
-    ));
+    setCurrentPageStatuses((prev) =>
+      prev.map((status) =>
+        status.id === statusId ? { ...status, likes_count: likesCount } : status
+      )
+    );
   };
 
   // Récupérer mes statuts sociaux et les informations de l'utilisateur courant
@@ -396,7 +406,7 @@ export default function Social() {
     }
 
     if (statuses.length === 0) return;
-    
+
     // Afficher d'abord les statuts avec les données disponibles
     setCurrentStatusGroup(statusGroup);
     setCurrentPageStatuses(statuses);
@@ -404,7 +414,7 @@ export default function Social() {
     setIsViewingStatus(true);
     setIsPaused(false);
     setProgressBarWidth(0);
-    
+
     // Précharger les données complètes de tous les statuts en arrière-plan
     try {
       // Précharger immédiatement le premier statut
@@ -412,49 +422,60 @@ export default function Social() {
         const firstStatusId = statuses[0].id;
         const response = await axios.get(`/api/social-events/${firstStatusId}`);
         const updatedFirstStatus = response.data;
-        
+
         // Mettre à jour le premier statut avec les données complètes
-        setCurrentPageStatuses(prev => 
-          prev.map((status, index) => 
-            index === 0 ? { 
-              ...status, 
-              ...updatedFirstStatus,
-              // Préserver ces propriétés pour éviter l'alternance
-              image_url: updatedFirstStatus.image_url || status.image_url,
-              video_url: updatedFirstStatus.video_url || status.video_url,
-              description: updatedFirstStatus.description || status.description
-            } : status
+        setCurrentPageStatuses((prev) =>
+          prev.map((status, index) =>
+            index === 0
+              ? {
+                  ...status,
+                  ...updatedFirstStatus,
+                  // Préserver ces propriétés pour éviter l'alternance
+                  image_url: updatedFirstStatus.image_url || status.image_url,
+                  video_url: updatedFirstStatus.video_url || status.video_url,
+                  description:
+                    updatedFirstStatus.description || status.description,
+                }
+              : status
           )
         );
-        
+
         // Précharger le reste des statuts en arrière-plan
         Promise.all(
           statuses.slice(1).map(async (status, index) => {
             try {
               const resp = await axios.get(`/api/social-events/${status.id}`);
               const updatedStatus = resp.data;
-              
+
               // Mettre à jour chaque statut individuellement
-              setCurrentPageStatuses(prev => 
-                prev.map((s, i) => 
-                  s.id === status.id ? { 
-                    ...s, 
-                    ...updatedStatus,
-                    // Préserver ces propriétés pour éviter l'alternance
-                    image_url: updatedStatus.image_url || s.image_url,
-                    video_url: updatedStatus.video_url || s.video_url,
-                    description: updatedStatus.description || s.description
-                  } : s
+              setCurrentPageStatuses((prev) =>
+                prev.map((s, i) =>
+                  s.id === status.id
+                    ? {
+                        ...s,
+                        ...updatedStatus,
+                        // Préserver ces propriétés pour éviter l'alternance
+                        image_url: updatedStatus.image_url || s.image_url,
+                        video_url: updatedStatus.video_url || s.video_url,
+                        description: updatedStatus.description || s.description,
+                      }
+                    : s
                 )
               );
             } catch (err) {
-              console.error(`Erreur lors du préchargement du statut ${status.id}:`, err);
+              console.error(
+                `Erreur lors du préchargement du statut ${status.id}:`,
+                err
+              );
             }
           })
         );
       }
     } catch (error) {
-      console.error("Erreur lors du préchargement des données du statut:", error);
+      console.error(
+        "Erreur lors du préchargement des données du statut:",
+        error
+      );
     }
   };
 
@@ -736,8 +757,8 @@ export default function Social() {
 
     if (isLoading) {
       return (
-        <div className="flex justify-center items-center py-10">
-          <ArrowPathIcon className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       );
     }
@@ -1108,103 +1129,115 @@ export default function Social() {
   const loadStatusDetails = async (statusId) => {
     try {
       // Trouver d'abord le statut actuel pour préserver ses propriétés importantes
-      const currentStatus = currentPageStatuses.find(status => status.id === statusId);
+      const currentStatus = currentPageStatuses.find(
+        (status) => status.id === statusId
+      );
       if (!currentStatus) return null;
-      
+
       // Récupérer les détails du statut (incluant maintenant le nombre de vues)
       const response = await axios.get(`/api/social-events/${statusId}`);
       const apiStatus = response.data;
-      
+
       // Créer un statut mis à jour en préservant les propriétés importantes
       const updatedStatus = {
         ...apiStatus,
         // Préserver ces propriétés pour éviter l'alternance entre image et description
         image_url: apiStatus.image_url || currentStatus.image_url,
         video_url: apiStatus.video_url || currentStatus.video_url,
-        description: apiStatus.description || currentStatus.description
+        description: apiStatus.description || currentStatus.description,
       };
-      
+
       // Vérifier si l'utilisateur actuel n'est pas le propriétaire avant d'enregistrer une vue
       if (updatedStatus.user_id !== currentUser?.id) {
         // Enregistrer une vue et mettre à jour le compteur
         await recordStatusView(statusId);
       }
       // Le nombre de vues est déjà inclus dans la réponse de l'API, pas besoin d'un appel séparé
-      
+
       // Mettre à jour le statut dans currentPageStatuses
-      setCurrentPageStatuses(prev => 
-        prev.map(status => 
-          status.id === statusId ? updatedStatus : status
-        )
+      setCurrentPageStatuses((prev) =>
+        prev.map((status) => (status.id === statusId ? updatedStatus : status))
       );
-      
+
       return updatedStatus;
     } catch (error) {
-      console.error(`Erreur lors du chargement des détails du statut ${statusId}:`, error);
+      console.error(
+        `Erreur lors du chargement des détails du statut ${statusId}:`,
+        error
+      );
       return null;
     }
   };
-  
+
   // Enregistrer une vue pour un statut
   const recordStatusView = async (statusId) => {
     try {
       const response = await axios.post(`/api/social-events/${statusId}/view`);
       const { views_count } = response.data;
-      
+
       // Mettre à jour le nombre de vues dans les statuts
       updateViewsCount(statusId, views_count);
-      
+
       return views_count;
     } catch (error) {
-      console.error(`Erreur lors de l'enregistrement de la vue pour le statut ${statusId}:`, error);
+      console.error(
+        `Erreur lors de l'enregistrement de la vue pour le statut ${statusId}:`,
+        error
+      );
       return null;
     }
   };
-  
+
   // Mettre à jour le nombre de vues dans les statuts
   const updateViewsCount = (statusId, viewsCount) => {
     // Mettre à jour dans myStatuses
-    setMyStatuses(prev => prev.map(status => 
-      status.id === statusId ? { ...status, views_count: viewsCount } : status
-    ));
-    
+    setMyStatuses((prev) =>
+      prev.map((status) =>
+        status.id === statusId ? { ...status, views_count: viewsCount } : status
+      )
+    );
+
     // Mettre à jour dans followedStatuses
-    setFollowedStatuses(prev => prev.map(status => 
-      status.id === statusId ? { ...status, views_count: viewsCount } : status
-    ));
-    
+    setFollowedStatuses((prev) =>
+      prev.map((status) =>
+        status.id === statusId ? { ...status, views_count: viewsCount } : status
+      )
+    );
+
     // Mettre à jour dans currentPageStatuses en préservant les propriétés image_url et video_url
-    setCurrentPageStatuses(prev => prev.map(status => {
-      if (status.id === statusId) {
-        // Conserver les propriétés image_url et video_url pour éviter l'alternance
-        return { 
-          ...status, 
-          views_count: viewsCount,
-          // S'assurer que ces propriétés sont préservées
-          image_url: status.image_url,
-          video_url: status.video_url,
-          description: status.description
-        };
-      }
-      return status;
-    }));
+    setCurrentPageStatuses((prev) =>
+      prev.map((status) => {
+        if (status.id === statusId) {
+          // Conserver les propriétés image_url et video_url pour éviter l'alternance
+          return {
+            ...status,
+            views_count: viewsCount,
+            // S'assurer que ces propriétés sont préservées
+            image_url: status.image_url,
+            video_url: status.video_url,
+            description: status.description,
+          };
+        }
+        return status;
+      })
+    );
   };
-  
+
   // Gérer le défilement automatique des statuts et charger les détails
   useEffect(() => {
     let timer;
     let progressTimer;
-    
+
     if (isViewingStatus && !isPaused) {
       // Réinitialiser l'affichage pour montrer l'image/vidéo à chaque changement de statut
       setShowDescriptionOnly(false);
-      
+
       // Charger les détails du statut actuel
       const currentStatus = currentPageStatuses[currentStatusIndex];
       if (currentStatus) {
         loadStatusDetails(currentStatus.id);
       }
-      
+
       // Timer pour la barre de progression
       progressTimer = setInterval(() => {
         setProgressBarWidth((prev) => {
@@ -1242,10 +1275,6 @@ export default function Social() {
 
     const currentStatus = currentPageStatuses[currentStatusIndex];
     if (!currentStatus) return null;
-    
-    // Log de débogage pour vérifier les données du statut
-    console.log("Statut actuel:", currentStatus);
-    console.log("Nombre de likes:", currentStatus.likes_count);
 
     return (
       <div
@@ -1361,9 +1390,17 @@ export default function Social() {
                   e.stopPropagation();
                   toggleLike(currentStatus.id);
                 }}
-                className={`text-white p-1 rounded-full transition-colors ${currentStatus.user_id === currentUser?.id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-700'}`}
+                className={`text-white p-1 rounded-full transition-colors ${
+                  currentStatus.user_id === currentUser?.id
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-gray-700"
+                }`}
                 disabled={isLiking || currentStatus.user_id === currentUser?.id}
-                title={currentStatus.user_id === currentUser?.id ? "Vous ne pouvez pas aimer votre propre statut" : ""}
+                title={
+                  currentStatus.user_id === currentUser?.id
+                    ? "Vous ne pouvez pas aimer votre propre statut"
+                    : ""
+                }
               >
                 {likedStatuses.includes(currentStatus.id) ? (
                   <HeartIconSolid className="h-5 w-5 text-red-500" />
@@ -1371,15 +1408,17 @@ export default function Social() {
                   <HeartIcon className="h-5 w-5" />
                 )}
               </button>
-              
+
               {/* Compteur de j'aime (visible uniquement pour le propriétaire) */}
               {currentStatus.user_id === currentUser?.id && (
                 <span className="text-xs text-white ml-1">
-                  {currentStatus.likes_count || currentStatus.likes?.length || 0}
+                  {currentStatus.likes_count ||
+                    currentStatus.likes?.length ||
+                    0}
                 </span>
               )}
             </div>
-            
+
             {/* Compteur de vues (visible uniquement pour le propriétaire) */}
             {currentStatus.user_id === currentUser?.id && (
               <div className="flex items-center ml-2">
@@ -1497,203 +1536,203 @@ export default function Social() {
 
   return (
     <>
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1
-          className={`text-2xl font-bold ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}
-        >
-          Statuts
-        </h1>
-        {!isCreating && (
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <div className="flex justify-between items-center mb-6">
+          <h1
+            className={`text-2xl font-bold ${
+              isDarkMode ? "text-white" : "text-gray-900"
+            }`}
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Créer un statut
-          </button>
-        )}
-      </div>
-
-      {isCreating
-        ? renderCreationForm()
-        : isViewingStatus
-        ? renderStatusView()
-        : renderStatusList()}
-
-      {/* Modal de confirmation pour la suppression */}
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Confirmation de suppression"
-        message="Êtes-vous sûr de vouloir supprimer ce statut social ?"
-        confirmButtonText="Supprimer"
-        cancelButtonText="Annuler"
-        isDarkMode={isDarkMode}
-        type="danger"
-      />
-
-      {/* Modal de signalement */}
-      {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
+            Statuts
+          </h1>
+          {!isCreating && (
+            <button
+              type="button"
+              onClick={() => setIsCreating(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              <div className="absolute inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm"></div>
-            </div>
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Créer un statut
+            </button>
+          )}
+        </div>
 
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
+        {isCreating
+          ? renderCreationForm()
+          : isViewingStatus
+          ? renderStatusView()
+          : renderStatusList()}
 
-            <div
-              className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
-                isDarkMode ? "bg-gray-800" : "bg-white"
-              }`}
-            >
+        {/* Modal de confirmation pour la suppression */}
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          onConfirm={handleDelete}
+          title="Confirmation de suppression"
+          message="Êtes-vous sûr de vouloir supprimer ce statut social ?"
+          confirmButtonText="Supprimer"
+          cancelButtonText="Annuler"
+          isDarkMode={isDarkMode}
+          type="danger"
+        />
+
+        {/* Modal de signalement */}
+        {isReportModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
               <div
-                className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
+                className="fixed inset-0 transition-opacity"
+                aria-hidden="true"
+              >
+                <div className="absolute inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm"></div>
+              </div>
+
+              <span
+                className="hidden sm:inline-block sm:align-middle sm:h-screen"
+                aria-hidden="true"
+              >
+                &#8203;
+              </span>
+
+              <div
+                className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
                   isDarkMode ? "bg-gray-800" : "bg-white"
                 }`}
               >
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <ExclamationCircleIcon
-                      className="h-6 w-6 text-red-600"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3
-                      className={`text-lg leading-6 font-medium ${
-                        isDarkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Signaler ce statut
-                    </h3>
-                    <div className="mt-2">
-                      <p
-                        className={`text-sm ${
-                          isDarkMode ? "text-gray-300" : "text-gray-500"
-                        }`}
-                      >
-                        Veuillez indiquer la raison pour laquelle vous souhaitez
-                        signaler ce statut.
-                      </p>
+                <div
+                  className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
+                    isDarkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+                >
+                  <div className="sm:flex sm:items-start">
+                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                      <ExclamationCircleIcon
+                        className="h-6 w-6 text-red-600"
+                        aria-hidden="true"
+                      />
                     </div>
+                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                      <h3
+                        className={`text-lg leading-6 font-medium ${
+                          isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        Signaler ce statut
+                      </h3>
+                      <div className="mt-2">
+                        <p
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-300" : "text-gray-500"
+                          }`}
+                        >
+                          Veuillez indiquer la raison pour laquelle vous
+                          souhaitez signaler ce statut.
+                        </p>
+                      </div>
 
-                    <div className="mt-4">
-                      <label
-                        htmlFor="report-reason"
-                        className={`block text-sm font-medium ${
-                          isDarkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        Raison du signalement *
-                      </label>
-                      <select
-                        id="report-reason"
-                        value={reportReason}
-                        onChange={(e) => setReportReason(e.target.value)}
-                        className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md ${
-                          isDarkMode
-                            ? "bg-gray-700 text-white border-gray-600"
-                            : "bg-white text-gray-900 border-gray-300"
-                        }`}
-                        required
-                      >
-                        <option value="">Sélectionnez une raison</option>
-                        {Object.entries(reportReasons).map(([key, value]) => (
-                          <option key={key} value={key}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                      <div className="mt-4">
+                        <label
+                          htmlFor="report-reason"
+                          className={`block text-sm font-medium ${
+                            isDarkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Raison du signalement *
+                        </label>
+                        <select
+                          id="report-reason"
+                          value={reportReason}
+                          onChange={(e) => setReportReason(e.target.value)}
+                          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md ${
+                            isDarkMode
+                              ? "bg-gray-700 text-white border-gray-600"
+                              : "bg-white text-gray-900 border-gray-300"
+                          }`}
+                          required
+                        >
+                          <option value="">Sélectionnez une raison</option>
+                          {Object.entries(reportReasons).map(([key, value]) => (
+                            <option key={key} value={key}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="mt-4">
-                      <label
-                        htmlFor="report-description"
-                        className={`block text-sm font-medium ${
-                          isDarkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        Détails (facultatif)
-                      </label>
-                      <textarea
-                        id="report-description"
-                        value={reportDescription}
-                        onChange={(e) => setReportDescription(e.target.value)}
-                        rows="3"
-                        className={`mt-1 block w-full sm:text-sm border-gray-300 rounded-md ${
-                          isDarkMode
-                            ? "bg-gray-700 text-white border-gray-600"
-                            : "bg-white text-gray-900 border-gray-300"
-                        }`}
-                        placeholder="Fournissez plus de détails sur votre signalement..."
-                      ></textarea>
+                      <div className="mt-4">
+                        <label
+                          htmlFor="report-description"
+                          className={`block text-sm font-medium ${
+                            isDarkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Détails (facultatif)
+                        </label>
+                        <textarea
+                          id="report-description"
+                          value={reportDescription}
+                          onChange={(e) => setReportDescription(e.target.value)}
+                          rows="3"
+                          className={`mt-1 block w-full sm:text-sm border-gray-300 rounded-md ${
+                            isDarkMode
+                              ? "bg-gray-700 text-white border-gray-600"
+                              : "bg-white text-gray-900 border-gray-300"
+                          }`}
+                          placeholder="Fournissez plus de détails sur votre signalement..."
+                        ></textarea>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div
-                className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
-                  isDarkMode
-                    ? "bg-gray-800 border-t border-gray-700"
-                    : "bg-gray-50 border-t border-gray-200"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={submitReport}
-                  disabled={isReportSubmitting || !reportReason}
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm ${
-                    isReportSubmitting || !reportReason
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
+                <div
+                  className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
+                    isDarkMode
+                      ? "bg-gray-800 border-t border-gray-700"
+                      : "bg-gray-50 border-t border-gray-200"
                   }`}
                 >
-                  {isReportSubmitting ? "Envoi en cours..." : "Signaler"}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeReportModal}
-                  className={`mt-3 w-full inline-flex justify-center rounded-md border ${
-                    isDarkMode
-                      ? "border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                  } shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm`}
-                >
-                  Annuler
-                </button>
+                  <button
+                    type="button"
+                    onClick={submitReport}
+                    disabled={isReportSubmitting || !reportReason}
+                    className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm ${
+                      isReportSubmitting || !reportReason
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
+                  >
+                    {isReportSubmitting ? "Envoi en cours..." : "Signaler"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeReportModal}
+                    className={`mt-3 w-full inline-flex justify-center rounded-md border ${
+                      isDarkMode
+                        ? "border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    } shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm`}
+                  >
+                    Annuler
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-    <ToastContainer
-      position="top-right"
-      autoClose={3000}
-      hideProgressBar={false}
-      newestOnTop
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      theme={isDarkMode ? "dark" : "light"}
-    />
+        )}
+      </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? "dark" : "light"}
+      />
     </>
   );
 }

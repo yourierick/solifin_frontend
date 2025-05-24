@@ -1,21 +1,22 @@
 import { motion } from 'framer-motion';
 import { UsersIcon, ArrowPathIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 const steps = [
   {
     title: 'Invitez vos Amis',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    description: 'Partagez votre code de parrainage unique avec vos amis, votre famille et vos collègues. Chaque personne qui s\'inscrit avec votre code devient un membre de votre réseau direct.',
     icon: UsersIcon,
   },
   {
     title: 'Développez votre Réseau',
-    description: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    description: 'Vos filleuls peuvent à leur tour parrainer d\'autres personnes, élargissant ainsi votre réseau sur plusieurs niveaux. Plus votre réseau grandit, plus vos opportunités de gains augmentent.',
     icon: ArrowPathIcon,
   },
   {
     title: 'Gagnez des Commissions',
-    description: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+    description: 'Recevez des commissions sur les abonnements et les transactions effectuées par les membres de votre réseau. Notre système multi-niveaux vous permet de gagner sur plusieurs générations de filleuls.',
     icon: BanknotesIcon,
   },
 ];
@@ -135,13 +136,15 @@ export default function Referral() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="btn-primary text-lg"
-          >
-            Commencer à Parrainer
-          </motion.button>
+          <RouterLink to="/register">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="btn-primary text-lg"
+            >
+              Commencer à Parrainer
+            </motion.button>
+          </RouterLink>
           <p className={`mt-4 text-sm ${
             isDarkMode ? 'text-gray-400' : 'text-gray-500'
           }`}>

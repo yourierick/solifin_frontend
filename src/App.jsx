@@ -237,8 +237,13 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  // Si l'utilisateur est connecté et n'est pas sur la page d'accueil
-  if (user && window.location.pathname !== "/") {
+  // Permettre à tous les utilisateurs (authentifiés ou non) d'accéder à la page d'accueil
+  if (window.location.pathname === "/") {
+    return children;
+  }
+
+  // Si l'utilisateur est connecté
+  if (user) {
     // Vérifier si l'utilisateur est admin de plusieurs façons possibles
     const isAdmin =
       user.is_admin === 1 || user.is_admin === true || user.role === "admin";
@@ -258,6 +263,7 @@ const PublicRoute = ({ children }) => {
     return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
   }
 
+  // Si l'utilisateur n'est pas connecté, permettre l'accès aux routes publiques
   return children;
 };
 
