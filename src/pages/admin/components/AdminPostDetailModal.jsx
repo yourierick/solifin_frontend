@@ -166,6 +166,8 @@ export default function AdminPostDetailModal({
       case "advertisement":
       case "publicites":
         return <NewspaperIcon className="h-5 w-5 text-gray-500" />;
+      case "socialEvent":
+        return <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-400" />;
       default:
         return null;
     }
@@ -553,6 +555,66 @@ export default function AdminPostDetailModal({
           </div>
         </div>
       );
+    } else if (postType === "socialEvent") {
+      return (
+        <div
+          className={`mt-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+        >
+          {/* En-tête avec date de publication */}
+          <div
+            className={`border-b ${
+              isDarkMode ? "border-gray-700" : "border-gray-200"
+            } pb-3 mb-4`}
+          >
+            <div className="flex items-center mt-1">
+              <CalendarIcon className="h-4 w-4 mr-1 text-primary-500" />
+              <span className="text-sm font-medium">
+                {post.created_at
+                  ? formatDate(post.created_at)
+                  : "Date non précisée"}
+              </span>
+            </div>
+          </div>
+
+          {/* Statistiques du statut */}
+          <div
+            className={`w-full mb-4 border ${
+              isDarkMode ? "border-gray-700" : "border-gray-200"
+            } rounded-md overflow-hidden`}
+          >
+            <table className="w-full text-sm">
+              <tbody>
+                {/* Likes */}
+                <tr className={`${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Likes
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.likes ? post.likes.length : 0}
+                  </td>
+                </tr>
+                {/* Partages */}
+                <tr>
+                  <th
+                    className={`px-4 py-2 text-left font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    } w-1/3`}
+                  >
+                    Partages
+                  </th>
+                  <td className="px-4 py-2">
+                    {post.shares ? post.shares.length : 0}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
     } else if (postType === "advertisement" || postType === "publicites") {
       return (
         <div
@@ -837,10 +899,64 @@ export default function AdminPostDetailModal({
                 <div className="flex h-[80vh] max-h-[800px]">
                   {/* Section gauche: images/vidéo/fichier */}
                   <div className="w-1/2 relative flex items-center justify-center bg-black">
-                    {(postType === "jobOffer" ||
-                      postType === "offres-emploi" ||
-                      postType === "offres_emploi") &&
-                    post.offer_file_url ? (
+                    {/* Cas spécial pour les événements sociaux */}
+                    {postType === "socialEvent" ? (
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {post.image_url ? (
+                          <img
+                            src={post.image_url}
+                            alt="Image du statut social"
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-md"
+                          />
+                        ) : post.video_url ? (
+                          <div className="w-full h-full flex items-center justify-center">
+                            {post.video_url.includes("youtube") ? (
+                              <iframe
+                                src={
+                                  post.video_url.includes("watch?v=")
+                                    ? post.video_url.replace(
+                                        "watch?v=",
+                                        "embed/"
+                                      )
+                                    : post.video_url
+                                }
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="w-full h-full"
+                              ></iframe>
+                            ) : (
+                              <video
+                                src={post.video_url}
+                                controls
+                                className="max-h-full max-w-full"
+                              ></video>
+                            )}
+                          </div>
+                        ) : (
+                          <div
+                            className={`flex flex-col items-center justify-center w-full h-full ${
+                              isDarkMode ? "bg-gray-900" : "bg-gray-200"
+                            }`}
+                          >
+                            <div
+                              className={`text-center ${
+                                isDarkMode ? "text-gray-400" : "text-gray-600"
+                              }`}
+                            >
+                              <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-2" />
+                              <p className="text-lg font-medium">
+                                Statut social
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (postType === "jobOffer" ||
+                        postType === "offres-emploi" ||
+                        postType === "offres_emploi") &&
+                      post.offer_file_url ? (
                       <div
                         className={`flex flex-col items-center justify-center w-full h-full ${
                           isDarkMode ? "bg-gray-900" : "bg-gray-100"
@@ -1190,13 +1306,13 @@ export default function AdminPostDetailModal({
 
                     {/* Contenu */}
                     <div className="p-4 overflow-y-auto flex-1">
-                      {post.titre && (
+                      {post.description && (
                         <h2
                           className={`text-lg font-semibold mb-2 ${
                             isDarkMode ? "text-white" : "text-gray-900"
                           }`}
                         >
-                          {post.titre}
+                          Déscription
                         </h2>
                       )}
                       <p
