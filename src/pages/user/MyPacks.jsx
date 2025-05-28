@@ -343,25 +343,6 @@ export default function MyPacks() {
     }
   };
 
-  const handleDownload = async (packId) => {
-    try {
-      const response = await axios.get(`/api/packs/${packId}/download`, {
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `pack-${packId}.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      Notification.error("Erreur lors du téléchargement du pack");
-    }
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case "active":
@@ -1157,19 +1138,6 @@ export default function MyPacks() {
                 >
                   {/* Groupe d'actions à gauche : téléchargement, stats, filleuls */}
                   <Box sx={{ display: "flex", gap: 1 }}>
-                    {userPack.pack.formations ? (
-                      <Tooltip title="Télécharger" placement="top">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDownload(userPack.pack.id)}
-                        >
-                          <ArrowDownTrayIcon className="h-5 w-5" />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      ""
-                    )}
-
                     <Tooltip title="Statistiques" placement="top">
                       <IconButton
                         size="small"

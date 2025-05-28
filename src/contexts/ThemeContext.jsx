@@ -28,6 +28,7 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { updateNotificationTheme } from '../components/Notification';
 
 const ThemeContext = createContext();
 
@@ -131,6 +132,9 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    
+    // Mettre à jour le thème des notifications
+    updateNotificationTheme(isDarkMode);
   }, [isDarkMode]);
 
   useEffect(() => {

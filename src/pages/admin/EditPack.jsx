@@ -21,10 +21,7 @@ export default function EditPack() {
     price: "",
     status: true,
     abonnement: "",
-    keepFormations: true,
   });
-  const [formations, setFormations] = useState(null);
-  const [currentFormations, setCurrentFormations] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
@@ -55,11 +52,6 @@ export default function EditPack() {
           : [];
 
       setAvantages(packAvantages);
-
-      // Stocker le nom du fichier des formations actuel
-      if (pack.formations) {
-        setCurrentFormations(pack.formations.split("/").pop());
-      }
     } catch (err) {
       toast.error("Erreur lors du chargement du pack");
       navigate("/admin/packs");
@@ -74,33 +66,6 @@ export default function EditPack() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validTypes = [
-        "application/zip",
-        "application/x-zip-compressed",
-        "application/x-rar-compressed",
-        "application/x-7z-compressed",
-        "application/octet-stream",
-      ];
-      const fileExtension = file.name.split(".").pop().toLowerCase();
-      const validExtensions = ["zip", "rar", "7z"];
-
-      if (
-        !validTypes.includes(file.type) &&
-        !validExtensions.includes(fileExtension)
-      ) {
-        toast.warning(
-          "Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)"
-        );
-        return;
-      }
-      setFormations(file);
-      toast.success("Fichier ajouté avec succès");
-    }
-  };
-
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -108,37 +73,6 @@ export default function EditPack() {
       setDragActive(true);
     } else if (e.type === "dragleave") {
       setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const validTypes = [
-        "application/zip",
-        "application/x-zip-compressed",
-        "application/x-rar-compressed",
-        "application/x-7z-compressed",
-        "application/octet-stream",
-      ];
-      const fileExtension = file.name.split(".").pop().toLowerCase();
-      const validExtensions = ["zip", "rar", "7z"];
-
-      if (
-        !validTypes.includes(file.type) &&
-        !validExtensions.includes(fileExtension)
-      ) {
-        toast.warning(
-          "Veuillez sélectionner un fichier compressé (ZIP, RAR, ou 7Z)"
-        );
-        return;
-      }
-      setFormations(file);
-      toast.success("Fichier ajouté avec succès");
     }
   };
 
@@ -215,15 +149,6 @@ export default function EditPack() {
       formDataToSend.append("status", formData.status ? "1" : "0");
       formDataToSend.append("abonnement", formData.abonnement);
       formDataToSend.append("_method", "PUT"); // Pour la méthode PUT
-
-      if (formations) {
-        formDataToSend.append("formations", formations);
-      } else if (currentFormations && !formations) {
-        // Si un fichier existait et qu'on a cliqué sur le bouton de suppression
-        if (!formData.keepFormations) {
-          formDataToSend.append("delete_formations", "1");
-        }
-      }
 
       formDataToSend.append("avantages", JSON.stringify(filteredAvantages));
 
@@ -439,124 +364,6 @@ export default function EditPack() {
                   className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   placeholder="Durée de publication en jours"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Fichier de formations (optionnel)
-                </label>
-                <div
-                  className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md ${
-                    dragActive
-                      ? "border-primary-500 bg-primary-50 dark:bg-primary-900/10"
-                      : "border-gray-300 dark:border-gray-600"
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  <div className="space-y-1 text-center">
-                    <div className="flex flex-col items-center">
-                      {currentFormations && !formations && (
-                        <div className="mb-4 text-sm text-gray-600 dark:text-gray-300 flex items-center">
-                          <span>Fichier actuel : {currentFormations}</span>
-                          {formData.keepFormations ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  keepFormations: false,
-                                }));
-                                toast.info(
-                                  "Le fichier sera supprimé lors de l'enregistrement"
-                                );
-
-                              }}
-                              className="ml-2 text-red-500 hover:text-red-700 flex items-center"
-                            >
-                              <XMarkIcon className="h-4 w-4 mr-1" />
-                              Supprimer
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  keepFormations: true,
-                                }));
-                                toast.info("Le fichier sera conservé");
-
-                              }}
-                              className="ml-2 text-green-500 hover:text-green-700 flex items-center"
-                            >
-                              <svg
-                                className="h-4 w-4 mr-1"
-                                fill="none"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path d="M5 13l4 4L19 7"></path>
-                              </svg>
-                              Annuler la suppression
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex text-sm text-gray-600 dark:text-gray-300">
-                        <label
-                          htmlFor="formations"
-                          className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
-                        >
-                          <span>Téléverser un fichier</span>
-                          <input
-                            id="formations"
-                            name="formations"
-                            type="file"
-                            accept=".zip,.rar,.7z"
-                            className="sr-only"
-                            onChange={handleFileChange}
-                          />
-                        </label>
-                        <p className="pl-1">ou glisser-déposer</p>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        ZIP, RAR ou 7Z jusqu'à 10MB
-                      </p>
-                      {formations && (
-                        <div className="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-300">
-                          <svg
-                            className="h-5 w-5 text-green-500 mr-2"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          <span>{formations.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormations(null);
-                              toast.info("Fichier supprimé");
-                            }}
-                            className="ml-2 text-red-500 hover:text-red-700"
-                          >
-                            <XMarkIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div>

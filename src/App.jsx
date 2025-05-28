@@ -68,6 +68,9 @@ import UserFinances from "./pages/user/Finances";
 import UserFaq from "./pages/user/Faq";
 import TestimonialManagement from "./pages/admin/TestimonialManagement";
 import FaqManagement from "./pages/admin/FaqManagement";
+import Formations from "./pages/user/components/Formations";
+import FormationEditor from "./pages/user/components/FormationEditor";
+import FormationManagement from "./pages/admin/components/FormationManagement";
 
 function App() {
   return (
@@ -187,6 +190,7 @@ function App() {
             <Route path="finances" element={<AdminFinances />} />
             <Route path="testimonials" element={<TestimonialManagement />} />
             <Route path="faqs" element={<FaqManagement />} />
+            <Route path="formations" element={<FormationManagement />} />
           </Route>
 
           <Route
@@ -214,6 +218,8 @@ function App() {
             <Route path="buypacks" element={<BuyPack />} />
             <Route path="invitations" element={<ReferralInvitations />} />
             <Route path="pages/:id" element={<Page />} />
+            <Route path="formations" element={<Formations />} />
+            <Route path="formations/edit/:id" element={<FormationEditor />} />
           </Route>
 
           {/* Redirection pour les routes inconnues */}

@@ -39,6 +39,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import useWithdrawalRequests from '../hooks/useWithdrawalRequests';
 import usePendingTestimonials from '../hooks/usePendingTestimonials';
+import usePendingFormations from '../hooks/usePendingFormations';
 import {
   ChartBarIcon,
   UsersIcon,
@@ -54,6 +55,7 @@ import {
   CubeIcon,
   BanknotesIcon,
   ClipboardDocumentCheckIcon,
+  AcademicCapIcon,
   MegaphoneIcon,
   WalletIcon,
   HomeIcon,
@@ -66,7 +68,8 @@ import {
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
-const navigation = [
+// Définition des éléments de navigation
+const getNavigation = (pendingFormationsCount = 0) => [
   { name: 'Tableau de bord', href: '/admin', icon: HomeIcon },
   { name: 'Utilisateurs', href: '/admin/users', icon: UsersIcon },
   { name: 'Demandes de retrait', href: '/admin/withdrawal-requests', icon: BanknotesIcon },
@@ -77,6 +80,13 @@ const navigation = [
   { name: 'Finances', href: '/admin/finances', icon: ChartBarIcon },
   { name: 'Témoignages', href: '/admin/testimonials', icon: ChatBubbleLeftRightIcon },
   { name: 'FAQ', href: '/admin/faqs', icon: QuestionMarkCircleIcon },
+  { 
+    name: 'Formations', 
+    href: '/admin/formations', 
+    icon: AcademicCapIcon,
+    badge: pendingFormationsCount > 0 ? pendingFormationsCount : null,
+    badgeColor: 'red'
+  },
   { name: 'Validations', href: '/admin/validations', icon: CheckBadgeIcon },
   { name: 'Paramètres', href: '/admin/settings', icon: Cog6ToothIcon },
 ];
@@ -96,6 +106,7 @@ export default function AdminDashboardLayout() {
   const [userData, setUserData] = useState(null);
   const { pendingCount } = useWithdrawalRequests();
   const { pendingCount: pendingTestimonialsCount } = usePendingTestimonials();
+  const { pendingCount: pendingFormationsCount } = usePendingFormations();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showTooltip, setShowTooltip] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -135,16 +146,23 @@ export default function AdminDashboardLayout() {
     };
   }, [dropdownRef]);
 
+  // Créer la navigation avec le nombre de formations en attente
+  const navigation = getNavigation(pendingFormationsCount);
+
   const renderNavLink = (item, isMobile = false) => {
-    const isActive = location.pathname === item.href;
-    const hasChildren = item.children && item.children.length > 0;
+    const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+    const Icon = item.icon;
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
     const isSubmenuOpen = openSubmenu === item.name;
     
-    // Vérifier si c'est le lien des demandes de retrait ou des témoignages
-    const isWithdrawalRequests = item.href === '/admin/withdrawal-requests';
-    const isTestimonials = item.href === '/admin/testimonials';
+    // Ajouter un badge pour les demandes de retrait en attente
+    const showWithdrawalBadge = item.href === '/admin/withdrawal-requests' && pendingCount > 0;
+    // Ajouter un badge pour les témoignages en attente
+    const showTestimonialsBadge = item.href === '/admin/testimonials' && pendingTestimonialsCount > 0;
+    // Utiliser le badge défini dans l'objet item (pour les formations en attente)
+    const showCustomBadge = item.badge !== null && item.badge !== undefined;
 
-    if (hasChildren) {
+    if (hasSubmenu) {
       return (
         <div key={item.name}>
           <button
@@ -214,29 +232,39 @@ export default function AdminDashboardLayout() {
         }`}
       >
         <div className="relative">
-          <item.icon className={`h-5 w-5 ${isActive && !isDarkMode ? 'text-primary-600' : ''}`} />
-          {isWithdrawalRequests && pendingCount > 0 && (
+          <Icon className={`h-5 w-5 ${isActive && !isDarkMode ? 'text-primary-600' : ''}`} />
+          {showWithdrawalBadge && (
             <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
               {pendingCount}
             </span>
           )}
-          {isTestimonials && pendingTestimonialsCount > 0 && (
+          {showTestimonialsBadge && (
             <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
               {pendingTestimonialsCount}
+            </span>
+          )}
+          {showCustomBadge && (
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+              {item.badge}
             </span>
           )}
         </div>
         {(!isSidebarCollapsed || isMobile) && (
           <div className="ml-3 flex items-center">
             <span>{item.name}</span>
-            {isWithdrawalRequests && pendingCount > 0 && isSidebarCollapsed && !isMobile && (
+            {showWithdrawalBadge && isSidebarCollapsed && !isMobile && (
               <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
                 {pendingCount}
               </span>
             )}
-            {isTestimonials && pendingTestimonialsCount > 0 && isSidebarCollapsed && !isMobile && (
+            {showTestimonialsBadge && isSidebarCollapsed && !isMobile && (
               <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
                 {pendingTestimonialsCount}
+              </span>
+            )}
+            {showCustomBadge && isSidebarCollapsed && !isMobile && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                {item.badge}
               </span>
             )}
           </div>

@@ -34,6 +34,17 @@ instance.interceptors.request.use(async (config) => {
             console.error('Erreur lors de la récupération du token CSRF:', error);
         }
     }
+    
+    // Vérifier si cette requête doit être considérée comme une activité utilisateur
+    // Si l'en-tête X-No-Activity-Update est présent, ne pas mettre à jour l'activité
+    if (!config.headers['X-No-Activity-Update'] && window.updateLastActivityFn) {
+        // Ne mettre à jour l'activité que pour les requêtes initiées par l'utilisateur
+        // et non pour les vérifications automatiques d'authentification
+        if (!config.url.includes('check_only=true') && !config.url.includes('reason=inactivity')) {
+            window.updateLastActivityFn();
+        }
+    }
+    
     return config;
 });
 

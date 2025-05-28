@@ -61,6 +61,7 @@ import {
   LightBulbIcon,
   MegaphoneIcon,
   BriefcaseIcon,
+  AcademicCapIcon,
   WalletIcon,
   CubeIcon,
   UserCircleIcon,
@@ -93,6 +94,7 @@ const navigation = [
   },
   { name: "Ma page", href: "/dashboard/my-page", icon: BuildingOfficeIcon },
   { name: "Social", href: "/dashboard/social", icon: ChatBubbleLeftRightIcon },
+  { name: "Formations", href: "/dashboard/formations", icon: AcademicCapIcon },
   { name: "FAQ", href: "/dashboard/faq", icon: QuestionMarkCircleIcon },
 ];
 

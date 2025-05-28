@@ -92,6 +92,8 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticatedRef = useRef(false);
 
   // Fonction pour mettre à jour le timestamp de dernière activité
+  // Cette fonction ne sera appelée que pour les interactions utilisateur réelles
+  // et non pour les appels API automatiques
   const updateLastActivity = useCallback(() => {
     setLastActivity(Date.now());
   }, []);
@@ -260,8 +262,9 @@ export const AuthProvider = ({ children }) => {
 
         // Si l'utilisateur est inactif depuis plus longtemps que le délai d'expiration
         if (inactiveTime > SESSION_TIMEOUT) {
-          // Déconnecter l'utilisateur
-          logout();
+          // Déconnecter l'utilisateur explicitement côté backend
+          // Utiliser une fonction spécifique qui n'actualise pas lastActivity
+          logoutDueToInactivity();
 
           // Afficher un message
           toast.info("Vous avez été déconnecté en raison d'inactivité.", {
@@ -302,12 +305,20 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get("/api/user");
+      // Ajouter un paramètre pour indiquer que c'est une vérification d'authentification
+      // et non une activité utilisateur
+      const response = await axios.get("/api/user?check_only=true", {
+        // Ajouter un en-tête pour indiquer que cette requête ne doit pas être considérée
+        // comme une activité utilisateur
+        headers: {
+          "X-No-Activity-Update": "true",
+        },
+      });
       if (response.data) {
         setUser(response.data);
         isAuthenticatedRef.current = true;
-        // Mettre à jour le timestamp de dernière activité
-        updateLastActivity();
+        // Ne pas mettre à jour le timestamp de dernière activité pour les vérifications automatiques
+        // updateLastActivity(); -- Supprimé pour ne pas considérer les vérifications comme des activités
         setLoading(false);
         return true;
       }
@@ -357,6 +368,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Fonction de déconnexion standard, appelée par l'utilisateur
   const logout = async () => {
     try {
       setLoading(true);
@@ -375,6 +387,42 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error("Erreur de déconnexion:", error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction spécifique pour la déconnexion due à l'inactivité
+  // Cette fonction ne met pas à jour lastActivity
+  const logoutDueToInactivity = async () => {
+    try {
+      setLoading(true);
+      // Utiliser un paramètre spécifique pour indiquer que c'est une déconnexion due à l'inactivité
+      await axios.post(
+        "/api/logout?reason=inactivity",
+        {},
+        {
+          // Éviter que cette requête ne soit considérée comme une activité utilisateur
+          headers: {
+            "X-No-Activity-Update": "true",
+          },
+        }
+      );
+      setUser(null);
+      isAuthenticatedRef.current = false;
+
+      // Nettoyer les intervalles
+      if (authCheckIntervalRef.current) {
+        clearInterval(authCheckIntervalRef.current);
+      }
+      if (inactivityCheckIntervalRef.current) {
+        clearInterval(inactivityCheckIntervalRef.current);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Erreur de déconnexion due à l'inactivité:", error);
       return false;
     } finally {
       setLoading(false);
@@ -482,6 +530,7 @@ export const AuthProvider = ({ children }) => {
     resendVerificationEmail,
     checkAuth,
     updateLastActivity,
+    logoutDueToInactivity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
