@@ -65,6 +65,8 @@ import {
   CreditCardIcon,
   ChatBubbleLeftRightIcon,
   QuestionMarkCircleIcon,
+  GiftIcon,
+  TicketIcon,
 } from '@heroicons/react/24/outline';
 import NotificationsDropdown from '../components/NotificationsDropdown';
 
@@ -78,6 +80,8 @@ const getNavigation = (pendingFormationsCount = 0) => [
   { name: 'Mes packs', href: '/admin/mespacks', icon: CubeIcon },
   { name: 'Commissions', href: '/admin/commissions', icon: CreditCardIcon },
   { name: 'Finances', href: '/admin/finances', icon: ChartBarIcon },
+  { name: 'Cadeaux Esengo', href: '/admin/cadeaux', icon: GiftIcon },
+  { name: 'Vérification tickets', href: '/admin/tickets-verification', icon: TicketIcon },
   { name: 'Témoignages', href: '/admin/testimonials', icon: ChatBubbleLeftRightIcon },
   { name: 'FAQ', href: '/admin/faqs', icon: QuestionMarkCircleIcon },
   { 

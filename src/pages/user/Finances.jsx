@@ -979,6 +979,8 @@ const Finances = () => {
                           ? "Retrait"
                           : transaction.type === "purchase"
                           ? "Achat"
+                          : transaction.type === "sale"
+                          ? "Vente"
                           : transaction.type === "transfer"
                           ? "Transfert des fonds"
                           : transaction.type === "reception"
@@ -987,6 +989,7 @@ const Finances = () => {
                       }
                       color={
                         transaction.type === "reception" ||
+                        transaction.type === "sale" ||
                         transaction.type === "bonus" ||
                         transaction.type === "commission de parrainage" ||
                         transaction.type === "commission de retrait"
@@ -999,6 +1002,7 @@ const Finances = () => {
                       }
                       icon={
                         transaction.type === "bonus" ||
+                        transaction.type === "sale" ||
                         transaction.type === "commission de parrainage" ||
                         transaction.type === "commission de retrait" ? (
                           <ArrowDownwardIcon fontSize="small" />
@@ -1017,6 +1021,7 @@ const Finances = () => {
                     sx={{
                       color:
                         transaction.type === "reception" ||
+                        transaction.type === "sale" ||
                         transaction.type === "bonus" ||
                         transaction.type === "commission de parrainage" ||
                         transaction.type === "commission de retrait"
@@ -1030,6 +1035,7 @@ const Finances = () => {
                     }}
                   >
                     {transaction.type === "reception" ||
+                    transaction.type === "sale" ||
                     transaction.type === "commission de parrainage" ||
                     transaction.type === "commission de retrait" ||
                     transaction.type === "bonus"

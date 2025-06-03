@@ -10,7 +10,9 @@ import {
   TrashIcon,
   CurrencyDollarIcon,
   GiftIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
+import { Menu, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { useToast } from "../../hooks/useToast";
 import Notification from "../../components/Notification";
@@ -43,6 +45,7 @@ export default function Packs() {
   const [selectedPackIdForBonus, setSelectedPackIdForBonus] = useState(null);
   const [selectedPackNameForBonus, setSelectedPackNameForBonus] = useState("");
   const [bonusRates, setBonusRates] = useState([]);
+  const [currentBonusType, setCurrentBonusType] = useState("delais");
   const [newBonusRate, setNewBonusRate] = useState({
     frequence: "weekly",
     nombre_filleuls: 5,
@@ -300,28 +303,68 @@ export default function Packs() {
     }
   };
 
-  const FormulaireAjoutBonus = ({ packId, onBonusAdded }) => {
+  const FormulaireAjoutBonus = ({
+    packId,
+    onBonusAdded,
+    bonusType,
+    onBonusTypeChange,
+  }) => {
     const [formBonus, setFormBonus] = useState({
-      frequence: "weekly",
+      type: bonusType || "delais",
       nombre_filleuls: "",
       points_attribues: "",
       valeur_point: "",
     });
 
+    // Mettre à jour formBonus lorsque bonusType change
+    useEffect(() => {
+      setFormBonus((prev) => ({
+        ...prev,
+        type: bonusType,
+      }));
+    }, [bonusType]);
+
     const handleBonusChange = (e) => {
       const { name, value } = e.target;
-      setFormBonus({ ...formBonus, [name]: value });
+
+      // Si on change le type, on réinitialise la valeur du point si nécessaire
+      if (name === "type" && value === "esengo") {
+        setFormBonus({ ...formBonus, [name]: value, valeur_point: "" });
+        // Mettre à jour l'état du type dans le composant parent
+        onBonusTypeChange && onBonusTypeChange(value);
+      } else {
+        setFormBonus({ ...formBonus, [name]: value });
+        if (name === "type") {
+          // Mettre à jour l'état du type dans le composant parent
+          onBonusTypeChange && onBonusTypeChange(value);
+        }
+      }
     };
 
     const handleBonusSubmit = async (e) => {
       e.preventDefault();
+
+      // Validation côté client
+      if (formBonus.type === "delais" && !formBonus.valeur_point) {
+        Notification.error(
+          "La valeur du point est requise pour les bonus sur délais"
+        );
+        return;
+      } else {
+        delete formBonus.valeur_point;
+      }
+
       try {
         const response = await axios.post(
           `/api/admin/packs/${packId}/bonus-rates`,
           formBonus
         );
         if (response.data.success) {
-          Notification.success("Taux de bonus ajouté avec succès");
+          Notification.success(
+            formBonus.type === "delais"
+              ? "Bonus sur délais ajouté avec succès"
+              : "Jetons Esengo configurés avec succès"
+          );
 
           // Mettre à jour la liste des bonus immédiatement
           const updatedBonusResponse = await axios.get(
@@ -332,7 +375,7 @@ export default function Packs() {
           }
 
           setFormBonus({
-            frequence: "weekly",
+            type: "delais",
             nombre_filleuls: "",
             points_attribues: "",
             valeur_point: "",
@@ -340,35 +383,50 @@ export default function Packs() {
           onBonusAdded();
         }
       } catch (error) {
-        Notification.error("Erreur lors de l'ajout du bonus");
+        // Gérer l'erreur lorsqu'un type de bonus est déjà configuré
+        if (error.response && error.response.status === 422) {
+          Notification.error(
+            error.response.data.message ||
+              (formBonus.type === "delais"
+                ? "Un bonus sur délais a déjà été configuré pour ce pack"
+                : "Une configuration de jetons Esengo existe déjà pour ce pack")
+          );
+        } else {
+          Notification.error(
+            "Une erreur est survenue lors de l'ajout du bonus. Veuillez réessayer."
+          );
+          console.error("Erreur lors de l'ajout du bonus:", error);
+        }
       }
     };
+
+    const isDelaisType = formBonus.type === "delais";
 
     return (
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-4">
         <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
-          Configurer le bonus sur délais
+          {isDelaisType
+            ? "Configurer le bonus sur délais"
+            : "Configurer les jetons Esengo"}
         </h3>
         <form onSubmit={handleBonusSubmit}>
           <div className="mb-4">
             <label
-              htmlFor="frequence"
+              htmlFor="type"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Fréquence
+              Type de bonus
             </label>
             <select
-              id="frequence"
-              name="frequence"
-              value={formBonus.frequence}
+              id="type"
+              name="type"
+              value={formBonus.type}
               onChange={handleBonusChange}
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               required
             >
-              <option value="daily">Journalier</option>
-              <option value="weekly">Hebdomadaire</option>
-              <option value="monthly">Mensuel</option>
-              <option value="yearly">Annuel</option>
+              <option value="delais">Bonus sur délais (hebdomadaire)</option>
+              <option value="esengo">Jetons Esengo (mensuel)</option>
             </select>
           </div>
 
@@ -377,7 +435,9 @@ export default function Packs() {
               htmlFor="nombre_filleuls"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Nombre de filleuls pour 1 point
+              {isDelaisType
+                ? "Nombre de filleuls pour 1 point"
+                : "Nombre de filleuls pour obtenir des jetons"}
             </label>
             <input
               type="number"
@@ -388,11 +448,16 @@ export default function Packs() {
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               min="1"
               required
-              placeholder="Ex: 7 (1 point tous les 7 filleuls)"
+              placeholder={
+                isDelaisType
+                  ? "Ex: 7 (1 point tous les 7 filleuls)"
+                  : "Ex: 5 (1 jeton tous les 5 filleuls)"
+              }
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Si un utilisateur parraine 14 filleuls, il recevra 2 points. S'il
-              en parraine 21, il recevra 3 points, etc.
+              {isDelaisType
+                ? "Si un utilisateur parraine 14 filleuls, il recevra 2 points. S'il en parraine 21, il recevra 3 points, etc."
+                : "Si un utilisateur parraine 10 filleuls, il recevra 2 jetons."}
             </p>
           </div>
 
@@ -401,7 +466,9 @@ export default function Packs() {
               htmlFor="points_attribues"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Points attribués par palier
+              {isDelaisType
+                ? "Points attribués par palier"
+                : "Nombre de jetons Esengo par palier"}
             </label>
             <input
               type="number"
@@ -412,30 +479,36 @@ export default function Packs() {
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               min="1"
               required
-              placeholder="Ex: 1 (1 point par palier atteint)"
+              placeholder={
+                isDelaisType
+                  ? "Ex: 1 (1 point par palier atteint)"
+                  : "Ex: 1 (1 jeton par palier atteint)"
+              }
             />
           </div>
 
-          <div className="mb-4">
-            <label
-              htmlFor="valeur_point"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              Valeur d'un point en devise ($)
-            </label>
-            <input
-              type="number"
-              id="valeur_point"
-              name="valeur_point"
-              value={formBonus.valeur_point}
-              onChange={handleBonusChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              min="0.01"
-              step="0.01"
-              required
-              placeholder="Ex: 10.00 (10$ par point)"
-            />
-          </div>
+          {isDelaisType && (
+            <div className="mb-4">
+              <label
+                htmlFor="valeur_point"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Valeur d'un point en devise ($)
+              </label>
+              <input
+                type="number"
+                id="valeur_point"
+                name="valeur_point"
+                value={formBonus.valeur_point}
+                onChange={handleBonusChange}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                min="0.01"
+                step="0.01"
+                required
+                placeholder="Ex: 10.00 (10$ par point)"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
@@ -576,9 +649,6 @@ export default function Packs() {
                       Prix
                     </th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                      Avantages
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
                       Status
                     </th>
                     <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-200">
@@ -607,31 +677,6 @@ export default function Packs() {
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
                         {pack.price} $
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                        <ul className="list-disc list-inside">
-                          {pack.avantages.map((avantage, index) => {
-                            const shortAvantage =
-                              avantage.length > 10
-                                ? avantage.substring(0, 10) + "..."
-                                : avantage;
-                            const tooltipId = `tooltip-avantage-${pack.id}-${index}`;
-                            return (
-                              <li
-                                key={index}
-                                data-tooltip-id={tooltipId}
-                                data-tooltip-content={avantage}
-                                className="cursor-pointer hover:text-primary-600 dark:hover:text-primary-400"
-                              >
-                                {shortAvantage}
-                                <Tooltip
-                                  id={tooltipId}
-                                  className="max-w-xs z-50 bg-gray-900 dark:bg-gray-700 text-white p-2 rounded shadow-lg text-sm"
-                                />
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
                         <button
                           onClick={() => togglePackStatus(pack.id)}
@@ -645,58 +690,100 @@ export default function Packs() {
                         </button>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <button
-                            data-tooltip-id={`tooltip-commission-${pack.id}`}
-                            data-tooltip-content="Gérer les commissions"
-                            onClick={() => showCommissionModal(pack.id)}
-                            className="p-1.5 rounded-full text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                        <div className="flex items-center justify-center">
+                          <Menu
+                            as="div"
+                            className="relative inline-block text-left"
                           >
-                            <CurrencyDollarIcon className="h-5 w-5" />
-                            <Tooltip
-                              id={`tooltip-commission-${pack.id}`}
-                              className="z-50"
-                            />
-                          </button>
+                            <div>
+                              <Menu.Button className="p-1.5 rounded-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                <EllipsisVerticalIcon className="h-5 w-5" />
+                              </Menu.Button>
+                            </div>
+                            <Transition
+                              as={Fragment}
+                              enter="transition ease-out duration-100"
+                              enterFrom="transform opacity-0 scale-95"
+                              enterTo="transform opacity-100 scale-100"
+                              leave="transition ease-in duration-75"
+                              leaveFrom="transform opacity-100 scale-100"
+                              leaveTo="transform opacity-0 scale-95"
+                            >
+                              <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                <div className="px-1 py-1">
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        onClick={() =>
+                                          showCommissionModal(pack.id)
+                                        }
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 dark:bg-gray-700"
+                                            : ""
+                                        } flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                                      >
+                                        <CurrencyDollarIcon className="h-5 w-5 mr-2 text-primary-600 dark:text-primary-400" />
+                                        <span>Gérer les commissions</span>
+                                      </button>
+                                    )}
+                                  </Menu.Item>
 
-                          <Link
-                            data-tooltip-id={`tooltip-edit-${pack.id}`}
-                            data-tooltip-content="Modifier ce pack"
-                            to={`/admin/packs/edit/${pack.id}`}
-                            className="p-1.5 rounded-full text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                            <Tooltip
-                              id={`tooltip-edit-${pack.id}`}
-                              className="z-50"
-                            />
-                          </Link>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        to={`/admin/packs/edit/${pack.id}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 dark:bg-gray-700"
+                                            : ""
+                                        } flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                                      >
+                                        <PencilIcon className="h-5 w-5 mr-2 text-primary-600 dark:text-primary-400" />
+                                        <span>Modifier ce pack</span>
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
 
-                          <button
-                            data-tooltip-id={`tooltip-bonus-${pack.id}`}
-                            data-tooltip-content="Configurer les bonus sur délais"
-                            onClick={() => showBonusModal(pack.id, pack.name)}
-                            className="p-1.5 rounded-full text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                          >
-                            <GiftIcon className="h-5 w-5" />
-                            <Tooltip
-                              id={`tooltip-bonus-${pack.id}`}
-                              className="z-50"
-                            />
-                          </button>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        onClick={() =>
+                                          showBonusModal(pack.id, pack.name)
+                                        }
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 dark:bg-gray-700"
+                                            : ""
+                                        } flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                                      >
+                                        <GiftIcon className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
+                                        <span>Configurer les bonus</span>
+                                      </button>
+                                    )}
+                                  </Menu.Item>
 
-                          <button
-                            data-tooltip-id={`tooltip-delete-${pack.id}`}
-                            data-tooltip-content="Supprimer ce pack"
-                            onClick={() => showDeleteModal(pack.id, pack.name)}
-                            className="p-1.5 rounded-full text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                            <Tooltip
-                              id={`tooltip-delete-${pack.id}`}
-                              className="z-50"
-                            />
-                          </button>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        onClick={() =>
+                                          showDeleteModal(pack.id, pack.name)
+                                        }
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 dark:bg-gray-700"
+                                            : ""
+                                        } flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                                      >
+                                        <TrashIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
+                                        <span>Supprimer ce pack</span>
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                </div>
+                              </Menu.Items>
+                            </Transition>
+                          </Menu>
                         </div>
                       </td>
                     </tr>
@@ -879,94 +966,98 @@ export default function Packs() {
           onClick={hideBonusModal}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Configurer les bonus sur délais pour{" "}
-                <span className="font-semibold">
-                  {selectedPackNameForBonus}
-                </span>
+            {/* En-tête fixe */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                Configuration des bonus pour {selectedPackNameForBonus}
               </h3>
-              <button
-                onClick={hideBonusModal}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
             </div>
-            <hr className="my-4 border-gray-200 dark:border-gray-700" />
 
-            <div className="mt-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Définissez des bonus pour les utilisateurs qui parrainent un
-                certain nombre de filleuls dans une période donnée.
-              </p>
-
-              {/* Liste des bonus existants */}
+            {/* Contenu défilant */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {/* Liste des taux de bonus existants */}
               {bonusRates.length > 0 ? (
-                <div className="mb-6">
-                  <h4 className="text-md font-medium mb-2">
-                    Bonus sur délais configurés
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-600">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                            Fréquence
-                          </th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                            Nombre de filleuls
-                          </th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                            Point par palier
-                          </th>
-                          <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
-                            Valeur par point
-                          </th>
-                          <th className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-200">
-                            Actions
-                          </th>
+                <div className="overflow-x-auto mb-6">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Type
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Fréquence
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Filleuls
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Points/Jetons
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Valeur ($)
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {bonusRates.map((rate) => (
+                        <tr
+                          key={rate.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            {rate.type === "delais" ? "Délais" : "Esengo"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            {rate.frequence === "weekly" && "Hebdomadaire"}
+                            {rate.frequence === "monthly" && "Mensuel"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            {rate.nombre_filleuls} filleuls
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            {rate.type === "delais"
+                              ? `${rate.points_attribues} pts`
+                              : `${rate.points_attribues} jetons`}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            {rate.valeur_point ? `${rate.valeur_point}$` : "-"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
+                            <button
+                              onClick={() => handleDeleteBonusRate(rate.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                        {bonusRates.map((rate) => (
-                          <tr
-                            key={rate.id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                          >
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.frequence === "daily" && "Journalier"}
-                              {rate.frequence === "weekly" && "Hebdomadaire"}
-                              {rate.frequence === "monthly" && "Mensuel"}
-                              {rate.frequence === "yearly" && "Annuel"}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.nombre_filleuls} filleuls
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.points_attribues} points
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-gray-200">
-                              {rate.valeur_point} $
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-center">
-                              <div className="flex items-center justify-center space-x-2">
-                                <button
-                                  onClick={() => deleteBonusRate(rate.id)}
-                                  className="p-1.5 rounded-full text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                                >
-                                  <TrashIcon className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="mb-6 text-center py-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -980,8 +1071,11 @@ export default function Packs() {
               <FormulaireAjoutBonus
                 packId={selectedPackIdForBonus}
                 onBonusAdded={() => setBonusRates((prev) => [...prev])}
+                bonusType={currentBonusType}
+                onBonusTypeChange={setCurrentBonusType}
               />
 
+              {/* Exemple explicatif conditionnel selon le type de bonus */}
               <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-md p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -990,7 +1084,6 @@ export default function Packs() {
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      aria-hidden="true"
                     >
                       <path
                         fillRule="evenodd"
@@ -1001,19 +1094,48 @@ export default function Packs() {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      Exemple
+                      {currentBonusType === "delais"
+                        ? "Exemple - Bonus sur délais"
+                        : "Exemple - Jetons Esengo"}
                     </h3>
                     <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                      <p>
-                        Si vous configurez un palier de <strong>1</strong> pour{" "}
-                        <strong>7 filleuls</strong> pour un bonus{" "}
-                        <strong>hebdomadaire</strong>, alors un utilisateur qui
-                        parraine 7 filleuls en une semaine recevra un bonus de 1
-                        point pour ce pack.
-                      </p>
+                      {currentBonusType === "delais" ? (
+                        <p>
+                          Si vous configurez un palier de{" "}
+                          <strong>1 point</strong> pour{" "}
+                          <strong>7 filleuls</strong> avec une fréquence{" "}
+                          <strong>hebdomadaire</strong>, alors un utilisateur
+                          qui parraine 7 filleuls en une semaine recevra un
+                          bonus de 1 point pour ce pack. Ces points sont
+                          convertis en valeur monétaire selon la valeur du point
+                          configurée.
+                        </p>
+                      ) : (
+                        <p>
+                          Si vous configurez <strong>1 jeton</strong> pour{" "}
+                          <strong>5 filleuls</strong> avec une fréquence{" "}
+                          <strong>mensuelle</strong>, alors un utilisateur qui
+                          parraine 5 filleuls en un mois recevra 1 jeton Esengo.
+                          Ces jetons permettent aux utilisateurs de participer à
+                          des tirages au sort pour gagner des cadeaux de valeur
+                          variable.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Pied de page fixe */}
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+              <div className="flex justify-end">
+                <button
+                  onClick={hideBonusModal}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
           </div>

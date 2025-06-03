@@ -1366,6 +1366,7 @@ export default function Wallets() {
                   >
                     <option value="all">Tous les types</option>
                     <option value="purchase">Achat</option>
+                    <option value="sale">Vente</option>
                     <option value="withdrawal">Retrait</option>
                     <option value="commission de parrainage">
                       Commission de parrainage
@@ -1484,6 +1485,8 @@ export default function Wallets() {
                           ? "Dépot des fonds"
                           : transaction.type === "transfer"
                           ? "Transfert des fonds"
+                          : transaction.type === "sale"
+                          ? "Vente"
                           : transaction.type}
                       </td>
                       <td

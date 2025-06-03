@@ -30,6 +30,8 @@ const FormationForm = ({ formation, onSubmit, onCancel }) => {
 
   const [formData, setFormData] = useState({
     title: "",
+    category: "",
+    customCategory: "",
     description: "",
     thumbnail: null,
     packs: [],
@@ -44,8 +46,35 @@ const FormationForm = ({ formation, onSubmit, onCancel }) => {
   // Charger les données de la formation si en mode édition
   useEffect(() => {
     if (formation) {
+      // Vérifier si la catégorie correspond à une des options prédéfinies
+      const predefinedCategories = [
+        "Développement personnel",
+        "Compétences professionnelles",
+        "Technologie & Informatique",
+        "Langues",
+        "Santé & Bien-être",
+        "Arts & Créativité ",
+        "Education financière",
+        "Soft skills",
+        "Administration publique & gestion administrative",
+        "Suivi & Évaluation de projets",
+        "Humanitaire",
+        "Gestion financière & budgétaire",
+        "Gestion documentaire & archivage",
+        "Planification stratégiqu",
+        "Éthique & gouvernance ",
+        "Analyse des politiques publiques",
+        "Gestion des risques & conformité",
+      ];
+
+      const isCustomCategory =
+        formation.category &&
+        !predefinedCategories.includes(formation.category);
+
       setFormData({
         title: formation.title || "",
+        category: isCustomCategory ? "Autre" : formation.category || "",
+        customCategory: isCustomCategory ? formation.category : "",
         description: formation.description || "",
         thumbnail: null, // On ne charge pas l'image existante pour l'édition
         packs: formation.packs?.map((pack) => pack.id) || [],
@@ -116,13 +145,51 @@ const FormationForm = ({ formation, onSubmit, onCancel }) => {
   // Soumettre le formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // Validation de la catégorie personnalisée
+    if (formData.category === "Autre" && !formData.customCategory.trim()) {
+      setError("Veuillez préciser votre catégorie personnalisée.");
+      return;
+    }
+
+    // Validation du titre et de la description
+    if (
+      !formData.title.trim() ||
+      !formData.description.trim() ||
+      !formData.category
+    ) {
+      setError("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+
+    // Validation des packs pour les formations admin
+    if (formation.type === "admin") {
+      if (formData.packs.length === 0) {
+        setError(
+          "Veuillez sélectionner au moins un pack pour cette formation."
+        );
+        return;
+      }
+    }
+
+    setLoading(true);
     setSuccess(false);
 
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("title", formData.title);
+
+      // Si la catégorie est "Autre", utiliser la catégorie personnalisée
+      if (
+        formData.category === "Autre" &&
+        formData.customCategory.trim() !== ""
+      ) {
+        formDataToSend.append("category", formData.customCategory.trim());
+      } else {
+        formDataToSend.append("category", formData.category);
+      }
+
       formDataToSend.append("description", formData.description);
 
       if (formData.thumbnail) {
@@ -217,6 +284,77 @@ const FormationForm = ({ formation, onSubmit, onCancel }) => {
             value={formData.title}
             onChange={handleChange}
           />
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControl fullWidth required>
+            <InputLabel id="category-select-label">Catégorie</InputLabel>
+            <Select
+              labelId="category-select-label"
+              id="category-select"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              input={<OutlinedInput label="Catégorie" />}
+            >
+              <MenuItem value="Développement personnel">
+                Développement personnel
+              </MenuItem>
+              <MenuItem value="Compétences professionnelles">
+                Compétences professionnelles
+              </MenuItem>
+              <MenuItem value="Technologie & Informatique">
+                Technologie & Informatique
+              </MenuItem>
+              <MenuItem value="Langues">Langues</MenuItem>
+              <MenuItem value="Santé & Bien-être">Santé & Bien-être</MenuItem>
+              <MenuItem value="Arts & Créativité ">Arts & Créativité</MenuItem>
+              <MenuItem value="Education financière">
+                Education financière
+              </MenuItem>
+              <MenuItem value="Soft skills">Soft skills</MenuItem>
+              <MenuItem value="Administration publique & gestion administrative">
+                Administration publique & gestion administrative
+              </MenuItem>
+              <MenuItem value="Suivi & Évaluation de projets">
+                Suivi & Évaluation de projets
+              </MenuItem>
+              <MenuItem value="Humanitaire">Humanitaire</MenuItem>
+              <MenuItem value="Gestion financière & budgétaire">
+                Gestion financière & budgétaire
+              </MenuItem>
+              <MenuItem value="Gestion documentaire & archivage">
+                Gestion documentaire & archivage
+              </MenuItem>
+              <MenuItem value="Planification stratégiqu">
+                Planification stratégique
+              </MenuItem>
+              <MenuItem value="Éthique & gouvernance ">
+                Éthique & gouvernance
+              </MenuItem>
+              <MenuItem value="Analyse des politiques publiques">
+                Analyse des politiques publiques
+              </MenuItem>
+              <MenuItem value="Gestion des risques & conformité">
+                Gestion des risques & conformité
+              </MenuItem>
+              <MenuItem value="Autre">Autre</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Champ de texte pour la catégorie personnalisée qui apparaît uniquement si "Autre" est sélectionné */}
+          {formData.category === "Autre" && (
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Précisez la catégorie"
+              name="customCategory"
+              value={formData.customCategory}
+              onChange={handleChange}
+              required
+              helperText="Veuillez saisir votre catégorie personnalisée"
+            />
+          )}
         </Grid>
 
         <Grid item xs={12}>

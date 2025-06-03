@@ -72,6 +72,7 @@ import {
   UserPlusIcon,
   QuestionMarkCircleIcon,
   ChatBubbleLeftRightIcon,
+  GiftIcon,
 } from "@heroicons/react/24/outline";
 import NotificationsDropdown from "../components/NotificationsDropdown";
 
@@ -86,6 +87,7 @@ const navigation = [
     href: "/dashboard/invitations",
     icon: UserPlusIcon,
   },
+  { name: "Jetons Esengo", href: "/dashboard/jetons-esengo", icon: GiftIcon },
   { name: "Mes statistiques", href: "/dashboard/stats", icon: ChartBarIcon },
   {
     name: "Fil d'actualités",

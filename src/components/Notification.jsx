@@ -27,7 +27,7 @@ const Notification = {
 
 const notify = (message, type, iconName)=> {
     // Utiliser la variable globale pour déterminer le thème
-    const isDarkMode = currentThemeMode === 'dark';
+    let isDarkMode = currentThemeMode === 'dark';
     
     // Fallback au cas où la variable globale n'est pas définie
     if (currentThemeMode === undefined) {

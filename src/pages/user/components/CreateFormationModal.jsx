@@ -35,6 +35,8 @@ const CreateFormationModal = ({ open, onClose, onFormationCreated }) => {
 
   const [formData, setFormData] = useState({
     title: "",
+    category: "",
+    customCategory: "",
     description: "",
     is_paid: false,
     price: "",
@@ -80,14 +82,55 @@ const CreateFormationModal = ({ open, onClose, onFormationCreated }) => {
     }
   };
 
+  // Validation du formulaire
+  const validateForm = () => {
+    // Vérifier que les champs requis sont remplis
+    if (!formData.title || !formData.description || !formData.category) {
+      setError("Veuillez remplir tous les champs obligatoires.");
+      return false;
+    }
+
+    // Vérifier que la catégorie personnalisée est remplie si "Autre" est sélectionné
+    if (formData.category === "Autre" && !formData.customCategory.trim()) {
+      setError("Veuillez préciser votre catégorie personnalisée.");
+      return false;
+    }
+
+    // Vérifier que le prix est rempli si la formation est payante
+    if (
+      formData.is_paid &&
+      (!formData.price || parseFloat(formData.price) <= 0)
+    ) {
+      setError(
+        "Veuillez indiquer un prix valide pour votre formation payante."
+      );
+      return false;
+    }
+
+    return true;
+  };
+
   // Soumettre le formulaire
   const handleSubmit = async () => {
+    if (!validateForm()) return;
+
     setLoading(true);
     setError(null);
 
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("title", formData.title);
+
+      // Si la catégorie est "Autre", utiliser la catégorie personnalisée
+      if (
+        formData.category === "Autre" &&
+        formData.customCategory.trim() !== ""
+      ) {
+        formDataToSend.append("category", formData.customCategory.trim());
+      } else {
+        formDataToSend.append("category", formData.category);
+      }
+
       formDataToSend.append("description", formData.description);
       formDataToSend.append("is_paid", formData.is_paid);
 
@@ -191,6 +234,83 @@ const CreateFormationModal = ({ open, onClose, onFormationCreated }) => {
               onChange={handleChange}
               disabled={loading}
             />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required>
+              <InputLabel id="category-label">Catégorie</InputLabel>
+              <Select
+                labelId="category-label"
+                id="category-select"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                label="Catégorie"
+                disabled={loading}
+              >
+                <MenuItem value="Développement personnel">
+                  Développement personnel
+                </MenuItem>
+                <MenuItem value="Compétences professionnelles">
+                  Compétences professionnelles
+                </MenuItem>
+                <MenuItem value="Technologie & Informatique">
+                  Technologie & Informatique
+                </MenuItem>
+                <MenuItem value="Langues">Langues</MenuItem>
+                <MenuItem value="Santé & Bien-être">Santé & Bien-être</MenuItem>
+                <MenuItem value="Arts & Créativité ">
+                  Arts & Créativité
+                </MenuItem>
+                <MenuItem value="Education financière">
+                  Education financière
+                </MenuItem>
+                <MenuItem value="Soft skills">Soft skills</MenuItem>
+                <MenuItem value="Administration publique & gestion administrative">
+                  Administration publique & gestion administrative
+                </MenuItem>
+                <MenuItem value="Suivi & Évaluation de projets">
+                  Suivi & Évaluation de projets
+                </MenuItem>
+                <MenuItem value="Humanitaire">Humanitaire</MenuItem>
+                <MenuItem value="Gestion financière & budgétaire">
+                  Gestion financière & budgétaire
+                </MenuItem>
+                <MenuItem value="Gestion documentaire & archivage">
+                  Gestion documentaire & archivage
+                </MenuItem>
+                <MenuItem value="Planification stratégiqu">
+                  Planification stratégique
+                </MenuItem>
+                <MenuItem value="Éthique & gouvernance ">
+                  Éthique & gouvernance
+                </MenuItem>
+                <MenuItem value="Analyse des politiques publiques">
+                  Analyse des politiques publiques
+                </MenuItem>
+                <MenuItem value="Gestion des risques & conformité">
+                  Gestion des risques & conformité
+                </MenuItem>
+                <MenuItem value="Autre">Autre</MenuItem>
+              </Select>
+              <FormHelperText>
+                Choisissez la catégorie de votre formation
+              </FormHelperText>
+            </FormControl>
+
+            {/* Champ de texte pour la catégorie personnalisée qui apparaît uniquement si "Autre" est sélectionné */}
+            {formData.category === "Autre" && (
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Précisez la catégorie"
+                name="customCategory"
+                value={formData.customCategory}
+                onChange={handleChange}
+                disabled={loading}
+                required
+                helperText="Veuillez saisir votre catégorie personnalisée"
+              />
+            )}
           </Grid>
 
           <Grid item xs={12}>
