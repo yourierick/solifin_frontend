@@ -4,6 +4,7 @@ import TransactionFeeSettings from "./components/TransactionFeeSettings";
 import CountryAccessSettings from "./components/CountryAccessSettings";
 import GeneralSettings from "./components/GeneralSettings";
 import ExchangeRatesSettings from "./components/ExchangeRatesSettings";
+import RoleManagement from "./components/RoleManagement";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   CurrencyDollarIcon,
@@ -11,6 +12,7 @@ import {
   CurrencyEuroIcon,
   ShieldCheckIcon,
   GlobeAltIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 
 function classNames(...classes) {
@@ -28,8 +30,8 @@ const Settings = () => {
     { name: "Frais De Transaction", icon: CurrencyDollarIcon },
     { name: "Paramètres Généraux", icon: Cog6ToothIcon },
     { name: "Taux de change", icon: CurrencyDollarIcon },
-    { name: "Sécurité", icon: ShieldCheckIcon },
     { name: "Pays Autorisés", icon: GlobeAltIcon },
+    { name: "Rôles & Permissions", icon: UserGroupIcon },
   ];
 
   return (
@@ -93,20 +95,22 @@ const Settings = () => {
             <Tab.Panel>
               <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
                 <h2 className="text-xl font-semibold mb-4 flex items-center">
-                  <ShieldCheckIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
-                  Sécurité
-                </h2>
-                <div className="space-y-4"></div>
-              </div>
-            </Tab.Panel>
-            <Tab.Panel>
-              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
-                <h2 className="text-xl font-semibold mb-4 flex items-center">
                   <GlobeAltIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
                   Pays autorisés
                 </h2>
                 <div className="space-y-4">
                   <CountryAccessSettings />
+                </div>
+              </div>
+            </Tab.Panel>
+            <Tab.Panel>
+              <div className="rounded-lg bg-white p-4 dark:bg-[#1f2937] dark:text-white">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <UserGroupIcon className="h-6 w-6 mr-2 text-primary-600 dark:text-primary-400" />
+                  Rôles et Permissions
+                </h2>
+                <div className="space-y-4">
+                  <RoleManagement />
                 </div>
               </div>
             </Tab.Panel>

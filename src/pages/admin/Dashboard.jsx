@@ -138,6 +138,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [period, setPeriod] = useState("month"); // day, week, month, year
+  const [userPermissions, setUserPermissions] = useState([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(true);
 
   // Définir les couleurs de base en fonction du mode sombre/clair
   const themeColors = {
@@ -153,8 +155,35 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    fetchUserPermissions();
     fetchDashboardData();
   }, [period]);
+  
+  // Fonction pour récupérer les permissions de l'utilisateur
+  const fetchUserPermissions = async () => {
+    setLoadingPermissions(true);
+    try {
+      const response = await axios.get(`/api/user/permissions`);
+      if (response.data && response.data.permissions) {
+        const permissionSlugs = response.data.permissions.map(permission => permission.slug);
+        setUserPermissions(permissionSlugs);
+      } else {
+        // Si l'utilisateur est super-admin, lui donner accès à tout
+        if (response.data && response.data.isSuperAdmin) {
+          setUserPermissions(["super-admin"]);
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des permissions:", error);
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+  
+  // Fonction pour vérifier si l'utilisateur a une permission spécifique
+  const hasPermission = (permission) => {
+    return userPermissions.includes("super-admin") || userPermissions.includes(permission);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -1002,14 +1031,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Transactions récentes */}
-      <div
-        className={`shadow rounded-lg ${
-          isDarkMode
-            ? "bg-gray-800 shadow-gray-900"
-            : "bg-white shadow-gray-200"
-        }`}
-      >
+      {/* Transactions récentes - visible uniquement avec la permission view-finances */}
+      {(hasPermission("view-finances") || hasPermission("super-admin")) && (
+        <div
+          className={`shadow rounded-lg ${
+            isDarkMode
+              ? "bg-gray-800 shadow-gray-900"
+              : "bg-white shadow-gray-200"
+          }`}
+        >
         <div
           className={`px-4 py-5 sm:px-6 border-b ${
             isDarkMode ? "border-gray-700" : "border-gray-200"
@@ -1166,6 +1196,7 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Section des statistiques d'invitation */}
       {!loading && <InvitationStats data={dashboardData} loading={loading} />}

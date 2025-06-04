@@ -74,6 +74,7 @@ import FormationManagement from "./pages/admin/components/FormationManagement";
 import CadeauxManagement from "./pages/admin/components/CadeauxManagement";
 import TicketVerification from "./pages/admin/components/TicketVerification";
 import JetonsEsengo from "./pages/user/components/JetonsEsengo";
+import AdminManagement from "./pages/admin/AdminManagement";
 
 function App() {
   return (
@@ -193,6 +194,7 @@ function App() {
             />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="administrators" element={<AdminManagement />} />
             <Route path="testimonials" element={<TestimonialManagement />} />
             <Route path="faqs" element={<FaqManagement />} />
             <Route path="formations" element={<FormationManagement />} />

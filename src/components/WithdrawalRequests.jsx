@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
-import axios from 'axios';
-import Notification from './Notification';
-import FullScreenModal from './FullScreenModal';
-import ConfirmationModal from './ConfirmationModal';
+import { useState, useEffect } from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { format } from "date-fns";
 import {
   XMarkIcon,
   ClockIcon,
@@ -14,806 +14,1492 @@ import {
   EyeIcon,
   TrashIcon,
   CheckIcon,
-  DocumentTextIcon
-} from '@heroicons/react/24/outline';
+  ExclamationTriangleIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  CurrencyEuroIcon,
+  CurrencyDollarIcon,
+} from "@heroicons/react/24/outline";
+import { Bar, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+} from "chart.js";
 
-export default function WithdrawalRequests() {
+// Enregistrer les composants Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+);
+const WithdrawalRequests = () => {
   const { isDarkMode } = useTheme();
-  const [requests, setRequests] = useState([]);
+
+  // États principaux
+  const [requestsArray, setRequestsArray] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [requestsPerPage] = useState(5);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState(null);
-  const [adminNote, setAdminNote] = useState('');
-  const [processingAction, setProcessingAction] = useState(false);
-  const [walletSystemBalance, setWalletSystemBalance] = useState(0);
+  const [adminNote, setAdminNote] = useState("");
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+  // États pour les actions
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
+  // États pour les modals
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
+  // États pour la pagination des demandes en attente
+  const [currentPage, setCurrentPage] = useState(1);
+  const [requestsPerPage] = useState(10);
+
+  // États pour les onglets
+  const [activeTab, setActiveTab] = useState("pending"); // 'pending' ou 'all'
+
+  // États pour l'onglet d'analyse complète
+  const [allRequests, setAllRequests] = useState([]);
+  const [allRequestsLoading, setAllRequestsLoading] = useState(false);
+  const [allRequestsMeta, setAllRequestsMeta] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: "",
+    payment_method: "",
+    start_date: "",
+    end_date: "",
+    search: "",
+  });
+  // Effet pour charger les données initiales
   useEffect(() => {
-    if (showModal) {
-      // Empêcher le défilement du body
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Réactiver le défilement du body
-      document.body.style.overflow = 'auto';
+    if (activeTab === "pending") {
+      fetchPendingRequests();
+    } else if (activeTab === "all") {
+      fetchAllRequests();
     }
-    
-    // Nettoyer l'effet lors du démontage du composant
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
-  }, [showModal]);
+  }, [activeTab]);
 
-  const fetchRequests = async () => {
+  // Fonction pour récupérer les demandes en attente
+  const fetchPendingRequests = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/withdrawal/requests');
+      const response = await axios.get("/api/admin/withdrawal/requests");
       if (response.data.success) {
-        console.log(response.data);
-        setRequests(response.data.requests);
-        setWalletSystemBalance(response.data.wallet_system_balance || 0);
+        setRequestsArray(response.data.requests || []);
+      } else {
+        toast.error("Erreur lors de la récupération des demandes");
       }
     } catch (error) {
-      Notification.error('Erreur lors de la récupération des demandes');
+      console.error("Erreur lors de la récupération des demandes:", error);
+      toast.error("Erreur lors de la récupération des demandes");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (requestId) => {
-    if (!requestId) return;
-    
+  // Fonction pour récupérer toutes les demandes avec filtres
+  const fetchAllRequests = async (page = 1) => {
     try {
-      setProcessingAction(true);
-      const response = await axios.delete(`/api/admin/withdrawal/requests/${requestId}`);
+      setAllRequestsLoading(true);
+
+      // Construire l'URL avec les paramètres de filtrage
+      let url = `/api/admin/withdrawal/all?page=${page}`;
+
+      if (filters.status) {
+        url += `&status=${filters.status}`;
+      }
+
+      if (filters.payment_method) {
+        url += `&payment_method=${filters.payment_method}`;
+      }
+
+      if (filters.start_date) {
+        url += `&start_date=${filters.start_date}`;
+      }
+
+      if (filters.end_date) {
+        url += `&end_date=${filters.end_date}`;
+      }
+
+      if (filters.search) {
+        url += `&search=${encodeURIComponent(filters.search)}`;
+      }
+
+      const response = await axios.get(url);
+
+      console.log(response.data);
       if (response.data.success) {
-        Notification.success('Demande supprimée avec succès');
-        fetchRequests();
+        setAllRequests(response.data.withdrawal_requests.data || []);
+        setAllRequestsMeta(response.data.withdrawal_requests);
+        setStats(response.data.stats);
+      } else {
+        toast.error("Erreur lors de la récupération des données d'analyse");
       }
     } catch (error) {
-      Notification.error('Erreur lors de la suppression de la demande');
+      console.error(
+        "Erreur lors de la récupération des données d'analyse:",
+        error
+      );
+      toast.error("Erreur lors de la récupération des données d'analyse");
     } finally {
-      setProcessingAction(false);
+      setAllRequestsLoading(false);
     }
   };
-
+  // Fonctions pour gérer les actions sur les demandes
   const handleViewRequest = (request) => {
     setSelectedRequest(request);
-    setAdminNote(request.admin_note || '');
-    setShowModal(true);
+    setAdminNote(request.admin_note || "");
   };
 
-  const handleApprove = async (requestId) => {
-    if (!requestId) return;
-    
+  const handleApproveRequest = async (requestId) => {
     try {
-      setProcessingAction(true);
-      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/approve`, {
-        admin_note: adminNote
-      });
-      
+      setIsProcessing(true);
+      const response = await axios.post(
+        `/api/admin/withdrawal/requests/${requestId}/approve`,
+        {
+          admin_note: adminNote,
+        }
+      );
+
       if (response.data.success) {
-        Notification.success('Demande approuvée avec succès');
-        setShowModal(false);
-        fetchRequests();
+        toast.success("Demande approuvée avec succès");
+        setSelectedRequest(null);
+
+        // Rafraîchir les données selon l'onglet actif
+        if (activeTab === "pending") {
+          fetchPendingRequests();
+        } else {
+          fetchAllRequests(allRequestsMeta.current_page);
+        }
+      } else {
+        toast.error("Erreur lors de l'approbation de la demande");
       }
     } catch (error) {
-      Notification.error('Erreur lors de l\'approbation de la demande');
+      console.error("Erreur lors de l'approbation de la demande:", error);
+      toast.error("Erreur lors de l'approbation de la demande");
     } finally {
-      setProcessingAction(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleReject = async (requestId) => {
-    if (!requestId) return;
-    
+  const handleRejectRequest = async (requestId) => {
     try {
-      setProcessingAction(true);
-      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/reject`, {
-        admin_note: adminNote
-      });
-      
+      setIsProcessing(true);
+      const response = await axios.post(
+        `/api/admin/withdrawal/requests/${requestId}/reject`,
+        {
+          admin_note: adminNote,
+        }
+      );
+
       if (response.data.success) {
-        Notification.success('Demande rejetée avec succès');
-        setShowModal(false);
-        fetchRequests();
+        toast.success("Demande rejetée avec succès");
+        setSelectedRequest(null);
+
+        // Rafraîchir les données selon l'onglet actif
+        if (activeTab === "pending") {
+          fetchPendingRequests();
+        } else {
+          fetchAllRequests(allRequestsMeta.current_page);
+        }
+      } else {
+        toast.error("Erreur lors du rejet de la demande");
       }
     } catch (error) {
-      Notification.error('Erreur lors du rejet de la demande');
+      console.error("Erreur lors du rejet de la demande:", error);
+      toast.error("Erreur lors du rejet de la demande");
     } finally {
-      setProcessingAction(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleSaveNote = async (requestId) => {
+  const confirmDeleteRequest = async () => {
+    if (!requestToDelete) return;
+
     try {
-      const response = await axios.post(`/api/admin/withdrawal/requests/${requestId}/note`, {
-        admin_note: adminNote
-      });
-      
+      setIsDeleting(true);
+      const response = await axios.delete(
+        `/api/admin/withdrawal/requests/${requestToDelete.id}`
+      );
+
       if (response.data.success) {
-        Notification.success('Note enregistrée avec succès');
+        toast.success("Demande supprimée avec succès");
+        setShowDeleteConfirmation(false);
+        setRequestToDelete(null);
+
+        // Rafraîchir les données selon l'onglet actif
+        if (activeTab === "pending") {
+          fetchPendingRequests();
+        } else {
+          fetchAllRequests(allRequestsMeta.current_page);
+        }
+      } else {
+        toast.error("Erreur lors de la suppression de la demande");
       }
     } catch (error) {
-      Notification.error('Erreur lors de l\'enregistrement de la note');
+      console.error("Erreur lors de la suppression de la demande:", error);
+      toast.error("Erreur lors de la suppression de la demande");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  const handleSaveAdminNote = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      setIsSavingNote(true);
+      const response = await axios.post(
+        `/api/admin/withdrawal/requests/${selectedRequest.id}/note`,
+        {
+          admin_note: adminNote,
+        }
+      );
+
+      if (response.data.success) {
+        toast.success("Note enregistrée avec succès");
+
+        // Mettre à jour la note dans l'objet sélectionné
+        setSelectedRequest({
+          ...selectedRequest,
+          admin_note: adminNote,
+        });
+      } else {
+        toast.error("Erreur lors de l'enregistrement de la note");
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement de la note:", error);
+      toast.error("Erreur lors de l'enregistrement de la note");
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+  // Fonctions pour les filtres
+  const applyFilters = () => {
+    fetchAllRequests(1); // Réinitialiser à la première page lors de l'application des filtres
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: "",
+      payment_method: "",
+      start_date: "",
+      end_date: "",
+      search: "",
+    });
+    fetchAllRequests(1);
+  };
+
+  // Fonction pour gérer le changement de page dans l'onglet d'analyse
+  const handlePageChange = (page) => {
+    fetchAllRequests(page);
+  };
+
+  // Fonctions utilitaires
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
-        return isDarkMode ? 'bg-yellow-900 text-yellow-300' : 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800';
-      case 'rejected':
-        return isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800';
-      case 'cancelled':
-        return isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
+      case "pending":
+        return isDarkMode
+          ? "bg-yellow-900 text-yellow-300"
+          : "bg-yellow-100 text-yellow-800";
+      case "approved":
+        return isDarkMode
+          ? "bg-green-900 text-green-300"
+          : "bg-green-100 text-green-800";
+      case "rejected":
+        return isDarkMode
+          ? "bg-red-900 text-red-300"
+          : "bg-red-100 text-red-800";
+      case "processed":
+        return isDarkMode
+          ? "bg-blue-900 text-blue-300"
+          : "bg-blue-100 text-blue-800";
       default:
-        return isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
+        return isDarkMode
+          ? "bg-gray-700 text-gray-300"
+          : "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'pending':
-        return <ClockIcon className="h-5 w-5" />;
-      case 'approved':
-        return <CheckCircleIcon className="h-5 w-5" />;
-      case 'rejected':
-        return <XCircleIcon className="h-5 w-5" />;
-      case 'cancelled':
-        return <XMarkIcon className="h-5 w-5" />;
+      case "pending":
+        return <ClockIcon className="h-4 w-4" />;
+      case "approved":
+        return <CheckCircleIcon className="h-4 w-4" />;
+      case "rejected":
+        return <XCircleIcon className="h-4 w-4" />;
+      case "processed":
+        return <CheckIcon className="h-4 w-4" />;
       default:
-        return <ClockIcon className="h-5 w-5" />;
+        return <ClockIcon className="h-4 w-4" />;
     }
   };
 
-  // Pagination
+  // Pagination pour l'onglet des demandes en attente
   const indexOfLastRequest = currentPage * requestsPerPage;
   const indexOfFirstRequest = indexOfLastRequest - requestsPerPage;
-  const requestsArray = Array.isArray(requests) ? requests : [];
-  const currentRequests = requestsArray.slice(indexOfFirstRequest, indexOfLastRequest);
+  const currentRequests = requestsArray.slice(
+    indexOfFirstRequest,
+    indexOfLastRequest
+  );
   const totalPages = Math.ceil(requestsArray.length / requestsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
-  if (requestsArray.length === 0) {
-    return (
-      <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-        Aucune demande de retrait en cours
-      </div>
-    );
-  }
-
+  const nextPage = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+  // Rendu du composant
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-        Demandes de retrait
-      </h1>
-      
-      <div className={`rounded-lg shadow-lg overflow-hidden ${
-        isDarkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
-              <tr>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  ID
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Utilisateur
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Montant
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Méthode de paiement
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Statut
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Date
-                </th>
-                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${
-              isDarkMode ? 'divide-gray-700' : 'divide-gray-200'
-            }`}>
-              {currentRequests.map((request) => (
-                <tr
-                  key={request.id}
-                  className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}
-                >
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {request.id}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {request.user_name}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {request.amount} $
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {request.payment_method}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className={`p-1 rounded-full mr-2 ${
-                        isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                      }`}>
-                        {getStatusIcon(request.status)}
-                      </div>
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        getStatusColor(request.status)
-                      }`}>
-                        {request.status === 'pending' ? 'En attente' : request.status === 'approved' ? 'Approuvé' : request.status === 'rejected' ? 'Rejeté' : request.status === 'cancelled' ? 'Annulé' : 'Undefined status'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewRequest(request)}
-                        className={`inline-flex items-center px-3 py-1 border text-sm leading-4 font-medium rounded-md ${
-                          isDarkMode 
-                            ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                            : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <EyeIcon className="h-4 w-4 mr-1" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRequestToDelete(request);
-                          setShowDeleteConfirmation(true);
-                        }}
-                        className={`inline-flex items-center px-3 py-1 border text-sm leading-4 font-medium rounded-md ${
-                          isDarkMode 
-                            ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
-                            : 'border-red-300 text-red-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <TrashIcon className="h-4 w-4 mr-1" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 sm:p-6 xl:p-8">
+      {/* En-tête */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Demandes de retrait
+          </h3>
+          <span className="text-base font-normal text-gray-500 dark:text-gray-400">
+            Gestion et analyse des demandes de retrait
+          </span>
         </div>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-6">
-          <nav className="flex items-center space-x-2">
+      {/* Onglets */}
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+          <li className="mr-2">
             <button
-              onClick={prevPage}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-md ${
-                currentPage === 1
-                  ? `${isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-400'} cursor-not-allowed`
-                  : `${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`
+              onClick={() => setActiveTab("pending")}
+              className={`inline-block p-4 rounded-t-lg ${
+                activeTab === "pending"
+                  ? "text-primary-600 border-b-2 border-primary-600 dark:text-primary-500 dark:border-primary-500"
+                  : "hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-b-2 border-transparent"
               }`}
             >
-              <ChevronLeftIcon className="h-5 w-5" />
+              Demandes en attente
             </button>
-            
-            <div className="flex space-x-1">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index + 1}
-                  onClick={() => paginate(index + 1)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    currentPage === index + 1
-                      ? `${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white`
-                      : `${isDarkMode 
-                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-            
+          </li>
+          <li className="mr-2">
             <button
-              onClick={nextPage}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${
-                currentPage === totalPages
-                  ? `${isDarkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-400'} cursor-not-allowed`
-                  : `${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`
+              onClick={() => setActiveTab("all")}
+              className={`inline-block p-4 rounded-t-lg ${
+                activeTab === "all"
+                  ? "text-primary-600 border-b-2 border-primary-600 dark:text-primary-500 dark:border-primary-500"
+                  : "hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-b-2 border-transparent"
               }`}
             >
-              <ChevronRightIcon className="h-5 w-5" />
+              Analyse complète
             </button>
-          </nav>
+          </li>
+        </ul>
+      </div>
+      {/* Indicateur de chargement */}
+      {loading && activeTab === "pending" && (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       )}
-
-      <FullScreenModal
-        isOpen={showModal && selectedRequest !== null}
-        onClose={() => setShowModal(false)}
-        title="Détails de la demande"
-        isDarkMode={isDarkMode}
-      >
-        {selectedRequest && (
-          <>
-            {/* Informations de base */}
-            <div className={`mb-6 p-4 rounded-lg ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-            }`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Identifiant
-                  </p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    #{selectedRequest.id}
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Montant
-                  </p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedRequest.amount} $
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Date
-                  </p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {new Date(selectedRequest.created_at).toLocaleDateString('fr-FR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Statut
-                  </p>
-                  <div className="flex items-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedRequest.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : selectedRequest.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : selectedRequest.status === 'rejected'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {selectedRequest.status === 'pending' && (
-                        <ClockIcon className="h-3 w-3 mr-1" />
-                      )}
-                      {selectedRequest.status === 'approved' && (
-                        <CheckIcon className="h-3 w-3 mr-1" />
-                      )}
-                      {selectedRequest.status === 'rejected' && (
-                        <XMarkIcon className="h-3 w-3 mr-1" />
-                      )}
-                      {selectedRequest.status === 'pending'
-                        ? 'En attente'
-                        : selectedRequest.status === 'approved'
-                        ? 'Approuvée'
-                        : selectedRequest.status === 'rejected'
-                        ? 'Rejetée'
-                        : selectedRequest.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
+      {/* Contenu des onglets */}
+      {activeTab === "pending" ? (
+        // Onglet des demandes en attente
+        <div>
+          {requestsArray.length === 0 ? (
+            <div
+              className={`text-center py-8 ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
+              Aucune demande de retrait en cours
             </div>
-            
-            {/* Informations utilisateur */}
-            <div className="mb-6">
-              <h3 className={`text-lg font-medium mb-3 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                Informations utilisateur
-              </h3>
-              <div className={`p-4 rounded-lg ${
-                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Nom
-                    </p>
-                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedRequest.user_name || 'Non spécifié'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Email
-                    </p>
-                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedRequest.user.email || 'Non spécifié'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      Téléphone
-                    </p>
-                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedRequest.user.phone || 'Non spécifié'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      ID Utilisateur
-                    </p>
-                    <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedRequest.user.account_id || 'Non spécifié'}
-                    </p>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-            
-            {/* Détails de paiement */}
-            <div className="mb-6">
-              <h3 className={`text-lg font-medium mb-3 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                Détails de paiement
-              </h3>
-              <div className={`p-4 rounded-lg ${
-                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
-                {selectedRequest.payment_details && Object.keys(selectedRequest.payment_details).length > 0 ? (
-                  <div className="space-y-3">
-                    {Object.entries(selectedRequest.payment_details).map(([key, value]) => {
-                      // Ignorer les clés qui contiennent "url" ou "link"
-                      if (key.toLowerCase().includes('url') || key.toLowerCase().includes('link')) {
-                        return null;
-                      }
-
-                      // Traduire les clés techniques en libellés plus lisibles
-                      const getTranslatedKey = (key) => {
-                        const translations = {
-                          'type': 'Type de paiement',
-                          'phone_number': 'Numéro de téléphone',
-                          'account_number': 'Numéro de compte',
-                          'bank_name': 'Nom de la banque',
-                          'bank_code': 'Code de la banque',
-                          'branch_code': 'Code de l\'agence',
-                          'iban': 'IBAN',
-                          'swift_bic': 'Code SWIFT/BIC',
-                          'account_holder': 'Titulaire du compte',
-                          'email': 'Email PayPal',
-                          'amount': 'Montant',
-                          'fee': 'Frais',
-                          'total': 'Total',
-                          'commission': 'Commission',
-                          'percentage': 'Pourcentage',
-                          'country': 'Pays',
-                          'currency': 'Devise',
-                          'mobile_money_provider': 'Fournisseur Mobile Money',
-                          'mobile_money_number': 'Numéro Mobile Money',
-                          'card_number': 'Numéro de carte',
-                          'card_holder': 'Titulaire de la carte',
-                          'expiry_date': 'Date d\'expiration',
-                          'cvv': 'CVV',
-                          'address': 'Adresse',
-                          'city': 'Ville',
-                          'state': 'État/Province',
-                          'postal_code': 'Code postal',
-                          'country_code': 'Code pays',
-                          'routing_number': 'Numéro de routage',
-                          'account_type': 'Type de compte',
-                          'wallet_address': 'Adresse de portefeuille',
-                          'wallet_type': 'Type de portefeuille',
-                          'network': 'Réseau',
-                          'memo': 'Mémo',
-                          'tag': 'Tag',
-                          'note': 'Note',
-                          'reference': 'Référence',
-                          'description': 'Description',
-                          'payment_method': 'Méthode de paiement',
-                          'payment_type': 'Type de paiement',
-                          'payment_details': 'Détails du paiement',
-                          'payment_status': 'Statut du paiement',
-                          'payment_date': 'Date du paiement',
-                          'payment_id': 'ID du paiement',
-                          'transaction_id': 'ID de transaction',
-                          'transaction_date': 'Date de transaction',
-                          'transaction_status': 'Statut de la transaction',
-                          'transaction_type': 'Type de transaction',
-                          'transaction_reference': 'Référence de transaction',
-                          'transaction_description': 'Description de la transaction',
-                          'transaction_note': 'Note de transaction',
-                          'transaction_memo': 'Mémo de transaction',
-                          'transaction_tag': 'Tag de transaction',
-                          'transaction_amount': 'Montant de la transaction',
-                          'transaction_fee': 'Frais de transaction',
-                          'transaction_total': 'Total de la transaction',
-                          'transaction_commission': 'Commission de transaction',
-                          'transaction_percentage': 'Pourcentage de transaction',
-                          'transaction_currency': 'Devise de la transaction',
-                          'transaction_country': 'Pays de la transaction',
-                          'transaction_country_code': 'Code pays de la transaction',
-                          'transaction_address': 'Adresse de transaction',
-                          'transaction_city': 'Ville de transaction',
-                          'transaction_state': 'État/Province de transaction',
-                          'transaction_postal_code': 'Code postal de transaction',
-                          'transaction_routing_number': 'Numéro de routage de transaction',
-                          'transaction_account_number': 'Numéro de compte de transaction',
-                          'transaction_account_type': 'Type de compte de transaction',
-                          'transaction_account_holder': 'Titulaire du compte de transaction',
-                          'transaction_bank_name': 'Nom de la banque de transaction',
-                          'transaction_bank_code': 'Code de la banque de transaction',
-                          'transaction_branch_code': 'Code de l\'agence de transaction',
-                          'transaction_iban': 'IBAN de transaction',
-                          'transaction_swift_bic': 'Code SWIFT/BIC de transaction',
-                          'transaction_wallet_address': 'Adresse de portefeuille de transaction',
-                          'transaction_wallet_type': 'Type de portefeuille de transaction',
-                          'transaction_network': 'Réseau de transaction',
-                          
-                        };
-                        
-                        return translations[key.toLowerCase()] || key;
-                      };
-
-                      // Formater les valeurs spéciales
-                      const formatValue = (key, value) => {
-                        if (key === 'phone_number' && typeof value === 'string') {
-                          // Formater les numéros de téléphone
-                          if (value.startsWith('+')) {
-                            return value;
-                          } else {
-                            return `+${value}`;
+          ) : (
+            <>
+              <div
+                className={`rounded-lg shadow-lg overflow-hidden ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead
+                      className={isDarkMode ? "bg-gray-700/50" : "bg-gray-50"}
+                    >
+                      <tr>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          ID
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Utilisateur
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Montant
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Méthode de paiement
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Statut
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Date
+                        </th>
+                        <th
+                          className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      className={`divide-y ${
+                        isDarkMode ? "divide-gray-700" : "divide-gray-200"
+                      }`}
+                    >
+                      {currentRequests.map((request) => (
+                        <tr
+                          key={request.id}
+                          className={
+                            isDarkMode
+                              ? "hover:bg-gray-700/50"
+                              : "hover:bg-gray-50"
                           }
-                        } else if (
-                          key === 'amount' || 
-                          key === 'fee' || 
-                          key === 'total' || 
-                          key === 'commission'
-                        ) {
-                          // Ajouter le symbole $ pour les valeurs monétaires
-                          return typeof value === 'string' ? value : value.toString();
-                        } else if (key === 'percentage') {
-                          // Ajouter le symbole % pour les pourcentages
-                          return typeof value === 'string' ? value : value.toString();
-                        }
-                        
-                        return typeof value === 'string' ? value : JSON.stringify(value);
-                      };
-
-                      if (typeof value === 'object' && value !== null) {
-                        return (
-                          <div key={key} className="border-t pt-2 first:border-t-0 first:pt-0">
-                            <p className={`font-medium mb-2 ${
-                              isDarkMode ? 'text-white' : 'text-gray-900'
-                            }`}>
-                              {getTranslatedKey(key)}
-                            </p>
-                            <div className="pl-4 space-y-2">
-                              {Object.entries(value).map(([subKey, subValue]) => {
-                                // Ignorer les clés qui contiennent "url" ou "link"
-                                if (subKey.toLowerCase().includes('url') || subKey.toLowerCase().includes('link')) {
-                                  return null;
-                                }
-                                
-                                const formattedSubValue = formatValue(subKey, subValue);
-                                
-                                return (
-                                  <div key={subKey} className="flex justify-between">
-                                    <span className={`text-sm ${
-                                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                                    }`}>
-                                      {getTranslatedKey(subKey)}
-                                    </span>
-                                    <span className={`text-sm font-medium ${
-                                      isDarkMode ? 'text-white' : 'text-gray-900'
-                                    }`}>
-                                      {subKey === 'amount' || subKey === 'fee' || subKey === 'total' || subKey === 'commission'
-                                        ? `${formattedSubValue} $`
-                                        : subKey === 'percentage'
-                                          ? `${formattedSubValue}%`
-                                          : formattedSubValue}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            {request.id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            {request.user
+                              ? request.user.name
+                              : "Utilisateur inconnu"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            {new Intl.NumberFormat("fr-FR", {
+                              style: "currency",
+                              currency: "EUR",
+                            }).format(request.amount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            {request.payment_method}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                                request.status
+                              )}`}
+                            >
+                              <span className="flex items-center">
+                                {getStatusIcon(request.status)}
+                                <span className="ml-1">
+                                  {request.status === "pending" && "En attente"}
+                                  {request.status === "approved" && "Approuvé"}
+                                  {request.status === "rejected" && "Rejeté"}
+                                  {request.status === "processed" && "Traité"}
+                                </span>
+                              </span>
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            {new Date(request.created_at).toLocaleDateString(
+                              "fr-FR"
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleViewRequest(request)}
+                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                              >
+                                <EyeIcon className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRequestToDelete(request);
+                                  setShowDeleteConfirmation(true);
+                                }}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              >
+                                <TrashIcon className="w-5 h-5" />
+                              </button>
                             </div>
-                          </div>
-                        );
-                      }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                      const formattedValue = formatValue(key, value);
-                      
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-6">
+                  <nav className="flex items-center">
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-l-md ${
+                        currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                          : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <ChevronLeftIcon className="w-5 h-5" />
+                    </button>
+                    {[...Array(totalPages)].map((_, index) => {
+                      const pageNumber = index + 1;
                       return (
-                        <div key={key} className="flex justify-between border-t pt-2 first:border-t-0 first:pt-0">
-                          <span className={`text-sm ${
-                            isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                          }`}>
-                            {getTranslatedKey(key)}
-                          </span>
-                          <span className={`text-sm font-medium ${
-                            isDarkMode ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {key === 'amount' || key === 'fee' || key === 'total' || key === 'commission'
-                              ? `${formattedValue} $`
-                              : key === 'percentage'
-                                ? `${formattedValue}%`
-                                : formattedValue}
-                          </span>
-                        </div>
+                        <button
+                          key={pageNumber}
+                          onClick={() => paginate(pageNumber)}
+                          className={`px-3 py-1 ${
+                            pageNumber === currentPage
+                              ? "bg-primary-600 text-white dark:bg-primary-500"
+                              : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
                       );
                     })}
-                  </div>
-                ) : (
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Aucun détail de paiement disponible
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            {/* Balance du système */}
-            <div className="mb-6">
-              <h3 className={`text-lg font-medium mb-3 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                Balance du système
-              </h3>
-              <div className={`p-4 rounded-lg ${
-                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Balance disponible
-                  </span>
-                  <span className={`font-medium ${
-                    parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount) 
-                      ? 'text-red-500' 
-                      : isDarkMode ? 'text-green-400' : 'text-green-600'
-                  }`}>
-                    {parseFloat(walletSystemBalance).toFixed(2)} $
-                  </span>
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-r-md ${
+                        currentPage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                          : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <ChevronRightIcon className="w-5 h-5" />
+                    </button>
+                  </nav>
                 </div>
-                {parseFloat(walletSystemBalance) < parseFloat(selectedRequest.amount) && (
-                  <p className="mt-2 text-sm text-red-500">
-                    La balance du système est insuffisante pour traiter cette demande.
-                  </p>
-                )}
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        // Onglet d'analyse complète
+        <div>
+          {/* Section des filtres */}
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                Filtres
+              </h4>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <FunnelIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Statut
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) =>
+                      setFilters({ ...filters, status: e.target.value })
+                    }
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Tous</option>
+                    <option value="pending">En attente</option>
+                    <option value="approved">Approuvé</option>
+                    <option value="rejected">Rejeté</option>
+                    <option value="processed">Traité</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Méthode de paiement
+                  </label>
+                  <select
+                    value={filters.payment_method}
+                    onChange={(e) =>
+                      setFilters({ ...filters, payment_method: e.target.value })
+                    }
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="bank_transfer">Virement bancaire</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="stripe">Stripe</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Date de début
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.start_date}
+                    onChange={(e) =>
+                      setFilters({ ...filters, start_date: e.target.value })
+                    }
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Date de fin
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.end_date}
+                    onChange={(e) =>
+                      setFilters({ ...filters, end_date: e.target.value })
+                    }
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-center">
+              <div className="w-full sm:w-1/2 mb-4 sm:mb-0">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={filters.search}
+                    onChange={(e) =>
+                      setFilters({ ...filters, search: e.target.value })
+                    }
+                    placeholder="Rechercher par ID, utilisateur..."
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <button
+                  onClick={applyFilters}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                >
+                  Appliquer
+                </button>
+                <button
+                  onClick={resetFilters}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                >
+                  Réinitialiser
+                </button>
               </div>
             </div>
-            
-            {/* Note d'administration */}
-            <div className="mb-6">
-              <h3 className={`text-lg font-medium mb-3 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                Note d'administration
-              </h3>
-              <textarea
-                value={adminNote}
-                onChange={(e) => setAdminNote(e.target.value)}
-                className={`w-full p-3 border rounded-lg ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                rows={3}
-                placeholder="Ajouter une note (visible uniquement par les administrateurs)"
-              />
+          </div>
+          {/* Section des statistiques */}
+          {allRequestsLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
-            
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
-              <div className="flex flex-col sm:flex-row gap-3">
-                {selectedRequest.status === 'pending' && (
+          ) : (
+            <>
+              {stats && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    Statistiques générales
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-l-4 border-primary-500">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 bg-primary-100 dark:bg-primary-900 rounded-full p-3">
+                          <CurrencyDollarIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Montant total
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {new Intl.NumberFormat("fr-FR", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(stats.total_amount)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 bg-yellow-100 dark:bg-yellow-900 rounded-full p-3">
+                          <ClockIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            En attente
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {stats.pending_count} (
+                            {new Intl.NumberFormat("fr-FR", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(stats.pending_amount)}
+                            )
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-l-4 border-green-500">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-full p-3">
+                          <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Payés
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {stats.approved_requests} (
+                            {new Intl.NumberFormat("fr-FR", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(stats.approved_amount)}
+                            )
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-l-4 border-red-500">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 bg-red-100 dark:bg-red-900 rounded-full p-3">
+                          <XCircleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Rejetés
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {stats.rejected_count} (
+                            {new Intl.NumberFormat("fr-FR", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(stats.rejected_amount)}
+                            )
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Section des graphiques */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Graphique en barres - Demandes par mois */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                      <h5 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+                        Demandes par mois
+                      </h5>
+                      <div className="h-64">
+                        {stats.monthly_data && (
+                          <Bar
+                            data={{
+                              labels: stats.monthly_data.map(
+                                (item) => item.month
+                              ),
+                              datasets: [
+                                {
+                                  label: "Montant total",
+                                  data: stats.monthly_data.map(
+                                    (item) => item.amount
+                                  ),
+                                  backgroundColor: isDarkMode
+                                    ? "rgba(79, 70, 229, 0.7)"
+                                    : "rgba(79, 70, 229, 0.5)",
+                                  borderColor: "#4F46E5",
+                                  borderWidth: 1,
+                                },
+                              ],
+                            }}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                  ticks: {
+                                    color: isDarkMode ? "#D1D5DB" : "#4B5563",
+                                  },
+                                  grid: {
+                                    color: isDarkMode
+                                      ? "rgba(255, 255, 255, 0.1)"
+                                      : "rgba(0, 0, 0, 0.1)",
+                                  },
+                                },
+                                x: {
+                                  ticks: {
+                                    color: isDarkMode ? "#D1D5DB" : "#4B5563",
+                                  },
+                                  grid: {
+                                    color: isDarkMode
+                                      ? "rgba(255, 255, 255, 0.1)"
+                                      : "rgba(0, 0, 0, 0.1)",
+                                  },
+                                },
+                              },
+                              plugins: {
+                                legend: {
+                                  labels: {
+                                    color: isDarkMode ? "#D1D5DB" : "#4B5563",
+                                  },
+                                },
+                              },
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Graphique en camembert - Méthodes de paiement */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                      <h5 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+                        Méthodes de paiement
+                      </h5>
+                      <div className="h-64">
+                        {stats.payment_methods && (
+                          <Pie
+                            data={{
+                              labels: stats.payment_methods.map(
+                                (item) => item.method
+                              ),
+                              datasets: [
+                                {
+                                  data: stats.payment_methods.map(
+                                    (item) => item.amount
+                                  ),
+                                  backgroundColor: [
+                                    "rgba(79, 70, 229, 0.7)",
+                                    "rgba(245, 158, 11, 0.7)",
+                                    "rgba(16, 185, 129, 0.7)",
+                                    "rgba(239, 68, 68, 0.7)",
+                                  ],
+                                  borderColor: [
+                                    "#4F46E5",
+                                    "#F59E0B",
+                                    "#10B981",
+                                    "#EF4444",
+                                  ],
+                                  borderWidth: 1,
+                                },
+                              ],
+                            }}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                legend: {
+                                  position: "right",
+                                  labels: {
+                                    color: isDarkMode ? "#D1D5DB" : "#4B5563",
+                                  },
+                                },
+                              },
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Tableau des demandes filtrées */}
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Liste des demandes
+                </h4>
+
+                <div
+                  className={`rounded-lg shadow-lg overflow-hidden ${
+                    isDarkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+                >
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead
+                        className={isDarkMode ? "bg-gray-700/50" : "bg-gray-50"}
+                      >
+                        <tr>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            ID
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Utilisateur
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Montant
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Méthode de paiement
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Statut
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Date
+                          </th>
+                          <th
+                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            }`}
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        className={`divide-y ${
+                          isDarkMode ? "divide-gray-700" : "divide-gray-200"
+                        }`}
+                      >
+                        {allRequests.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="7"
+                              className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+                            >
+                              Aucune demande trouvée
+                            </td>
+                          </tr>
+                        ) : (
+                          allRequests.map((request) => (
+                            <tr
+                              key={request.id}
+                              className={
+                                isDarkMode
+                                  ? "hover:bg-gray-700/50"
+                                  : "hover:bg-gray-50"
+                              }
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                {request.id}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {request.user
+                                  ? request.user.name
+                                  : "Utilisateur inconnu"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {new Intl.NumberFormat("fr-FR", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                }).format(request.amount)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {request.payment_method}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                                    request.status
+                                  )}`}
+                                >
+                                  <span className="flex items-center">
+                                    {getStatusIcon(request.status)}
+                                    <span className="ml-1">
+                                      {request.status === "pending" &&
+                                        "En attente"}
+                                      {request.status === "approved" &&
+                                        "Approuvé"}
+                                      {request.status === "rejected" &&
+                                        "Rejeté"}
+                                      {request.status === "processed" &&
+                                        "Traité"}
+                                    </span>
+                                  </span>
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                {new Date(
+                                  request.created_at
+                                ).toLocaleDateString("fr-FR")}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleViewRequest(request)}
+                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setRequestToDelete(request);
+                                      setShowDeleteConfirmation(true);
+                                    }}
+                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                  >
+                                    <TrashIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {/* Pagination pour les demandes filtrées */}
+                {allRequestsMeta && allRequestsMeta.last_page > 1 && (
+                  <div className="flex justify-center mt-6">
+                    <nav className="flex items-center">
+                      <button
+                        onClick={() =>
+                          handlePageChange(allRequestsMeta.current_page - 1)
+                        }
+                        disabled={allRequestsMeta.current_page === 1}
+                        className={`px-3 py-1 rounded-l-md ${
+                          allRequestsMeta.current_page === 1
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                            : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        <ChevronLeftIcon className="w-5 h-5" />
+                      </button>
+
+                      {(() => {
+                        const pages = [];
+                        const maxVisiblePages = 5;
+                        const totalPages = allRequestsMeta.last_page;
+                        const currentPage = allRequestsMeta.current_page;
+
+                        let startPage = Math.max(
+                          1,
+                          currentPage - Math.floor(maxVisiblePages / 2)
+                        );
+                        let endPage = Math.min(
+                          totalPages,
+                          startPage + maxVisiblePages - 1
+                        );
+
+                        if (endPage - startPage + 1 < maxVisiblePages) {
+                          startPage = Math.max(
+                            1,
+                            endPage - maxVisiblePages + 1
+                          );
+                        }
+
+                        if (startPage > 1) {
+                          pages.push(
+                            <button
+                              key="first"
+                              onClick={() => handlePageChange(1)}
+                              className="px-3 py-1 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                            >
+                              1
+                            </button>
+                          );
+                          if (startPage > 2) {
+                            pages.push(
+                              <span
+                                key="dots1"
+                                className="px-3 py-1 text-gray-500 dark:text-gray-400"
+                              >
+                                ...
+                              </span>
+                            );
+                          }
+                        }
+
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => handlePageChange(i)}
+                              className={`px-3 py-1 ${
+                                i === currentPage
+                                  ? "bg-primary-600 text-white dark:bg-primary-500"
+                                  : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+
+                        if (endPage < totalPages) {
+                          if (endPage < totalPages - 1) {
+                            pages.push(
+                              <span
+                                key="dots2"
+                                className="px-3 py-1 text-gray-500 dark:text-gray-400"
+                              >
+                                ...
+                              </span>
+                            );
+                          }
+                          pages.push(
+                            <button
+                              key="last"
+                              onClick={() => handlePageChange(totalPages)}
+                              className="px-3 py-1 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                            >
+                              {totalPages}
+                            </button>
+                          );
+                        }
+
+                        return pages;
+                      })()}
+
+                      <button
+                        onClick={() =>
+                          handlePageChange(allRequestsMeta.current_page + 1)
+                        }
+                        disabled={
+                          allRequestsMeta.current_page ===
+                          allRequestsMeta.last_page
+                        }
+                        className={`px-3 py-1 rounded-r-md ${
+                          allRequestsMeta.current_page ===
+                          allRequestsMeta.last_page
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                            : "bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        <ChevronRightIcon className="w-5 h-5" />
+                      </button>
+                    </nav>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {/* Modal de confirmation de suppression */}
+      {showDeleteConfirmation && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity"
+              aria-hidden="true"
+            >
+              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
+            </div>
+            <span
+              className="hidden sm:inline-block sm:align-middle sm:h-screen"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                      Supprimer la demande de retrait
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Êtes-vous sûr de vouloir supprimer cette demande de
+                        retrait ? Cette action est irréversible.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={confirmDeleteRequest}
+                  disabled={isDeleting}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  {isDeleting ? "Suppression..." : "Supprimer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirmation(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de détails de la demande */}
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity"
+              aria-hidden="true"
+            >
+              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
+            </div>
+            <span
+              className="hidden sm:inline-block sm:align-middle sm:h-screen"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                    Détails de la demande #{selectedRequest.id}
+                  </h3>
+                  <button
+                    onClick={() => setSelectedRequest(null)}
+                    className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        ID
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {selectedRequest.id}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Statut
+                      </p>
+                      <p className="mt-1">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                            selectedRequest.status
+                          )}`}
+                        >
+                          <span className="flex items-center">
+                            {getStatusIcon(selectedRequest.status)}
+                            <span className="ml-1">
+                              {selectedRequest.status === "pending" &&
+                                "En attente"}
+                              {selectedRequest.status === "approved" &&
+                                "Approuvé"}
+                              {selectedRequest.status === "rejected" &&
+                                "Rejeté"}
+                              {selectedRequest.status === "processed" &&
+                                "Traité"}
+                            </span>
+                          </span>
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Utilisateur
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {selectedRequest.user
+                          ? selectedRequest.user.name
+                          : "Utilisateur inconnu"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Email
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {selectedRequest.user
+                          ? selectedRequest.user.email
+                          : "Email inconnu"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Montant
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {new Intl.NumberFormat("fr-FR", {
+                          style: "currency",
+                          currency: "EUR",
+                        }).format(selectedRequest.amount)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Méthode de paiement
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {selectedRequest.payment_method}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Date de création
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {format(
+                          new Date(selectedRequest.created_at),
+                          "dd/MM/yyyy HH:mm"
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Dernière mise à jour
+                      </p>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {format(
+                          new Date(selectedRequest.updated_at),
+                          "dd/MM/yyyy HH:mm"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Détails du paiement
+                    </p>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                      {selectedRequest.payment_details || "Aucun détail fourni"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Note administrative
+                    </p>
+                    <textarea
+                      value={adminNote}
+                      onChange={(e) => setAdminNote(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      rows="3"
+                      placeholder="Ajouter une note administrative..."
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                {selectedRequest.status === "pending" && (
                   <>
                     <button
-                      onClick={() => handleApprove(selectedRequest.id)}
-                      disabled={processingAction}
-                      className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
-                        isDarkMode 
-                          ? 'border-green-600 text-green-400 hover:bg-green-900/20' 
-                          : 'border-green-300 text-green-700 hover:bg-green-100'
-                      } ${processingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      type="button"
+                      onClick={() => handleApproveRequest(selectedRequest.id)}
+                      disabled={isProcessing}
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
                     >
-                      <CheckIcon className="h-4 w-4 mr-2" />
-                      Approuver
+                      {isProcessing ? "Traitement..." : "Approuver"}
                     </button>
                     <button
-                      onClick={() => handleReject(selectedRequest.id)}
-                      disabled={processingAction}
-                      className={`inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md ${
-                        isDarkMode 
-                          ? 'border-red-600 text-red-400 hover:bg-red-900/20' 
-                          : 'border-red-300 text-red-700 hover:bg-gray-100'
-                      } ${processingAction ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      type="button"
+                      onClick={() => handleRejectRequest(selectedRequest.id)}
+                      disabled={isProcessing}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                     >
-                      <XMarkIcon className="h-4 w-4 mr-2" />
-                      Rejeter
+                      {isProcessing ? "Traitement..." : "Rejeter"}
                     </button>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={handleSaveAdminNote}
+                  disabled={isSavingNote}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  {isSavingNote ? "Enregistrement..." : "Enregistrer la note"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRequest(null)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
-          </>
-        )}
-      </FullScreenModal>
-
-      <ConfirmationModal
-        isOpen={showDeleteConfirmation}
-        onClose={() => setShowDeleteConfirmation(false)}
-        onConfirm={() => {
-          handleDelete(requestToDelete?.id);
-          setShowDeleteConfirmation(false);
-        }}
-        title="Confirmation de suppression"
-        message={`Êtes-vous sûr de vouloir supprimer la demande #${requestToDelete?.id} ?`}
-        confirmButtonText="Supprimer"
-        cancelButtonText="Annuler"
-        isDarkMode={isDarkMode}
-        type="danger"
+          </div>
+        </div>
+      )}
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={isDarkMode ? "dark" : "light"}
       />
     </div>
   );
-}
+};
+
+export default WithdrawalRequests;
